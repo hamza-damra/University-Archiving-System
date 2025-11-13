@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Dashboard - Al-Quds University Archiving System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/custom.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Al-Quds University</h1>
+                    <p class="text-sm text-gray-600">Professor Dashboard</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="relative">
+                        <button 
+                            id="notificationsBtn"
+                            class="relative p-2 text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+                            aria-label="Notifications"
+                        >
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                            </svg>
+                            <span id="notificationBadge" class="hidden absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-600 ring-2 ring-white"></span>
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notificationsDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
+                                <h3 class="text-lg font-semibold text-gray-800">Notifications</h3>
+                                <button id="closeNotificationsDropdown" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="notificationsList" class="max-h-96 overflow-y-auto">
+                                <p class="text-gray-500 text-sm p-4 text-center">Loading notifications...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <span id="professorName" class="text-gray-700 font-medium"></span>
+                    <button 
+                        id="logoutBtn"
+                        class="group p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                        title="Logout"
+                        aria-label="Logout"
+                    >
+                        <svg class="w-6 h-6 transition-transform group-hover:scale-110" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <defs>
+                                <linearGradient id="logout-gradient" x1="17.503" x2="345.973" y1="420.235" y2="91.765" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0" stop-color="#f8ae1f"></stop>
+                                    <stop offset="1" stop-color="#ca2157"></stop>
+                                </linearGradient>
+                            </defs>
+                            <path fill="url(#logout-gradient)" fill-rule="evenodd" d="M85.476 466.805c-28.539 0-51.763-23.224-51.763-51.764V96.959c0-28.539 23.224-51.763 51.763-51.763h174.845c28.539 0 51.763 23.224 51.763 51.763v80.702c0 10.787-8.798 19.585-19.585 19.585h-6.172c-10.787 0-19.585-8.798-19.585-19.585V96.959c0-3.509-2.914-6.422-6.422-6.422H85.475c-3.509 0-6.422 2.913-6.422 6.422v318.082c0 3.509 2.914 6.422 6.422 6.422H260.32c3.508 0 6.422-2.914 6.422-6.422v-80.702c0-10.787 8.798-19.585 19.585-19.585h6.172c10.787 0 19.585 8.798 19.585 19.585v80.702c0 28.539-23.224 51.764-51.763 51.764H85.476zm273.123-123.312c-8.852 8.852-8.852 23.205 0 32.058 8.853 8.853 23.205 8.853 32.058 0l65.129-65.129c30.001-30.002 30.001-78.843 0-108.844l-65.129-65.129c-8.852-8.852-23.205-8.852-32.058 0-8.852 8.853-8.852 23.205 0 32.058l56.465 56.465c3.087 3.087.903 8.358-3.462 8.358H145.346c-12.52 0-22.67 10.15-22.67 22.671s10.15 22.671 22.67 22.671h266.256c4.365 0 6.549 5.271 3.462 8.358z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Assigned Requests -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Assigned Document Requests</h2>
+
+            <!-- Filters -->
+            <div class="mb-4 flex flex-wrap gap-2">
+                <button class="filter-btn active px-3 py-1 rounded-full text-sm border" data-filter="all">
+                    All
+                </button>
+                <button class="filter-btn px-3 py-1 rounded-full text-sm border" data-filter="pending">
+                    Pending
+                </button>
+                <button class="filter-btn px-3 py-1 rounded-full text-sm border" data-filter="submitted">
+                    Submitted
+                </button>
+                <button class="filter-btn px-3 py-1 rounded-full text-sm border" data-filter="overdue">
+                    Overdue
+                </button>
+            </div>
+
+            <!-- Requests Grid -->
+            <div id="requestsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Loading skeleton -->
+                <div class="animate-pulse space-y-4">
+                    <div class="h-48 bg-gray-200 rounded-lg"></div>
+                </div>
+                <div class="animate-pulse space-y-4">
+                    <div class="h-48 bg-gray-200 rounded-lg"></div>
+                </div>
+                <div class="animate-pulse space-y-4">
+                    <div class="h-48 bg-gray-200 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden text-center py-12">
+                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No requests</h3>
+                <p class="mt-1 text-sm text-gray-500">No document requests have been assigned to you yet.</p>
+            </div>
+
+            <!-- Pagination -->
+            <div id="paginationContainer" class="mt-6 flex items-center justify-between border-t pt-4">
+                <div class="text-sm text-gray-700">
+                    Showing <span id="pageInfo"></span>
+                </div>
+                <div id="paginationButtons" class="flex space-x-2">
+                    <!-- Pagination buttons will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p class="text-center text-sm text-gray-600">Al-Quds University — Archiving System</p>
+        </div>
+    </footer>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script type="module" src="/js/prof.js"></script>
+</body>
+</html>

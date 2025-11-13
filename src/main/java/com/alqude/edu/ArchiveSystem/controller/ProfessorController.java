@@ -1,11 +1,13 @@
 package com.alqude.edu.ArchiveSystem.controller;
 
 import com.alqude.edu.ArchiveSystem.dto.common.ApiResponse;
+import com.alqude.edu.ArchiveSystem.dto.common.NotificationResponse;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.entity.SubmittedDocument;
 import com.alqude.edu.ArchiveSystem.service.AuthService;
 import com.alqude.edu.ArchiveSystem.service.DocumentRequestService;
 import com.alqude.edu.ArchiveSystem.service.FileUploadService;
+import com.alqude.edu.ArchiveSystem.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
@@ -35,6 +37,7 @@ public class ProfessorController {
     private final DocumentRequestService documentRequestService;
     private final FileUploadService fileUploadService;
     private final AuthService authService;
+    private final NotificationService notificationService;
     
     // Document Request Management
     
@@ -76,6 +79,20 @@ public class ProfessorController {
         
         return ResponseEntity.ok(ApiResponse.success("Pending requests count retrieved successfully", count));
     }
+
+    // Notifications
+
+    @GetMapping("/notifications")
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications() {
+        List<NotificationResponse> notifications = notificationService.getCurrentUserNotifications();
+        return ResponseEntity.ok(ApiResponse.success("Notifications retrieved successfully", notifications));
+    }
+
+    @PutMapping("/notifications/{notificationId}/seen")
+    public ResponseEntity<ApiResponse<String>> markNotificationAsSeen(@PathVariable Long notificationId) {
+        notificationService.markNotificationAsRead(notificationId);
+        return ResponseEntity.ok(ApiResponse.success("Notification marked as read", "OK"));
+    }
     
     // File Upload Management
     
@@ -83,12 +100,18 @@ public class ProfessorController {
     public ResponseEntity<ApiResponse<SubmittedDocument>> uploadDocument(
             @PathVariable Long requestId,
             @RequestParam("file") MultipartFile file) throws IOException {
-        
         log.info("Professor uploading document for request id: {}", requestId);
-        
         SubmittedDocument submittedDocument = fileUploadService.uploadDocument(requestId, file);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("Document uploaded successfully", submittedDocument));
+    }
+
+    @PostMapping("/document-requests/{requestId}/submit")
+    public ResponseEntity<ApiResponse<SubmittedDocument>> submitDocument(
+            @PathVariable Long requestId,
+            @RequestParam("file") MultipartFile file) throws IOException {
+        log.info("Professor submitting document for request id: {} via legacy endpoint", requestId);
+        return uploadDocument(requestId, file);
     }
     
     @PutMapping("/document-requests/{requestId}/replace")

@@ -23,7 +23,9 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -172,11 +174,24 @@ public class FileUploadService {
             throw new RuntimeException("File type not allowed: " + extension);
         }
         
-        // Check if extension matches request requirements
-        if (!documentRequest.getRequiredFileExtensions().contains(extension)) {
-            throw new RuntimeException("File extension " + extension + " is not allowed for this request. Required: " + 
-                    String.join(", ", documentRequest.getRequiredFileExtensions()));
+        List<String> allowedRequestExtensions = getNormalizedRequestExtensions(documentRequest);
+        if (!allowedRequestExtensions.isEmpty() && !allowedRequestExtensions.contains(extension)) {
+            throw new RuntimeException("File extension " + extension + " is not allowed for this request. Required: " +
+                    String.join(", ", allowedRequestExtensions));
         }
+    }
+
+    private List<String> getNormalizedRequestExtensions(DocumentRequest documentRequest) {
+        List<String> extensions = documentRequest.getRequiredFileExtensions();
+        if (extensions == null) {
+            return List.of();
+        }
+        return extensions.stream()
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
     }
     
     private String saveFile(MultipartFile file, Long requestId) throws IOException {

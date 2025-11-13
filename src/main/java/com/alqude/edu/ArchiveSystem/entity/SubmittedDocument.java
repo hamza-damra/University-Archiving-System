@@ -1,5 +1,7 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -20,11 +22,25 @@ public class SubmittedDocument {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
+    @JsonBackReference
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id", nullable = false)
     private DocumentRequest documentRequest;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+        @ManyToOne(fetch = FetchType.LAZY)
+        @JsonIgnoreProperties({
+            "documentRequests",
+            "submittedDocuments",
+            "notifications",
+            "department",
+            "password",
+            "authorities",
+            "username",
+            "enabled",
+            "accountNonExpired",
+            "accountNonLocked",
+            "credentialsNonExpired"
+        })
     @JoinColumn(name = "professor_id", nullable = false)
     private User professor;
     

@@ -1,5 +1,6 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
@@ -57,6 +58,7 @@ public class DocumentRequest {
     @Column(length = 1000)
     private String description;
     
+    @JsonManagedReference
     @OneToOne(mappedBy = "documentRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private SubmittedDocument submittedDocument;
     

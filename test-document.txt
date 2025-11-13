@@ -1,0 +1,13 @@
+This is a test document for the Archive System.
+
+Course: Advanced Algorithms
+Document Type: Syllabus
+Professor: Omar Al-Khouri
+
+Content:
+1. Course Overview
+2. Learning Objectives
+3. Assessment Methods
+4. Schedule
+
+This document is created for testing the file upload functionality of the Archive System.

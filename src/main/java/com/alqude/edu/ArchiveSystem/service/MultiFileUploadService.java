@@ -53,45 +53,61 @@ public class MultiFileUploadService {
     /**
      * Upload multiple files for a document request
      */
-    public SubmittedDocument uploadMultipleDocuments(@NonNull Long requestId, List<MultipartFile> files, String notes) throws IOException {
+    public synchronized SubmittedDocument uploadMultipleDocuments(@NonNull Long requestId, List<MultipartFile> files, String notes) throws IOException {
         log.info("Uploading {} files for request id: {}", files.size(), requestId);
-        
+
         // Validate request
         DocumentRequest documentRequest = documentRequestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Document request not found with id: " + requestId));
-        
+
         User currentUser = authService.getCurrentUser();
-        
+
         // Validate authorization
         if (!documentRequest.getProfessor().getId().equals(currentUser.getId())) {
             throw new SecurityException("You are not authorized to upload documents for this request");
         }
-        
+
         // Validate file count and total size
         validateMultipleFiles(files, documentRequest);
-        
-        // Check if submission already exists
+
+        // Check if submission already exists (with retry to handle race conditions)
         SubmittedDocument submittedDocument = submittedDocumentRepository
                 .findByDocumentRequestId(requestId)
                 .orElse(null);
-        
-        if (submittedDocument == null) {
+
+        boolean isNewSubmission = submittedDocument == null;
+
+        if (isNewSubmission) {
             // Create new submission
-            submittedDocument = new SubmittedDocument();
-            submittedDocument.setDocumentRequest(documentRequest);
-            submittedDocument.setProfessor(currentUser);
-            submittedDocument.setSubmittedAt(LocalDateTime.now());
-            submittedDocument.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
-            submittedDocument.setNotes(notes);
-            submittedDocument = submittedDocumentRepository.save(submittedDocument);
-        } else {
+            try {
+                submittedDocument = new SubmittedDocument();
+                submittedDocument.setDocumentRequest(documentRequest);
+                submittedDocument.setProfessor(currentUser);
+                submittedDocument.setSubmittedAt(LocalDateTime.now());
+                submittedDocument.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
+                submittedDocument.setNotes(notes);
+                submittedDocument = submittedDocumentRepository.save(submittedDocument);
+                log.debug("Created new submission for request id: {}", requestId);
+            } catch (Exception e) {
+                // Handle race condition: another request might have created the submission
+                log.warn("Failed to create new submission, checking if it was created by concurrent request: {}", e.getMessage());
+                submittedDocument = submittedDocumentRepository.findByDocumentRequestId(requestId)
+                        .orElseThrow(() -> new IllegalStateException("Failed to create or retrieve submission for request id: " + requestId));
+                isNewSubmission = false;
+                log.info("Found existing submission created by concurrent request, will update it instead");
+            }
+        }
+
+        if (!isNewSubmission) {
             // Update existing submission
             submittedDocument.setNotes(notes);
             submittedDocument.setSubmittedAt(LocalDateTime.now());
+            submittedDocument.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
             // Delete old file attachments
             deleteAllFileAttachments(submittedDocument.getId());
+            log.debug("Updated existing submission for request id: {}", requestId);
         }
-        
+
         // Save all files
         List<FileAttachment> attachments = new ArrayList<>();
         for (int i = 0; i < files.size(); i++) {
@@ -99,13 +115,13 @@ public class MultiFileUploadService {
             FileAttachment attachment = saveFileAttachment(file, submittedDocument, i);
             attachments.add(attachment);
         }
-        
+
         // Update submission metadata
         submittedDocument.setFileCount(attachments.size());
         submittedDocument.setTotalFileSize(
                 attachments.stream().mapToLong(a -> a.getFileSize() != null ? a.getFileSize() : 0L).sum()
         );
-        
+
         // Set first file as primary for backward compatibility
         if (!attachments.isEmpty()) {
             FileAttachment firstFile = attachments.get(0);
@@ -114,10 +130,10 @@ public class MultiFileUploadService {
             submittedDocument.setFileSize(firstFile.getFileSize());
             submittedDocument.setFileType(firstFile.getFileType());
         }
-        
+
         submittedDocument = submittedDocumentRepository.save(submittedDocument);
         log.info("Successfully uploaded {} files for submission id: {}", files.size(), submittedDocument.getId());
-        
+
         return submittedDocument;
     }
     

@@ -102,17 +102,29 @@ export function showMultiFileUploadModal(requestId, allowedExtensions, existingF
     const fileInput = document.getElementById('fileInput');
     const fileList = document.getElementById('fileList');
     const uploadError = document.getElementById('uploadError');
-    
+
+    let isProcessingFiles = false; // Prevent double processing
+
     // Click to select files
     dropZone.addEventListener('click', (e) => {
-        if (e.target.id !== 'fileInput') {
+        if (e.target.id !== 'fileInput' && e.target.tagName !== 'INPUT') {
+            e.preventDefault();
+            e.stopPropagation();
             fileInput.click();
         }
     });
-    
+
     // File selection
     fileInput.addEventListener('change', (e) => {
-        handleFileSelection(e.target.files);
+        if (!isProcessingFiles && e.target.files.length > 0) {
+            isProcessingFiles = true;
+            handleFileSelection(e.target.files);
+            // Reset file input to allow selecting the same files again if needed
+            setTimeout(() => {
+                fileInput.value = '';
+                isProcessingFiles = false;
+            }, 100);
+        }
     });
     
     // Drag and drop

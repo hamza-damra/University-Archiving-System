@@ -17,11 +17,13 @@ import java.util.List;
 
 @Entity
 @Table(name = "users")
-@JsonIgnoreProperties({"documentRequests", "submittedDocuments", "notifications", "password"})
+@JsonIgnoreProperties({"documentRequests", "submittedDocuments", "notifications", "password", "hibernateLazyInitializer", "handler"})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class User implements UserDetails {
+    
+    private static final long serialVersionUID = 1L;
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,18 +47,22 @@ public class User implements UserDetails {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
+    @lombok.ToString.Exclude
     private Department department;
     
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
     private List<DocumentRequest> documentRequests;
     
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
     private List<SubmittedDocument> submittedDocuments;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
     private List<Notification> notifications;
     
     @CreationTimestamp

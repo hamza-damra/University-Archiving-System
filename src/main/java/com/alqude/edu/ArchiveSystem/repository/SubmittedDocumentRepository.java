@@ -19,6 +19,9 @@ public interface SubmittedDocumentRepository extends JpaRepository<SubmittedDocu
     @Query("SELECT sd FROM SubmittedDocument sd WHERE sd.professor.department.id = :departmentId")
     List<SubmittedDocument> findByDepartmentId(@Param("departmentId") Long departmentId);
     
+    @Query("SELECT sd FROM SubmittedDocument sd WHERE sd.documentRequest.id IN :requestIds")
+    List<SubmittedDocument> findByDocumentRequestIds(@Param("requestIds") List<Long> requestIds);
+    
     @Query("SELECT COUNT(sd) FROM SubmittedDocument sd WHERE sd.professor.id = :professorId AND sd.isLateSubmission = true")
     long countLateSubmissionsByProfessor(@Param("professorId") Long professorId);
     

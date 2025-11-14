@@ -3,13 +3,15 @@ package com.alqude.edu.ArchiveSystem.mapper;
 import com.alqude.edu.ArchiveSystem.dto.user.UserCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserUpdateRequest;
+import com.alqude.edu.ArchiveSystem.entity.Department;
 import com.alqude.edu.ArchiveSystem.entity.User;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
+import org.mapstruct.Named;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-@Mapper(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface UserMapper {
     
     @Mapping(target = "id", ignore = true)
@@ -24,6 +26,7 @@ public interface UserMapper {
     @Mapping(target = "updatedAt", ignore = true)
     User toEntity(UserCreateRequest request);
     
+    @Mapping(source = "department.id", target = "departmentId")
     @Mapping(source = "department.name", target = "departmentName")
     UserResponse toResponse(User user);
     
@@ -38,4 +41,14 @@ public interface UserMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntity(UserUpdateRequest request, @MappingTarget User user);
+    
+    @Named("departmentIdToDepartment")
+    default Department departmentIdToDepartment(Long departmentId) {
+        if (departmentId == null) {
+            return null;
+        }
+        Department department = new Department();
+        department.setId(departmentId);
+        return department;
+    }
 }

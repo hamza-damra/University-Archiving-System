@@ -2,6 +2,7 @@ package com.alqude.edu.ArchiveSystem.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,6 +11,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "submitted_documents")
@@ -44,10 +47,11 @@ public class SubmittedDocument {
     @JoinColumn(name = "professor_id", nullable = false)
     private User professor;
     
-    @Column(name = "file_url", nullable = false)
+    // Legacy single file fields (kept for backward compatibility)
+    @Column(name = "file_url")
     private String fileUrl;
     
-    @Column(name = "original_filename", nullable = false)
+    @Column(name = "original_filename")
     private String originalFilename;
     
     @Column(name = "file_size")
@@ -56,11 +60,26 @@ public class SubmittedDocument {
     @Column(name = "file_type")
     private String fileType;
     
+    // New multi-file support
+    @JsonManagedReference
+    @OneToMany(mappedBy = "submittedDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @OrderBy("fileOrder ASC")
+    private List<FileAttachment> fileAttachments = new ArrayList<>();
+    
+    @Column(name = "total_file_size")
+    private Long totalFileSize;
+    
+    @Column(name = "file_count")
+    private Integer fileCount = 0;
+    
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
     
     @Column(name = "is_late_submission", nullable = false)
     private Boolean isLateSubmission = false;
+    
+    @Column(name = "notes", length = 1000)
+    private String notes;
     
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -69,4 +88,24 @@ public class SubmittedDocument {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    // Helper methods
+    public void addFileAttachment(FileAttachment attachment) {
+        fileAttachments.add(attachment);
+        attachment.setSubmittedDocument(this);
+        updateFileCount();
+    }
+    
+    public void removeFileAttachment(FileAttachment attachment) {
+        fileAttachments.remove(attachment);
+        attachment.setSubmittedDocument(null);
+        updateFileCount();
+    }
+    
+    private void updateFileCount() {
+        this.fileCount = fileAttachments.size();
+        this.totalFileSize = fileAttachments.stream()
+                .mapToLong(fa -> fa.getFileSize() != null ? fa.getFileSize() : 0L)
+                .sum();
+    }
 }

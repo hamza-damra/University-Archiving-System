@@ -1,13 +1,18 @@
 package com.alqude.edu.ArchiveSystem.controller;
 
 import com.alqude.edu.ArchiveSystem.dto.common.ApiResponse;
+import com.alqude.edu.ArchiveSystem.dto.report.DepartmentSubmissionReport;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserUpdateRequest;
+import com.alqude.edu.ArchiveSystem.entity.User;
 import com.alqude.edu.ArchiveSystem.service.DocumentRequestService;
+import com.alqude.edu.ArchiveSystem.service.PdfReportService;
+import com.alqude.edu.ArchiveSystem.service.ReportService;
 import com.alqude.edu.ArchiveSystem.service.UserService;
+import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,9 +20,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,6 +40,9 @@ public class HodController {
     
     private final UserService userService;
     private final DocumentRequestService documentRequestService;
+    private final ReportService reportService;
+    private final PdfReportService pdfReportService;
+    private final UserRepository userRepository;
     
     // User Management Endpoints
     
@@ -56,11 +68,18 @@ public class HodController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         
+        // Get current HOD's department
+        User currentUser = getCurrentUser();
+        if (currentUser.getDepartment() == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("HOD must be assigned to a department"));
+        }
+        
         Sort sort = sortDir.equalsIgnoreCase("desc") ? 
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<UserResponse> professors = userService.getAllProfessors(pageable);
+        Page<UserResponse> professors = userService.getProfessorsByDepartment(currentUser.getDepartment().getId(), pageable);
         return ResponseEntity.ok(ApiResponse.success("Professors retrieved successfully", professors));
     }
     
@@ -138,11 +157,18 @@ public class HodController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "desc") String sortDir) {
         
+        // Get current HOD's department
+        User currentUser = getCurrentUser();
+        if (currentUser.getDepartment() == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("HOD must be assigned to a department"));
+        }
+        
         Sort sort = sortDir.equalsIgnoreCase("desc") ? 
                 Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
         Pageable pageable = PageRequest.of(page, size, sort);
         
-        Page<DocumentRequestResponse> requests = documentRequestService.getDocumentRequestsByCurrentUser(pageable);
+        Page<DocumentRequestResponse> requests = documentRequestService.getDocumentRequestsByDepartment(currentUser.getDepartment().getId(), pageable);
         return ResponseEntity.ok(ApiResponse.success("Document requests retrieved successfully", requests));
     }
     
@@ -199,5 +225,63 @@ public class HodController {
         
         List<DocumentRequestResponse> upcomingRequests = documentRequestService.getRequestsWithUpcomingDeadline(hours);
         return ResponseEntity.ok(ApiResponse.success("Upcoming deadline requests retrieved successfully", upcomingRequests));
+    }
+    
+    // Report Endpoints
+    
+    /**
+     * Get department submission summary report
+     * Shows which professors have submitted required documents
+     */
+    @GetMapping("/reports/submission-summary")
+    public ResponseEntity<ApiResponse<DepartmentSubmissionReport>> getDepartmentSubmissionReport() {
+        log.info("HOD requesting department submission summary report");
+        
+        try {
+            DepartmentSubmissionReport report = reportService.generateDepartmentSubmissionReport();
+            return ResponseEntity.ok(ApiResponse.success("Department submission report generated successfully", report));
+        } catch (Exception e) {
+            log.error("Error generating department submission report", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to generate report: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Download department submission summary report as PDF
+     */
+    @GetMapping("/reports/submission-summary/pdf")
+    public ResponseEntity<byte[]> downloadDepartmentSubmissionReportPdf() {
+        log.info("HOD downloading department submission summary report as PDF");
+        
+        try {
+            DepartmentSubmissionReport report = reportService.generateDepartmentSubmissionReport();
+            byte[] pdfBytes = pdfReportService.generateDepartmentSubmissionReportPdf(report);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                    "department-submission-report-" + System.currentTimeMillis() + ".pdf");
+            headers.setContentLength(pdfBytes.length);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+                    
+        } catch (Exception e) {
+            log.error("Error generating PDF report", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+    
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        
+        String email = authentication.getName();
+        return userRepository.findByEmail(email).orElse(null);
     }
 }

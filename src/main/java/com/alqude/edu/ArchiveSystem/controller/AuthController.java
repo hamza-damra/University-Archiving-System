@@ -20,11 +20,13 @@ public class AuthController {
     private final AuthService authService;
     
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<JwtResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<ApiResponse<JwtResponse>> login(
+            @Valid @RequestBody LoginRequest loginRequest,
+            jakarta.servlet.http.HttpServletRequest request) {
         log.info("Login attempt for email: {}", loginRequest.getEmail());
         
         try {
-            JwtResponse jwtResponse = authService.login(loginRequest);
+            JwtResponse jwtResponse = authService.login(loginRequest, request);
             return ResponseEntity.ok(ApiResponse.success("Login successful", jwtResponse));
         } catch (Exception e) {
             log.error("Login failed for email: {}", loginRequest.getEmail(), e);
@@ -34,10 +36,18 @@ public class AuthController {
     }
     
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<String>> logout() {
-        // In a stateless JWT implementation, logout is typically handled client-side
-        // by removing the token from storage
-        return ResponseEntity.ok(ApiResponse.success("Logout successful", "Token invalidated"));
+    public ResponseEntity<ApiResponse<String>> logout(jakarta.servlet.http.HttpServletRequest request) {
+        // Invalidate session on logout
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        if (session != null) {
+            log.info("Invalidating session on logout: {}", session.getId());
+            session.invalidate();
+        }
+        
+        // Clear security context
+        org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        
+        return ResponseEntity.ok(ApiResponse.success("Logout successful", "Session invalidated"));
     }
     
     @GetMapping("/me")

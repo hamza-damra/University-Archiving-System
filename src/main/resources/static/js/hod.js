@@ -31,6 +31,8 @@ const addProfessorBtn = document.getElementById('addProfessorBtn');
 const createRequestForm = document.getElementById('createRequestForm');
 const professorIdSelect = document.getElementById('professorId');
 const requestsTableBody = document.getElementById('requestsTableBody');
+const viewReportBtn = document.getElementById('viewReportBtn');
+const downloadReportBtn = document.getElementById('downloadReportBtn');
 
 // Initialize
 hodName.textContent = userInfo.fullName;
@@ -294,7 +296,7 @@ function renderRequests() {
             <tr>
                 <td class="px-4 py-3 text-sm text-gray-900">${req.courseName}</td>
                 <td class="px-4 py-3 text-sm text-gray-600">${req.documentType}</td>
-                <td class="px-4 py-3 text-sm text-gray-600">${req.professor?.firstName} ${req.professor?.lastName}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${req.professorName || 'N/A'}</td>
                 <td class="px-4 py-3 text-sm text-gray-600">${formatDate(req.deadline)}</td>
                 <td class="px-4 py-3">${statusBadge}</td>
                 <td class="px-4 py-3">
@@ -367,3 +369,138 @@ window.viewReport = async (requestId) => {
         showToast(error.message || 'Failed to load report', 'error');
     }
 };
+
+// View Submission Summary Report
+viewReportBtn.addEventListener('click', async () => {
+    try {
+        showToast('Loading report...', 'info');
+        const response = await hod.getSubmissionSummaryReport();
+        const report = response.data;
+        
+        displaySubmissionReport(report);
+    } catch (error) {
+        console.error('Error loading submission report:', error);
+        showToast(error.message || 'Failed to load submission report', 'error');
+    }
+});
+
+// Download Submission Summary Report as PDF
+downloadReportBtn.addEventListener('click', async () => {
+    try {
+        showToast('Generating PDF...', 'info');
+        const response = await hod.downloadSubmissionSummaryPdf();
+        
+        if (!response.ok) {
+            throw new Error('Failed to download PDF');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `department-submission-report-${new Date().getTime()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast('PDF downloaded successfully', 'success');
+    } catch (error) {
+        console.error('Error downloading PDF:', error);
+        showToast(error.message || 'Failed to download PDF', 'error');
+    }
+});
+
+// Display submission report in modal
+function displaySubmissionReport(report) {
+    const content = `
+        <div class="space-y-6">
+            <!-- Overall Statistics -->
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-semibold text-blue-900 mb-3">Overall Statistics</h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${report.totalProfessors}</div>
+                        <div class="text-xs text-gray-600">Professors</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-600">${report.totalRequests}</div>
+                        <div class="text-xs text-gray-600">Total Requests</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-600">${report.totalSubmitted}</div>
+                        <div class="text-xs text-gray-600">Submitted</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-yellow-600">${report.totalPending}</div>
+                        <div class="text-xs text-gray-600">Pending</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div class="text-center">
+                        <div class="text-xl font-bold text-red-600">${report.totalOverdue}</div>
+                        <div class="text-xs text-gray-600">Overdue</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-xl font-bold text-blue-600">${report.overallCompletionRate.toFixed(1)}%</div>
+                        <div class="text-xs text-gray-600">Completion Rate</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Professor Details -->
+            <div>
+                <h3 class="font-semibold text-gray-900 mb-3">Professor Submission Details</h3>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Professor</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Submitted</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Pending</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Overdue</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Completion</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            ${report.professorSummaries.map(prof => `
+                                <tr class="hover:bg-gray-50">
+                                    <td class="px-3 py-2">
+                                        <div class="font-medium text-gray-900">${prof.professorName}</div>
+                                        <div class="text-xs text-gray-500">${prof.professorEmail}</div>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">${prof.totalRequests}</td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span class="text-green-600 font-medium">${prof.submittedRequests}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span class="text-yellow-600 font-medium">${prof.pendingRequests}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <span class="text-red-600 font-medium">${prof.overdueRequests}</span>
+                                    </td>
+                                    <td class="px-3 py-2 text-center">
+                                        <div class="flex items-center justify-center">
+                                            <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                                <div class="bg-blue-600 h-2 rounded-full" style="width: ${prof.completionRate}%"></div>
+                                            </div>
+                                            <span class="text-xs font-medium">${prof.completionRate.toFixed(1)}%</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Report Footer -->
+            <div class="text-xs text-gray-500 text-center pt-4 border-t">
+                Generated on ${formatDate(report.generatedAt)} by ${report.generatedBy}
+            </div>
+        </div>
+    `;
+
+    showModal('Department Submission Report', content, { size: 'xl' });
+}

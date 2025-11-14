@@ -14,24 +14,58 @@ import java.util.List;
 @Repository
 public interface DocumentRequestRepository extends JpaRepository<DocumentRequest, Long> {
     
-    List<DocumentRequest> findByProfessorId(Long professorId);
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.professor.id = :professorId")
+    List<DocumentRequest> findByProfessorId(@Param("professorId") Long professorId);
     
-    Page<DocumentRequest> findByProfessorId(Long professorId, Pageable pageable);
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.professor.id = :professorId")
+    Page<DocumentRequest> findByProfessorId(@Param("professorId") Long professorId, Pageable pageable);
     
-    List<DocumentRequest> findByCreatedById(Long createdById);
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.createdBy.id = :createdById")
+    List<DocumentRequest> findByCreatedById(@Param("createdById") Long createdById);
     
-    Page<DocumentRequest> findByCreatedById(Long createdById, Pageable pageable);
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.createdBy.id = :createdById")
+    Page<DocumentRequest> findByCreatedById(@Param("createdById") Long createdById, Pageable pageable);
     
-    @Query("SELECT dr FROM DocumentRequest dr WHERE dr.professor.department.id = :departmentId")
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.professor.department.id = :departmentId")
     List<DocumentRequest> findByDepartmentId(@Param("departmentId") Long departmentId);
     
-    @Query("SELECT dr FROM DocumentRequest dr WHERE dr.professor.department.id = :departmentId")
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "LEFT JOIN FETCH dr.submittedDocument " +
+           "WHERE dr.professor.department.id = :departmentId")
     Page<DocumentRequest> findByDepartmentId(@Param("departmentId") Long departmentId, Pageable pageable);
     
-    @Query("SELECT dr FROM DocumentRequest dr WHERE dr.deadline < :now AND dr.submittedDocument IS NULL")
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "WHERE dr.deadline < :now AND dr.submittedDocument IS NULL")
     List<DocumentRequest> findOverdueRequests(@Param("now") LocalDateTime now);
     
-    @Query("SELECT dr FROM DocumentRequest dr WHERE dr.deadline BETWEEN :start AND :end AND dr.submittedDocument IS NULL")
+    @Query("SELECT dr FROM DocumentRequest dr " +
+           "LEFT JOIN FETCH dr.professor " +
+           "LEFT JOIN FETCH dr.createdBy " +
+           "WHERE dr.deadline BETWEEN :start AND :end AND dr.submittedDocument IS NULL")
     List<DocumentRequest> findRequestsWithUpcomingDeadline(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
     
     @Query("SELECT COUNT(dr) FROM DocumentRequest dr WHERE dr.professor.id = :professorId AND dr.submittedDocument IS NULL")

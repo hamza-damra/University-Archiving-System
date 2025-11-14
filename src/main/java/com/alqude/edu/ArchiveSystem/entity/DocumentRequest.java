@@ -62,6 +62,12 @@ public class DocumentRequest {
     @OneToOne(mappedBy = "documentRequest", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private SubmittedDocument submittedDocument;
     
+    @Column(name = "max_file_count")
+    private Integer maxFileCount = 5; // Default maximum 5 files
+    
+    @Column(name = "max_total_size_mb")
+    private Integer maxTotalSizeMb = 50; // Default max 50MB total
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

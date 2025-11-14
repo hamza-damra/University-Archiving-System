@@ -33,4 +33,8 @@ public class DocumentRequestCreateRequest {
     private Long professorId;
     
     private String description;
+    
+    private Integer maxFileCount = 5; // Default maximum 5 files
+    
+    private Integer maxTotalSizeMb = 50; // Default max 50MB total
 }

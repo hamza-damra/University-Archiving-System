@@ -182,12 +182,31 @@ function createRequestCard(req) {
                 ` : ''}
             </div>
 
-            <button 
-                class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium text-sm"
-                onclick="window.uploadDocument(${req.id}, '${req.requiredFileExtensions}')"
-            >
-                ${isSubmitted ? 'Replace Document' : 'Upload Document'}
-            </button>
+            <div class="flex gap-2">
+                <button 
+                    class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium text-sm"
+                    onclick="window.showMultiFileUploadModal(${req.id}, '${req.requiredFileExtensions}')"
+                >
+                    <span class="flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                        </svg>
+                        ${isSubmitted ? 'Replace Files' : 'Upload Files'}
+                    </span>
+                </button>
+                ${isSubmitted && req.submittedDocument && req.submittedDocument.fileCount > 1 ? `
+                    <button 
+                        class="bg-gray-100 text-gray-700 py-2 px-3 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 transition text-sm"
+                        onclick="window.viewSubmittedFiles(${req.id})"
+                        title="View all files (${req.submittedDocument.fileCount})"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                    </button>
+                ` : ''}
+            </div>
         </div>
     `;
 }
@@ -517,4 +536,95 @@ function createPageButton(pageNum, label) {
         }
     };
     return btn;
+}
+
+// View submitted files modal
+window.viewSubmittedFiles = async (requestId) => {
+    try {
+        const response = await professor.getFileAttachments(requestId);
+        const files = response.data || [];
+        
+        if (files.length === 0) {
+            showToast('No files found', 'info');
+            return;
+        }
+        
+        const content = `
+            <div class="space-y-3">
+                <p class="text-sm text-gray-600 mb-4">
+                    ${files.length} file(s) submitted
+                </p>
+                ${files.map((file, index) => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center space-x-3 flex-1">
+                            <span class="text-2xl">${getFileIcon(file.fileType)}</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-900 truncate">${file.fileName || file.originalFilename}</p>
+                                <p class="text-xs text-gray-500">${formatFileSize(file.fileSize)}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button 
+                                onclick="downloadFileAttachment(${file.id}, '${file.fileName || file.originalFilename}')"
+                                class="text-blue-600 hover:text-blue-700 p-2 rounded hover:bg-blue-50"
+                                title="Download"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        showModal('Submitted Files', content, {
+            size: 'md',
+            buttons: [
+                {
+                    text: 'Close',
+                    className: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+                    action: 'close',
+                    onClick: (close) => close(),
+                },
+            ],
+        });
+    } catch (error) {
+        console.error('Error loading files:', error);
+        showToast('Failed to load files', 'error');
+    }
+};
+
+// Download file attachment
+window.downloadFileAttachment = async (attachmentId, filename) => {
+    try {
+        const response = await professor.downloadFileAttachment(attachmentId);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showToast('File downloaded successfully', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast('Failed to download file', 'error');
+    }
+};
+
+function getFileIcon(mimeType) {
+    if (!mimeType) return '📎';
+    if (mimeType.includes('pdf')) return '📄';
+    if (mimeType.includes('word') || mimeType.includes('document')) return '📝';
+    if (mimeType.includes('excel') || mimeType.includes('spreadsheet')) return '📊';
+    if (mimeType.includes('powerpoint') || mimeType.includes('presentation')) return '📽️';
+    if (mimeType.includes('image')) return '🖼️';
+    if (mimeType.includes('video')) return '🎥';
+    if (mimeType.includes('audio')) return '🎵';
+    if (mimeType.includes('zip') || mimeType.includes('compressed')) return '📦';
+    return '📎';
 }

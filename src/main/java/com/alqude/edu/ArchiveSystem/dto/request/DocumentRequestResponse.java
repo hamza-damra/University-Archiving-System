@@ -1,5 +1,6 @@
 package com.alqude.edu.ArchiveSystem.dto.request;
 
+import com.alqude.edu.ArchiveSystem.dto.common.SubmittedDocumentResponse;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,9 +22,15 @@ public class DocumentRequestResponse {
     private String professorEmail;
     private String createdByName;
     private String description;
+    
+    // Multi-file upload settings
+    private Integer maxFileCount;
+    private Integer maxTotalSizeMb;
+    
     private Boolean isSubmitted;
     private Boolean isLateSubmission;
     private LocalDateTime submittedAt;
+    private SubmittedDocumentResponse submittedDocument;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

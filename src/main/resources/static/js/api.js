@@ -254,6 +254,21 @@ export const hod = {
     deleteRequest: (requestId) => apiRequest(`/hod/document-requests/${requestId}`, {
         method: 'DELETE',
     }),
+    
+    // Reports
+    getSubmissionSummaryReport: () => apiRequest('/hod/reports/submission-summary', {
+        method: 'GET',
+    }),
+    
+    downloadSubmissionSummaryPdf: () => {
+        const token = getToken();
+        return fetch(`${API_BASE_URL}/hod/reports/submission-summary/pdf`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+    },
 };
 
 // Professor endpoints
@@ -266,6 +281,36 @@ export const professor = {
     submitDocument: (requestId, formData, onProgress) => 
         uploadFile(`/professor/document-requests/${requestId}/submit`, formData, onProgress),
     
+    // Multi-file upload endpoints
+    uploadMultipleDocuments: (requestId, formData, onProgress) =>
+        uploadFile(`/professor/document-requests/${requestId}/upload-multiple`, formData, onProgress),
+    
+    addFilesToSubmission: (requestId, formData, onProgress) =>
+        uploadFile(`/professor/document-requests/${requestId}/add-files`, formData, onProgress),
+    
+    getFileAttachments: (requestId) => 
+        apiRequest(`/professor/document-requests/${requestId}/file-attachments`, {
+            method: 'GET',
+        }),
+    
+    deleteFileAttachment: (attachmentId) =>
+        apiRequest(`/professor/file-attachments/${attachmentId}`, {
+            method: 'DELETE',
+        }),
+    
+    downloadFileAttachment: (attachmentId) =>
+        fetch(`${API_BASE_URL}/professor/file-attachments/${attachmentId}/download`, {
+            headers: {
+                'Authorization': `Bearer ${getToken()}`,
+            },
+        }),
+    
+    reorderFileAttachments: (submittedDocumentId, attachmentIds) =>
+        apiRequest(`/professor/submitted-documents/${submittedDocumentId}/reorder-files`, {
+            method: 'PUT',
+            body: JSON.stringify(attachmentIds),
+        }),
+    
     getNotifications: () => apiRequest('/professor/notifications', {
         method: 'GET',
     }),
@@ -274,6 +319,22 @@ export const professor = {
         method: 'PUT',
     }),
 };
+
+// Export multi-file functions for easy import
+export const uploadMultipleFiles = (requestId, formData, onProgress) => 
+    professor.uploadMultipleDocuments(requestId, formData, onProgress);
+
+export const addFilesToSubmission = (requestId, formData, onProgress) =>
+    professor.addFilesToSubmission(requestId, formData, onProgress);
+
+export const getFileAttachments = (requestId) => 
+    professor.getFileAttachments(requestId);
+
+export const deleteFileAttachment = (attachmentId) =>
+    professor.deleteFileAttachment(attachmentId);
+
+export const reorderFileAttachments = (submittedDocumentId, attachmentIds) =>
+    professor.reorderFileAttachments(submittedDocumentId, attachmentIds);
 
 export default {
     auth,

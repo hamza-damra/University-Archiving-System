@@ -8,6 +8,8 @@ import com.alqude.edu.ArchiveSystem.entity.User;
 import com.alqude.edu.ArchiveSystem.repository.DocumentRequestRepository;
 import com.alqude.edu.ArchiveSystem.repository.FileAttachmentRepository;
 import com.alqude.edu.ArchiveSystem.repository.SubmittedDocumentRepository;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,12 +36,15 @@ import java.util.stream.Collectors;
 @Slf4j
 @Transactional
 public class MultiFileUploadService {
-    
+
     private final DocumentRequestRepository documentRequestRepository;
     private final SubmittedDocumentRepository submittedDocumentRepository;
     private final FileAttachmentRepository fileAttachmentRepository;
     private final AuthService authService;
-    
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
     @Value("${file.upload.directory:uploads}")
     private String uploadDirectory;
     
@@ -79,18 +84,29 @@ public class MultiFileUploadService {
 
         if (isNewSubmission) {
             // Create new submission
+            SubmittedDocument newSubmission = new SubmittedDocument();
+            newSubmission.setDocumentRequest(documentRequest);
+            newSubmission.setProfessor(currentUser);
+            newSubmission.setSubmittedAt(LocalDateTime.now());
+            newSubmission.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
+            newSubmission.setNotes(notes);
+
             try {
-                submittedDocument = new SubmittedDocument();
-                submittedDocument.setDocumentRequest(documentRequest);
-                submittedDocument.setProfessor(currentUser);
-                submittedDocument.setSubmittedAt(LocalDateTime.now());
-                submittedDocument.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
-                submittedDocument.setNotes(notes);
-                submittedDocument = submittedDocumentRepository.save(submittedDocument);
+                submittedDocument = submittedDocumentRepository.save(newSubmission);
                 log.debug("Created new submission for request id: {}", requestId);
             } catch (Exception e) {
                 // Handle race condition: another request might have created the submission
-                log.warn("Failed to create new submission, checking if it was created by concurrent request: {}", e.getMessage());
+                log.warn("Failed to create new submission due to: {}. Checking if it was created by concurrent request", e.getMessage());
+
+                // Clear the failed entity from persistence context to avoid Hibernate errors
+                if (entityManager.contains(newSubmission)) {
+                    entityManager.detach(newSubmission);
+                }
+
+                // Clear the persistence context to ensure clean state
+                entityManager.clear();
+
+                // Fetch the existing submission that was created by the concurrent request
                 submittedDocument = submittedDocumentRepository.findByDocumentRequestId(requestId)
                         .orElseThrow(() -> new IllegalStateException("Failed to create or retrieve submission for request id: " + requestId));
                 isNewSubmission = false;

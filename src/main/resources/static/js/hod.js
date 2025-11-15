@@ -2,7 +2,7 @@
  * HOD Dashboard
  */
 
-import { hod, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
+import { hod, auth, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
 import { showToast, showModal, showConfirm, formatDate, debounce } from './ui.js';
 
 // Check authentication
@@ -155,6 +155,36 @@ window.deleteProfessor = (id) => {
     );
 };
 
+function bindPasswordToggle(formElement) {
+    const passwordInput = formElement?.querySelector('input[name="password"]');
+    const toggleBtn = formElement?.querySelector('[data-toggle-password]');
+
+    if (!passwordInput || !toggleBtn) {
+        return;
+    }
+
+    const eyeOpen = toggleBtn.querySelector('[data-eye-open]');
+    const eyeClosed = toggleBtn.querySelector('[data-eye-closed]');
+
+    const updateToggleState = () => {
+        const isHidden = passwordInput.type === 'password';
+        toggleBtn.setAttribute('aria-label', `${isHidden ? 'Show' : 'Hide'} password`);
+        toggleBtn.setAttribute('title', `${isHidden ? 'Show' : 'Hide'} password`);
+        if (eyeOpen && eyeClosed) {
+            eyeOpen.classList.toggle('hidden', !isHidden);
+            eyeClosed.classList.toggle('hidden', isHidden);
+        }
+    };
+
+    toggleBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
+        updateToggleState();
+    });
+
+    updateToggleState();
+}
+
 // Show professor modal
 function showProfessorModal(professor = null) {
     const isEdit = !!professor;
@@ -178,12 +208,31 @@ function showProfessorModal(professor = null) {
                 <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                 <input type="email" name="email" required value="${professor?.email || ''}"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                <p class="mt-1 text-xs text-red-600 hidden" data-email-error>Professor with this email already exists.</p>
             </div>
             ${!isEdit ? `
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <input type="password" name="password" required minlength="6"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                <div class="relative" data-password-wrapper>
+                    <input type="password" name="password" required minlength="8"
+                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])[^\\s]{8,}"
+                        title="8+ chars with uppercase, lowercase, number, and special character"
+                        class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                    <button type="button" data-toggle-password
+                        class="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-blue-600 focus:outline-none"
+                        aria-label="Show password"
+                        title="Show password">
+                        <svg data-eye-open class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1.5 12C2.7 7.5 6.9 4 12 4s9.3 3.5 10.5 8c-1.2 4.5-5.4 8-10.5 8s-9.3-3.5-10.5-8z"></path>
+                            <circle cx="12" cy="12" r="3" stroke-width="2"></circle>
+                        </svg>
+                        <svg data-eye-closed class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.584 10.59A2.5 2.5 0 0113.42 13.4m4.042.892C17.955 14.735 18.5 14 19.5 12c-1.2-4.5-5.4-8-10.5-8-1.41 0-2.76.27-4 .76"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.122 6.13C4.046 7.327 2.568 9.305 1.5 12c1.2 4.5 5.4 8 10.5 8 1.79 0 3.48-.4 5-.96"></path>
+                        </svg>
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Use at least 8 characters with uppercase, lowercase, number, and special symbol.</p>
             </div>
             ` : ''}
         </form>
@@ -203,6 +252,11 @@ function showProfessorModal(professor = null) {
                 action: 'save',
                 onClick: async (close) => {
                     const form = document.getElementById('professorForm');
+                    const emailInput = form.querySelector('input[name="email"]');
+                    if (emailInput) {
+                        emailInput.dispatchEvent(new Event('input'));
+                    }
+
                     if (!form.checkValidity()) {
                         form.reportValidity();
                         return;
@@ -217,7 +271,27 @@ function showProfessorModal(professor = null) {
 
                     if (!isEdit) {
                         data.password = formData.get('password');
-                        data.departmentId = userInfo.departmentId;
+                        data.role = 'ROLE_PROFESSOR';
+                        
+                        // Get department ID from userInfo or fetch from API
+                        let departmentId = userInfo?.departmentId;
+                        
+                        if (!departmentId) {
+                            try {
+                                const currentUserResp = await auth.getCurrentUser();
+                                const currentUser = currentUserResp?.data;
+                                departmentId = currentUser?.departmentId;
+                            } catch (error) {
+                                console.error('Failed to fetch current user:', error);
+                            }
+                        }
+                        
+                        if (!departmentId) {
+                            showToast('Unable to determine department. Please log out and log in again.', 'error');
+                            return;
+                        }
+                        
+                        data.departmentId = departmentId;
                     }
 
                     try {
@@ -238,6 +312,36 @@ function showProfessorModal(professor = null) {
             },
         ],
     });
+
+    // Initialize password toggle once modal content is in DOM
+    const formElement = document.getElementById('professorForm');
+    bindPasswordToggle(formElement);
+
+    if (formElement) {
+        const emailInput = formElement.querySelector('input[name="email"]');
+        const emailError = formElement.querySelector('[data-email-error]');
+
+        const validateDuplicateEmail = () => {
+            if (!emailInput) return;
+            const value = emailInput.value.trim().toLowerCase();
+            const isDuplicate = professors.some(prof => {
+                const sameEmail = (prof.email || '').toLowerCase() === value;
+                const isSameProfessor = professor && prof.id === professor.id;
+                return sameEmail && !isSameProfessor;
+            });
+
+            if (isDuplicate) {
+                emailInput.setCustomValidity('Professor with this email already exists');
+                emailError?.classList.remove('hidden');
+            } else {
+                emailInput.setCustomValidity('');
+                emailError?.classList.add('hidden');
+            }
+        };
+
+        emailInput?.addEventListener('input', validateDuplicateEmail);
+        validateDuplicateEmail();
+    }
 }
 
 // Create request form

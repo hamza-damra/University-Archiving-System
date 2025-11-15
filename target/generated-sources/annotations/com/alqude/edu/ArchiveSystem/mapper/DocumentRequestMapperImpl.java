@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-11-13T03:02:16+0200",
+    date = "2025-11-15T01:42:09+0200",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251023-0518, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -31,6 +31,8 @@ public class DocumentRequestMapperImpl implements DocumentRequestMapper {
         documentRequest.setDeadline( request.getDeadline() );
         documentRequest.setDescription( request.getDescription() );
         documentRequest.setDocumentType( request.getDocumentType() );
+        documentRequest.setMaxFileCount( request.getMaxFileCount() );
+        documentRequest.setMaxTotalSizeMb( request.getMaxTotalSizeMb() );
         List<String> list = request.getRequiredFileExtensions();
         if ( list != null ) {
             documentRequest.setRequiredFileExtensions( new ArrayList<String>( list ) );
@@ -56,15 +58,18 @@ public class DocumentRequestMapperImpl implements DocumentRequestMapper {
         documentRequestResponse.setDescription( documentRequest.getDescription() );
         documentRequestResponse.setDocumentType( documentRequest.getDocumentType() );
         documentRequestResponse.setId( documentRequest.getId() );
+        documentRequestResponse.setMaxFileCount( documentRequest.getMaxFileCount() );
+        documentRequestResponse.setMaxTotalSizeMb( documentRequest.getMaxTotalSizeMb() );
         List<String> list = documentRequest.getRequiredFileExtensions();
         if ( list != null ) {
             documentRequestResponse.setRequiredFileExtensions( new ArrayList<String>( list ) );
         }
         documentRequestResponse.setUpdatedAt( documentRequest.getUpdatedAt() );
 
-        documentRequestResponse.setProfessorName( documentRequest.getProfessor().getFirstName() + " " + documentRequest.getProfessor().getLastName() );
-        documentRequestResponse.setCreatedByName( documentRequest.getCreatedBy().getFirstName() + " " + documentRequest.getCreatedBy().getLastName() );
+        documentRequestResponse.setProfessorName( documentRequest.getProfessor() != null ? documentRequest.getProfessor().getFirstName() + " " + documentRequest.getProfessor().getLastName() : null );
+        documentRequestResponse.setCreatedByName( documentRequest.getCreatedBy() != null ? documentRequest.getCreatedBy().getFirstName() + " " + documentRequest.getCreatedBy().getLastName() : null );
         documentRequestResponse.setIsSubmitted( documentRequest.getSubmittedDocument() != null );
+        documentRequestResponse.setSubmittedDocument( mapSubmittedDocument(documentRequest) );
 
         return documentRequestResponse;
     }

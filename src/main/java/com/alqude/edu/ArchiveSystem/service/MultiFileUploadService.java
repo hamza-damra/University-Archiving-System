@@ -86,6 +86,11 @@ public class MultiFileUploadService {
                 submittedDocument.setSubmittedAt(LocalDateTime.now());
                 submittedDocument.setIsLateSubmission(LocalDateTime.now().isAfter(documentRequest.getDeadline()));
                 submittedDocument.setNotes(notes);
+                // Set temporary placeholder for file_url (will be updated after file upload)
+                submittedDocument.setFileUrl("pending");
+                submittedDocument.setOriginalFilename("pending");
+                submittedDocument.setFileSize(0L);
+                submittedDocument.setFileType("pending");
                 submittedDocument = submittedDocumentRepository.save(submittedDocument);
                 log.debug("Created new submission for request id: {}", requestId);
             } catch (Exception e) {

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-11-13T03:02:16+0200",
+    date = "2025-11-15T01:42:09+0200",
     comments = "version: 1.5.5.Final, compiler: Eclipse JDT (IDE) 3.44.0.v20251023-0518, environment: Java 21.0.8 (Eclipse Adoptium)"
 )
 @Component
@@ -42,6 +42,7 @@ public class UserMapperImpl implements UserMapper {
 
         UserResponse userResponse = new UserResponse();
 
+        userResponse.setDepartmentId( userDepartmentId( user ) );
         userResponse.setDepartmentName( userDepartmentName( user ) );
         userResponse.setCreatedAt( user.getCreatedAt() );
         userResponse.setEmail( user.getEmail() );
@@ -73,6 +74,21 @@ public class UserMapperImpl implements UserMapper {
         if ( request.getLastName() != null ) {
             user.setLastName( request.getLastName() );
         }
+    }
+
+    private Long userDepartmentId(User user) {
+        if ( user == null ) {
+            return null;
+        }
+        Department department = user.getDepartment();
+        if ( department == null ) {
+            return null;
+        }
+        Long id = department.getId();
+        if ( id == null ) {
+            return null;
+        }
+        return id;
     }
 
     private String userDepartmentName(User user) {

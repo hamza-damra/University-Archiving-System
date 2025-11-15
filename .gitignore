@@ -1,0 +1,28 @@
+# Maven build artifacts
+target/
+!.mvn/wrapper/maven-wrapper.jar
+
+# User uploaded files
+uploads/
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+logs/
+
+# Application properties with sensitive data
+application-prod.properties
+
+# Spring Boot DevTools
+.spring-boot-devtools.properties

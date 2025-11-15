@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Dashboard - Al-Quds University Archiving System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/custom.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Al-Quds University</h1>
+                    <p class="text-sm text-gray-600">Head of Department Dashboard</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="hodName" class="text-gray-700 font-medium"></span>
+                    <button 
+                        id="logoutBtn"
+                        class="group p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                        title="Logout"
+                        aria-label="Logout"
+                    >
+                        <svg class="w-6 h-6 transition-transform group-hover:scale-110" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <defs>
+                                <linearGradient id="logout-gradient-hod" x1="17.503" x2="345.973" y1="420.235" y2="91.765" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0" stop-color="#f8ae1f"></stop>
+                                    <stop offset="1" stop-color="#ca2157"></stop>
+                                </linearGradient>
+                            </defs>
+                            <path fill="url(#logout-gradient-hod)" fill-rule="evenodd" d="M85.476 466.805c-28.539 0-51.763-23.224-51.763-51.764V96.959c0-28.539 23.224-51.763 51.763-51.763h174.845c28.539 0 51.763 23.224 51.763 51.763v80.702c0 10.787-8.798 19.585-19.585 19.585h-6.172c-10.787 0-19.585-8.798-19.585-19.585V96.959c0-3.509-2.914-6.422-6.422-6.422H85.475c-3.509 0-6.422 2.913-6.422 6.422v318.082c0 3.509 2.914 6.422 6.422 6.422H260.32c3.508 0 6.422-2.914 6.422-6.422v-80.702c0-10.787 8.798-19.585 19.585-19.585h6.172c10.787 0 19.585 8.798 19.585 19.585v80.702c0 28.539-23.224 51.764-51.763 51.764H85.476zm273.123-123.312c-8.852 8.852-8.852 23.205 0 32.058 8.853 8.853 23.205 8.853 32.058 0l65.129-65.129c30.001-30.002 30.001-78.843 0-108.844l-65.129-65.129c-8.852-8.852-23.205-8.852-32.058 0-8.852 8.853-8.852 23.205 0 32.058l56.465 56.465c3.087 3.087.903 8.358-3.462 8.358H145.346c-12.52 0-22.67 10.15-22.67 22.671s10.15 22.671 22.67 22.671h266.256c4.365 0 6.549 5.271 3.462 8.358z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left Column: Professors Management -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">Professors</h2>
+                        <button 
+                            id="addProfessorBtn"
+                            class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
+                        >
+                            + Add
+                        </button>
+                    </div>
+
+                    <!-- Search Box -->
+                    <div class="mb-4">
+                        <input 
+                            type="text" 
+                            id="professorSearch"
+                            placeholder="Search professors..."
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                        >
+                    </div>
+
+                    <!-- Professors List -->
+                    <div id="professorsList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <!-- Loading skeleton -->
+                        <div class="animate-pulse space-y-3">
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                            <div class="h-20 bg-gray-200 rounded"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Document Requests -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Submission Summary Report -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">Professor Submission Report</h2>
+                        <div class="flex space-x-2">
+                            <button 
+                                id="viewReportBtn"
+                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center"
+                            >
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                View Report
+                            </button>
+                            <button 
+                                id="downloadReportBtn"
+                                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
+                            >
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                </svg>
+                                Download PDF
+                            </button>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-600">View a comprehensive summary of professor document submissions and export as PDF.</p>
+                </div>
+
+                <!-- Create Request Form -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Create Document Request</h2>
+                    <form id="createRequestForm" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label for="courseName" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Course Name *
+                                </label>
+                                <input 
+                                    type="text" 
+                                    id="courseName" 
+                                    name="courseName"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                >
+                            </div>
+
+                            <div>
+                                <label for="documentType" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Document Type *
+                                </label>
+                                <select 
+                                    id="documentType" 
+                                    name="documentType"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                >
+                                    <option value="">Select type...</option>
+                                    <option value="SYLLABUS">Syllabus</option>
+                                    <option value="EXAM">Exam</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="LECTURE_NOTES">Lecture Notes</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+
+                            <div>
+                                <label for="deadline" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Deadline *
+                                </label>
+                                <input 
+                                    type="datetime-local" 
+                                    id="deadline" 
+                                    name="deadline"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                >
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label for="professorId" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Assign to Professor *
+                                </label>
+                                <select 
+                                    id="professorId" 
+                                    name="professorId"
+                                    required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                >
+                                    <option value="">Select professor...</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button 
+                            type="submit"
+                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium"
+                        >
+                            Create Request
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Recent Requests -->
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Requests</h2>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="requestsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Loading skeleton -->
+                                <tr>
+                                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                        <div class="animate-pulse">Loading requests...</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div id="pagination" class="mt-4 flex justify-center items-center space-x-2 hidden">
+                        <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Previous
+                        </button>
+                        <span id="pageInfo" class="text-sm text-gray-600"></span>
+                        <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
+                            Next
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p class="text-center text-sm text-gray-600">Al-Quds University — Archiving System</p>
+        </div>
+    </footer>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script type="module" src="/js/hod.js"></script>
+</body>
+</html>

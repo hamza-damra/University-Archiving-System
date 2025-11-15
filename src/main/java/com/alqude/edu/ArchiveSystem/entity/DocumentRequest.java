@@ -34,7 +34,7 @@ public class DocumentRequest {
     private String documentType;
     
     @Size(max = 10, message = "Maximum 10 file extensions allowed")
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "required_file_extensions", joinColumns = @JoinColumn(name = "request_id"))
     @Column(name = "extension")
     private List<String> requiredFileExtensions;

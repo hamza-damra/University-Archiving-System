@@ -2,8 +2,9 @@
 target/
 !.mvn/wrapper/maven-wrapper.jar
 
-# User uploaded files
-uploads/
+# User uploaded files (keep directory structure)
+uploads/*
+!uploads/.gitkeep
 
 # IDE files
 .idea/

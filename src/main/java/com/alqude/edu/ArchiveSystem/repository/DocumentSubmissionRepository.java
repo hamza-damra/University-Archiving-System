@@ -29,4 +29,8 @@ public interface DocumentSubmissionRepository extends JpaRepository<DocumentSubm
     Optional<DocumentSubmission> findByCourseAssignmentIdAndDocumentType(
             Long courseAssignmentId, 
             DocumentTypeEnum documentType);
+    
+    List<DocumentSubmission> findAllByCourseAssignmentIdAndDocumentType(
+            Long courseAssignmentId, 
+            DocumentTypeEnum documentType);
 }

@@ -1,5 +1,7 @@
 package com.alqude.edu.ArchiveSystem.service;
 
+import com.alqude.edu.ArchiveSystem.dto.professor.CourseAssignmentWithStatus;
+import com.alqude.edu.ArchiveSystem.dto.professor.ProfessorDashboardOverview;
 import com.alqude.edu.ArchiveSystem.dto.user.ProfessorDTO;
 import com.alqude.edu.ArchiveSystem.entity.CourseAssignment;
 import com.alqude.edu.ArchiveSystem.entity.User;
@@ -80,4 +82,22 @@ public interface ProfessorService {
      * @return List of course assignments
      */
     List<CourseAssignment> getProfessorCourses(Long professorId, Long semesterId);
+    
+    /**
+     * Get course assignments with submission status for professor dashboard.
+     * 
+     * @param professorId Professor user ID
+     * @param semesterId Semester ID
+     * @return List of course assignments with document submission status
+     */
+    List<CourseAssignmentWithStatus> getProfessorCoursesWithStatus(Long professorId, Long semesterId);
+    
+    /**
+     * Get dashboard overview for a professor in a specific semester.
+     * 
+     * @param professorId Professor user ID
+     * @param semesterId Semester ID
+     * @return Dashboard overview with statistics
+     */
+    ProfessorDashboardOverview getProfessorDashboardOverview(Long professorId, Long semesterId);
 }

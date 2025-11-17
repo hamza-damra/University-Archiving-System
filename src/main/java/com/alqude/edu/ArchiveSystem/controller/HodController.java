@@ -1,21 +1,25 @@
 package com.alqude.edu.ArchiveSystem.controller;
 
 import com.alqude.edu.ArchiveSystem.dto.common.ApiResponse;
+import com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
+import com.alqude.edu.ArchiveSystem.dto.report.DashboardOverview;
 import com.alqude.edu.ArchiveSystem.dto.report.DepartmentSubmissionReport;
+import com.alqude.edu.ArchiveSystem.dto.report.ProfessorSubmissionReport;
+import com.alqude.edu.ArchiveSystem.dto.report.ReportFilter;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserUpdateRequest;
+import com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum;
+import com.alqude.edu.ArchiveSystem.entity.SubmissionStatus;
 import com.alqude.edu.ArchiveSystem.entity.User;
-import com.alqude.edu.ArchiveSystem.service.DocumentRequestService;
-import com.alqude.edu.ArchiveSystem.service.PdfReportService;
-import com.alqude.edu.ArchiveSystem.service.ReportService;
-import com.alqude.edu.ArchiveSystem.service.UserService;
+import com.alqude.edu.ArchiveSystem.service.*;
 import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -43,6 +47,9 @@ public class HodController {
     private final ReportService reportService;
     private final PdfReportService pdfReportService;
     private final UserRepository userRepository;
+    private final SemesterReportService semesterReportService;
+    private final FileExplorerService fileExplorerService;
+    private final FileService fileService;
     
     // User Management Endpoints
     
@@ -272,6 +279,278 @@ public class HodController {
             log.error("Error generating PDF report", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(null);
+        }
+    }
+    
+    // ========================================
+    // Semester-Based Operations (New System)
+    // ========================================
+    
+    /**
+     * Get dashboard overview for a semester
+     * Returns total professors, courses, and submission statistics for HOD's department
+     * Task 12.1
+     */
+    @GetMapping("/dashboard/overview")
+    public ResponseEntity<ApiResponse<DashboardOverview>> getDashboardOverview(
+            @RequestParam Long semesterId) {
+        
+        log.info("HOD requesting dashboard overview for semester: {}", semesterId);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("HOD must be assigned to a department"));
+            }
+            
+            Long departmentId = currentUser.getDepartment().getId();
+            
+            // Generate the professor submission report which contains the statistics
+            ProfessorSubmissionReport report = semesterReportService.generateProfessorSubmissionReport(
+                    semesterId, departmentId);
+            
+            // Build dashboard overview from the report
+            DashboardOverview overview = DashboardOverview.builder()
+                    .semesterId(report.getSemesterId())
+                    .semesterName(report.getSemesterName())
+                    .departmentId(report.getDepartmentId())
+                    .departmentName(report.getDepartmentName())
+                    .generatedAt(report.getGeneratedAt())
+                    .totalProfessors(report.getStatistics().getTotalProfessors())
+                    .totalCourses(report.getStatistics().getTotalCourses())
+                    .totalCourseAssignments(report.getRows().size())
+                    .submissionStatistics(report.getStatistics())
+                    .build();
+            
+            return ResponseEntity.ok(ApiResponse.success("Dashboard overview retrieved successfully", overview));
+            
+        } catch (Exception e) {
+            log.error("Error generating dashboard overview for semester: {}", semesterId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to generate dashboard overview: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get submission status for professors in the department
+     * Supports filtering by courseCode, documentType, and status
+     * Task 12.2
+     */
+    @GetMapping("/submissions/status")
+    public ResponseEntity<ApiResponse<ProfessorSubmissionReport>> getSubmissionStatus(
+            @RequestParam Long semesterId,
+            @RequestParam(required = false) String courseCode,
+            @RequestParam(required = false) DocumentTypeEnum documentType,
+            @RequestParam(required = false) SubmissionStatus status) {
+        
+        log.info("HOD requesting submission status for semester: {} with filters - courseCode: {}, documentType: {}, status: {}", 
+                semesterId, courseCode, documentType, status);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("HOD must be assigned to a department"));
+            }
+            
+            Long departmentId = currentUser.getDepartment().getId();
+            
+            // Generate the base report
+            ProfessorSubmissionReport report = semesterReportService.generateProfessorSubmissionReport(
+                    semesterId, departmentId);
+            
+            // Apply filters if provided
+            if (courseCode != null || documentType != null || status != null) {
+                ReportFilter filter = ReportFilter.builder()
+                        .courseCode(courseCode)
+                        .documentType(documentType)
+                        .status(status)
+                        .build();
+                
+                report = semesterReportService.filterReport(report, filter);
+            }
+            
+            return ResponseEntity.ok(ApiResponse.success("Submission status retrieved successfully", report));
+            
+        } catch (Exception e) {
+            log.error("Error retrieving submission status for semester: {}", semesterId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve submission status: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get professor submission report for a semester
+     * Task 12.3
+     */
+    @GetMapping("/reports/professor-submissions")
+    public ResponseEntity<ApiResponse<ProfessorSubmissionReport>> getProfessorSubmissionReport(
+            @RequestParam Long semesterId) {
+        
+        log.info("HOD requesting professor submission report for semester: {}", semesterId);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("HOD must be assigned to a department"));
+            }
+            
+            Long departmentId = currentUser.getDepartment().getId();
+            
+            ProfessorSubmissionReport report = semesterReportService.generateProfessorSubmissionReport(
+                    semesterId, departmentId);
+            
+            return ResponseEntity.ok(ApiResponse.success("Professor submission report generated successfully", report));
+            
+        } catch (Exception e) {
+            log.error("Error generating professor submission report for semester: {}", semesterId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to generate report: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Export professor submission report to PDF
+     * Task 12.3
+     */
+    @GetMapping("/reports/professor-submissions/pdf")
+    public ResponseEntity<byte[]> exportReportToPdf(@RequestParam Long semesterId) {
+        log.info("HOD exporting professor submission report to PDF for semester: {}", semesterId);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                log.error("HOD must be assigned to a department");
+                return ResponseEntity.badRequest().body(null);
+            }
+            
+            Long departmentId = currentUser.getDepartment().getId();
+            
+            // Generate the report
+            ProfessorSubmissionReport report = semesterReportService.generateProfessorSubmissionReport(
+                    semesterId, departmentId);
+            
+            // Export to PDF
+            byte[] pdfBytes = semesterReportService.exportReportToPdf(report);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", 
+                    "professor-submission-report-" + semesterId + "-" + System.currentTimeMillis() + ".pdf");
+            headers.setContentLength(pdfBytes.length);
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfBytes);
+                    
+        } catch (Exception e) {
+            log.error("Error exporting professor submission report to PDF for semester: {}", semesterId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+    
+    /**
+     * Get file explorer root for HOD (department-scoped)
+     * Task 12.4
+     */
+    @GetMapping("/file-explorer/root")
+    public ResponseEntity<ApiResponse<FileExplorerNode>> getFileExplorerRoot(
+            @RequestParam Long academicYearId,
+            @RequestParam Long semesterId) {
+        
+        log.info("HOD requesting file explorer root for year: {}, semester: {}", academicYearId, semesterId);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("HOD must be assigned to a department"));
+            }
+            
+            FileExplorerNode rootNode = fileExplorerService.getRootNode(academicYearId, semesterId, currentUser);
+            
+            return ResponseEntity.ok(ApiResponse.success("File explorer root retrieved successfully", rootNode));
+            
+        } catch (Exception e) {
+            log.error("Error retrieving file explorer root", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve file explorer root: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get file explorer node (folder or file details)
+     * Task 12.4
+     */
+    @GetMapping("/file-explorer/node")
+    public ResponseEntity<ApiResponse<FileExplorerNode>> getFileExplorerNode(@RequestParam String path) {
+        log.info("HOD requesting file explorer node for path: {}", path);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("HOD must be assigned to a department"));
+            }
+            
+            FileExplorerNode node = fileExplorerService.getNode(path, currentUser);
+            
+            return ResponseEntity.ok(ApiResponse.success("File explorer node retrieved successfully", node));
+            
+        } catch (Exception e) {
+            log.error("Error retrieving file explorer node for path: {}", path, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve file explorer node: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Download a file (read-only access for HOD)
+     * Task 12.4
+     */
+    @GetMapping("/files/{fileId}/download")
+    public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) {
+        log.info("HOD downloading file with id: {}", fileId);
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser.getDepartment() == null) {
+                log.error("HOD must be assigned to a department");
+                return ResponseEntity.badRequest().build();
+            }
+            
+            // Get file metadata
+            var uploadedFile = fileService.getFile(fileId);
+            
+            // Check if HOD has permission to access this file (department-scoped)
+            // This check is performed in the FileExplorerService
+            String filePath = uploadedFile.getFileUrl();
+            if (!fileExplorerService.canRead(filePath, currentUser)) {
+                log.error("HOD does not have permission to access file: {}", fileId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            // Load file as resource
+            Resource resource = fileService.loadFileAsResource(uploadedFile.getFileUrl());
+            
+            // Determine content type
+            String contentType = uploadedFile.getFileType();
+            if (contentType == null) {
+                contentType = "application/octet-stream";
+            }
+            
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION, 
+                            "attachment; filename=\"" + uploadedFile.getOriginalFilename() + "\"")
+                    .body(resource);
+                    
+        } catch (Exception e) {
+            log.error("Error downloading file with id: {}", fileId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
     }
     

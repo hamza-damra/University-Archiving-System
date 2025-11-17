@@ -23,4 +23,7 @@ public interface CourseAssignmentRepository extends JpaRepository<CourseAssignme
             @Param("semesterId") Long semesterId, 
             @Param("courseCode") String courseCode, 
             @Param("professorId") Long professorId);
+    
+    Optional<CourseAssignment> findBySemesterIdAndCourseIdAndProfessorId(
+            Long semesterId, Long courseId, Long professorId);
 }

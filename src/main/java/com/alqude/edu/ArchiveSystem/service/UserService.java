@@ -51,7 +51,7 @@ public class UserService implements UserDetailsService {
     
     // Password validation pattern (at least 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char)
     private static final Pattern PASSWORD_PATTERN = Pattern.compile(
-        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$"
+        "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])[^\\s]{8,}$"
     );
     
     @Override

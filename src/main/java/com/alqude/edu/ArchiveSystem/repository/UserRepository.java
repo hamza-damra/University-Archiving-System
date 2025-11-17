@@ -17,6 +17,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     Optional<User> findByEmail(String email);
     
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.email = :email")
+    Optional<User> findByEmailWithDepartment(@Param("email") String email);
+    
     boolean existsByEmail(String email);
     
     List<User> findByDepartmentIdAndRole(Long departmentId, Role role);
@@ -28,4 +31,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     @Query("SELECT u FROM User u WHERE u.role = :role AND u.isActive = true")
     Page<User> findActiveUsersByRole(@Param("role") Role role, Pageable pageable);
+    
+    Optional<User> findByProfessorId(String professorId);
 }

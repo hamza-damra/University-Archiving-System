@@ -61,6 +61,7 @@ public class AuthController {
                     currentUser.getFirstName(),
                     currentUser.getLastName(),
                     currentUser.getRole(),
+                    currentUser.getDepartment() != null ? currentUser.getDepartment().getId() : null,
                     currentUser.getDepartment() != null ? currentUser.getDepartment().getName() : null
             );
             return ResponseEntity.ok(ApiResponse.success("User information retrieved", response));

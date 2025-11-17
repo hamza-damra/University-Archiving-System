@@ -61,7 +61,7 @@ loginForm.addEventListener('submit', async (e) => {
         
         // Check if response has data
         if (response && response.data) {
-            const { token, role, firstName, lastName, email: userEmail, id } = response.data;
+            const { token, role, firstName, lastName, email: userEmail, id, departmentId, departmentName } = response.data;
             
             // Save auth data
             saveAuthData(token, {
@@ -70,6 +70,8 @@ loginForm.addEventListener('submit', async (e) => {
                 firstName,
                 lastName,
                 role,
+                departmentId,
+                departmentName,
                 fullName: `${firstName} ${lastName}`,
             });
             

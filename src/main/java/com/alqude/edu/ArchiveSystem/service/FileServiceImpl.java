@@ -1,0 +1,392 @@
+package com.alqude.edu.ArchiveSystem.service;
+
+import com.alqude.edu.ArchiveSystem.entity.*;
+import com.alqude.edu.ArchiveSystem.exception.EntityNotFoundException;
+import com.alqude.edu.ArchiveSystem.exception.FileUploadException;
+import com.alqude.edu.ArchiveSystem.repository.CourseAssignmentRepository;
+import com.alqude.edu.ArchiveSystem.repository.DocumentSubmissionRepository;
+import com.alqude.edu.ArchiveSystem.repository.UploadedFileRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FileServiceImpl implements FileService {
+    
+    private final CourseAssignmentRepository courseAssignmentRepository;
+    private final DocumentSubmissionRepository documentSubmissionRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    
+    @Value("${file.upload.directory:uploads/}")
+    private String uploadDirectory;
+    
+    private static final List<String> DEFAULT_ALLOWED_EXTENSIONS = Arrays.asList("pdf", "zip");
+    private static final long MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+    
+    @Override
+    @Transactional
+    public List<UploadedFile> uploadFiles(Long courseAssignmentId, DocumentTypeEnum documentType,
+                                         List<MultipartFile> files, String notes, Long professorId) {
+        log.info("Uploading {} files for course assignment {} and document type {}", 
+                files.size(), courseAssignmentId, documentType);
+        
+        // Validate course assignment exists
+        CourseAssignment courseAssignment = courseAssignmentRepository.findById(courseAssignmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Course assignment not found with ID: " + courseAssignmentId));
+        
+        // Validate files
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("No files provided for upload");
+        }
+        
+        // Validate file types and sizes
+        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, 50); // Default 50MB total
+        
+        // Find or create document submission
+        DocumentSubmission submission = documentSubmissionRepository
+                .findByCourseAssignmentIdAndDocumentType(courseAssignmentId, documentType)
+                .orElse(null);
+        
+        if (submission == null) {
+            // Create new submission
+            submission = new DocumentSubmission();
+            submission.setCourseAssignment(courseAssignment);
+            submission.setDocumentType(documentType);
+            submission.setProfessor(courseAssignment.getProfessor());
+            submission.setSubmittedAt(LocalDateTime.now());
+            submission.setStatus(SubmissionStatus.UPLOADED);
+            submission.setIsLateSubmission(false); // TODO: Check against deadline
+            submission.setNotes(notes);
+            submission = documentSubmissionRepository.save(submission);
+            log.debug("Created new document submission with ID: {}", submission.getId());
+        } else {
+            // Update existing submission
+            submission.setSubmittedAt(LocalDateTime.now());
+            submission.setNotes(notes);
+            submission.setStatus(SubmissionStatus.UPLOADED);
+            log.debug("Updating existing document submission with ID: {}", submission.getId());
+        }
+        
+        // Save files
+        List<UploadedFile> uploadedFiles = new ArrayList<>();
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile file = files.get(i);
+            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i);
+            uploadedFiles.add(uploadedFile);
+        }
+        
+        // Update submission metadata
+        submission.setFileCount(uploadedFiles.size());
+        submission.setTotalFileSize(uploadedFiles.stream()
+                .mapToLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L)
+                .sum());
+        documentSubmissionRepository.save(submission);
+        
+        log.info("Successfully uploaded {} files for submission ID: {}", uploadedFiles.size(), submission.getId());
+        return uploadedFiles;
+    }
+    
+    @Override
+    @Transactional
+    public List<UploadedFile> replaceFiles(Long submissionId, List<MultipartFile> files, String notes) {
+        log.info("Replacing files for submission ID: {}", submissionId);
+        
+        // Find submission
+        DocumentSubmission submission = documentSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new EntityNotFoundException("Document submission not found with ID: " + submissionId));
+        
+        // Validate files
+        if (files == null || files.isEmpty()) {
+            throw new IllegalArgumentException("No files provided for replacement");
+        }
+        
+        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, 50);
+        
+        // Delete old files
+        List<UploadedFile> oldFiles = uploadedFileRepository.findByDocumentSubmissionId(submissionId);
+        for (UploadedFile oldFile : oldFiles) {
+            deletePhysicalFile(oldFile.getFileUrl());
+        }
+        uploadedFileRepository.deleteAll(oldFiles);
+        log.debug("Deleted {} old files for submission ID: {}", oldFiles.size(), submissionId);
+        
+        // Upload new files
+        List<UploadedFile> newFiles = new ArrayList<>();
+        CourseAssignment courseAssignment = submission.getCourseAssignment();
+        
+        for (int i = 0; i < files.size(); i++) {
+            MultipartFile file = files.get(i);
+            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i);
+            newFiles.add(uploadedFile);
+        }
+        
+        // Update submission metadata
+        submission.setFileCount(newFiles.size());
+        submission.setTotalFileSize(newFiles.stream()
+                .mapToLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L)
+                .sum());
+        submission.setSubmittedAt(LocalDateTime.now());
+        submission.setNotes(notes);
+        documentSubmissionRepository.save(submission);
+        
+        log.info("Successfully replaced files for submission ID: {}. New file count: {}", 
+                submissionId, newFiles.size());
+        return newFiles;
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public UploadedFile getFile(Long fileId) {
+        log.debug("Fetching file with ID: {}", fileId);
+        return uploadedFileRepository.findById(fileId)
+                .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<UploadedFile> getFilesBySubmission(Long submissionId) {
+        log.debug("Fetching files for submission ID: {}", submissionId);
+        return uploadedFileRepository.findByDocumentSubmissionIdOrderByFileOrderAsc(submissionId);
+    }
+    
+    @Override
+    public Resource loadFileAsResource(String fileUrl) {
+        try {
+            Path filePath = Paths.get(uploadDirectory).resolve(fileUrl).normalize();
+            Resource resource = new UrlResource(filePath.toUri());
+            
+            if (resource.exists() && resource.isReadable()) {
+                return resource;
+            } else {
+                throw FileUploadException.fileNotFound(null);
+            }
+        } catch (MalformedURLException e) {
+            log.error("Error loading file as resource: {}", fileUrl, e);
+            throw FileUploadException.storageError("Could not load file: " + fileUrl);
+        }
+    }
+    
+    @Override
+    @Transactional
+    public void deleteFile(Long fileId) {
+        log.info("Deleting file with ID: {}", fileId);
+        
+        UploadedFile file = uploadedFileRepository.findById(fileId)
+                .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
+        
+        DocumentSubmission submission = file.getDocumentSubmission();
+        
+        // Delete physical file
+        deletePhysicalFile(file.getFileUrl());
+        
+        // Delete database record
+        uploadedFileRepository.delete(file);
+        
+        // Update submission metadata
+        List<UploadedFile> remainingFiles = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
+        submission.setFileCount(remainingFiles.size());
+        submission.setTotalFileSize(remainingFiles.stream()
+                .mapToLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L)
+                .sum());
+        documentSubmissionRepository.save(submission);
+        
+        log.info("Successfully deleted file ID: {}", fileId);
+    }
+    
+    @Override
+    public boolean validateFileType(MultipartFile file, List<String> allowedExtensions) {
+        if (file == null || file.isEmpty()) {
+            return false;
+        }
+        
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || !originalFilename.contains(".")) {
+            return false;
+        }
+        
+        String extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        
+        List<String> extensionsToCheck = (allowedExtensions != null && !allowedExtensions.isEmpty()) 
+                ? allowedExtensions 
+                : DEFAULT_ALLOWED_EXTENSIONS;
+        
+        return extensionsToCheck.stream()
+                .anyMatch(ext -> ext.equalsIgnoreCase(extension));
+    }
+    
+    @Override
+    public boolean validateFileSize(List<MultipartFile> files, Integer maxTotalSizeMb) {
+        if (files == null || files.isEmpty()) {
+            return false;
+        }
+        
+        long totalSize = files.stream()
+                .mapToLong(MultipartFile::getSize)
+                .sum();
+        
+        long maxSizeBytes = (maxTotalSizeMb != null ? maxTotalSizeMb : 50) * 1024L * 1024L;
+        
+        return totalSize <= maxSizeBytes;
+    }
+    
+    @Override
+    public String generateFilePath(String yearCode, String semesterType, String professorId,
+                                   String courseCode, DocumentTypeEnum documentType, String filename) {
+        // Generate path: {year}/{semester}/{professorId}/{courseCode}/{documentType}/{filename}
+        String sanitizedFilename = sanitizeFilename(filename);
+        String uniqueFilename = generateUniqueFilename(sanitizedFilename);
+        
+        return String.format("%s/%s/%s/%s/%s/%s",
+                yearCode,
+                semesterType.toLowerCase(),
+                professorId,
+                courseCode,
+                documentType.name().toLowerCase(),
+                uniqueFilename);
+    }
+    
+    // ========== Private Helper Methods ==========
+    
+    private void validateFiles(List<MultipartFile> files, List<String> allowedExtensions, Integer maxTotalSizeMb) {
+        for (MultipartFile file : files) {
+            // Validate file is not empty
+            if (file.isEmpty()) {
+                throw new IllegalArgumentException("File is empty: " + file.getOriginalFilename());
+            }
+            
+            // Validate single file size
+            if (file.getSize() > MAX_SINGLE_FILE_SIZE) {
+                throw FileUploadException.fileTooLarge(MAX_SINGLE_FILE_SIZE);
+            }
+            
+            // Validate file type
+            if (!validateFileType(file, allowedExtensions)) {
+                throw FileUploadException.invalidFileType(
+                        file.getOriginalFilename(), 
+                        allowedExtensions != null ? allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS);
+            }
+        }
+        
+        // Validate total size
+        if (!validateFileSize(files, maxTotalSizeMb)) {
+            long totalSize = files.stream().mapToLong(MultipartFile::getSize).sum();
+            throw new IllegalArgumentException(
+                    String.format("Total file size (%.2f MB) exceeds maximum allowed (%d MB)",
+                            totalSize / (1024.0 * 1024.0), maxTotalSizeMb));
+        }
+    }
+    
+    private UploadedFile saveFile(MultipartFile file, DocumentSubmission submission, 
+                                 CourseAssignment courseAssignment, int order) {
+        try {
+            // Get metadata for path generation
+            Semester semester = courseAssignment.getSemester();
+            AcademicYear academicYear = semester.getAcademicYear();
+            Course course = courseAssignment.getCourse();
+            User professor = courseAssignment.getProfessor();
+            
+            // Generate file path
+            String filePath = generateFilePath(
+                    academicYear.getYearCode(),
+                    semester.getType().name(),
+                    professor.getProfessorId(),
+                    course.getCourseCode(),
+                    submission.getDocumentType(),
+                    file.getOriginalFilename()
+            );
+            
+            // Save physical file
+            savePhysicalFile(file, filePath);
+            
+            // Create database record
+            UploadedFile uploadedFile = new UploadedFile();
+            uploadedFile.setDocumentSubmission(submission);
+            uploadedFile.setFileUrl(filePath);
+            uploadedFile.setOriginalFilename(file.getOriginalFilename());
+            uploadedFile.setFileSize(file.getSize());
+            uploadedFile.setFileType(file.getContentType());
+            uploadedFile.setFileOrder(order);
+            
+            uploadedFile = uploadedFileRepository.save(uploadedFile);
+            log.debug("Saved file: {} with ID: {}", file.getOriginalFilename(), uploadedFile.getId());
+            
+            return uploadedFile;
+            
+        } catch (IOException e) {
+            log.error("Failed to save file: {}", file.getOriginalFilename(), e);
+            throw FileUploadException.uploadFailed(file.getOriginalFilename(), e.getMessage());
+        }
+    }
+    
+    private void savePhysicalFile(MultipartFile file, String relativePath) throws IOException {
+        // Create full path
+        Path fullPath = Paths.get(uploadDirectory, relativePath);
+        
+        // Create directories if they don't exist
+        Files.createDirectories(fullPath.getParent());
+        
+        // Save file
+        Files.copy(file.getInputStream(), fullPath, StandardCopyOption.REPLACE_EXISTING);
+        
+        log.debug("Saved physical file to: {}", fullPath);
+    }
+    
+    private void deletePhysicalFile(String relativePath) {
+        try {
+            Path filePath = Paths.get(uploadDirectory, relativePath);
+            if (Files.exists(filePath)) {
+                Files.delete(filePath);
+                log.debug("Deleted physical file: {}", relativePath);
+            } else {
+                log.warn("Physical file not found for deletion: {}", relativePath);
+            }
+        } catch (IOException e) {
+            log.error("Failed to delete physical file: {}", relativePath, e);
+            // Don't throw exception, just log the error
+        }
+    }
+    
+    private String sanitizeFilename(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "file";
+        }
+        
+        // Remove any path separators and special characters
+        return filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+    }
+    
+    private String generateUniqueFilename(String originalFilename) {
+        String extension = "";
+        String nameWithoutExtension = originalFilename;
+        
+        int lastDotIndex = originalFilename.lastIndexOf(".");
+        if (lastDotIndex > 0) {
+            extension = originalFilename.substring(lastDotIndex);
+            nameWithoutExtension = originalFilename.substring(0, lastDotIndex);
+        }
+        
+        // Generate unique filename using UUID and timestamp
+        String uniquePart = UUID.randomUUID().toString().substring(0, 8) + "_" + System.currentTimeMillis();
+        
+        return nameWithoutExtension + "_" + uniquePart + extension;
+    }
+}

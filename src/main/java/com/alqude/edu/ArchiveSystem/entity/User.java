@@ -50,13 +50,28 @@ public class User implements UserDetails {
     @lombok.ToString.Exclude
     private Department department;
     
+    @Column(name = "professor_id", unique = true)
+    private String professorId;
+    
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = true;
     
+    // New relationships for semester-based system
+    @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    private List<CourseAssignment> courseAssignments;
+    
+    @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    private List<DocumentSubmission> documentSubmissions;
+    
+    // Deprecated: Old request-based relationships (kept for migration)
+    @Deprecated
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
     private List<DocumentRequest> documentRequests;
     
+    @Deprecated
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
     private List<SubmittedDocument> submittedDocuments;

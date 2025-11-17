@@ -11,7 +11,7 @@ services:
       MYSQL_USER: archive_user
       MYSQL_PASSWORD: archive_pass
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     networks:
@@ -32,11 +32,9 @@ services:
       - "8080:8080"
     environment:
       SPRING_PROFILES_ACTIVE: prod
-      MYSQL_HOST: mysql
-      MYSQL_PORT: 3306
-      MYSQL_DATABASE: archive_system
-      MYSQL_USER: archive_user
-      MYSQL_PASSWORD: archive_pass
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/archive_system?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
       FILE_UPLOAD_DIR: /app/uploads
     volumes:
       - app_uploads:/app/uploads

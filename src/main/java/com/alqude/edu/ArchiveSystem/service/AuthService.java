@@ -12,6 +12,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -79,22 +80,26 @@ public class AuthService {
                 user.getFirstName(),
                 user.getLastName(),
                 user.getRole(),
+                user.getDepartment() != null ? user.getDepartment().getId() : null,
                 user.getDepartment() != null ? user.getDepartment().getName() : null
         );
     }
     
     public User getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof User) {
-            return (User) authentication.getPrincipal();
-        }
-        
-        if (authentication == null) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             throw new RuntimeException("No authentication found");
         }
         
-        String email = authentication.getName();
-        return userRepository.findByEmail(email)
+        String email;
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof UserDetails userDetails) {
+            email = userDetails.getUsername();
+        } else {
+            email = authentication.getName();
+        }
+        
+        return userRepository.findByEmailWithDepartment(email)
                 .orElseThrow(() -> new RuntimeException("Current user not found"));
     }
 }

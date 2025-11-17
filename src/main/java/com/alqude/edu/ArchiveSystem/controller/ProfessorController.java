@@ -9,12 +9,17 @@ import com.alqude.edu.ArchiveSystem.entity.SubmittedDocument;
 import com.alqude.edu.ArchiveSystem.repository.FileAttachmentRepository;
 import com.alqude.edu.ArchiveSystem.service.AuthService;
 import com.alqude.edu.ArchiveSystem.service.DocumentRequestService;
+import com.alqude.edu.ArchiveSystem.service.FileExplorerService;
+import com.alqude.edu.ArchiveSystem.service.FileService;
 import com.alqude.edu.ArchiveSystem.service.FileUploadService;
 import com.alqude.edu.ArchiveSystem.service.MultiFileUploadService;
 import com.alqude.edu.ArchiveSystem.service.NotificationService;
+import com.alqude.edu.ArchiveSystem.service.ProfessorService;
+import com.alqude.edu.ArchiveSystem.service.SubmissionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -47,8 +52,213 @@ public class ProfessorController {
     private final FileAttachmentRepository fileAttachmentRepository;
     private final AuthService authService;
     private final NotificationService notificationService;
+    private final ProfessorService professorService;
+    private final FileService fileService;
+    private final SubmissionService submissionService;
+    private final FileExplorerService fileExplorerService;
     
-    // Document Request Management
+    // ========== Semester-Based Dashboard Endpoints ==========
+    
+    /**
+     * Get professor's courses with submission status for a semester
+     */
+    @GetMapping("/dashboard/courses")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.dto.professor.CourseAssignmentWithStatus>>> getMyCourses(
+            @RequestParam Long semesterId) {
+        
+        log.info("Professor fetching courses for semester ID: {}", semesterId);
+        var currentUser = authService.getCurrentUser();
+        
+        List<com.alqude.edu.ArchiveSystem.dto.professor.CourseAssignmentWithStatus> courses = 
+                professorService.getProfessorCoursesWithStatus(currentUser.getId(), semesterId);
+        
+        return ResponseEntity.ok(ApiResponse.success("Courses retrieved successfully", courses));
+    }
+    
+    /**
+     * Get professor's dashboard overview for a semester
+     */
+    @GetMapping("/dashboard/overview")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.dto.professor.ProfessorDashboardOverview>> getDashboardOverview(
+            @RequestParam Long semesterId) {
+        
+        log.info("Professor fetching dashboard overview for semester ID: {}", semesterId);
+        var currentUser = authService.getCurrentUser();
+        
+        com.alqude.edu.ArchiveSystem.dto.professor.ProfessorDashboardOverview overview = 
+                professorService.getProfessorDashboardOverview(currentUser.getId(), semesterId);
+        
+        return ResponseEntity.ok(ApiResponse.success("Dashboard overview retrieved successfully", overview));
+    }
+    
+    // ========== Semester-Based File Upload Endpoints ==========
+    
+    /**
+     * Upload files for a course assignment and document type
+     */
+    @PostMapping("/submissions/upload")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>> uploadFiles(
+            @RequestParam Long courseAssignmentId,
+            @RequestParam com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum documentType,
+            @RequestParam(required = false) String notes,
+            @RequestPart("files") List<MultipartFile> files) {
+        
+        log.info("Professor uploading {} files for course assignment ID: {}, document type: {}", 
+                files.size(), courseAssignmentId, documentType);
+        
+        var currentUser = authService.getCurrentUser();
+        
+        // Call FileService to upload files (it handles validation and submission creation)
+        fileService.uploadFiles(courseAssignmentId, documentType, files, notes, currentUser.getId());
+        
+        // Get the submission that was created/updated by FileService
+        com.alqude.edu.ArchiveSystem.entity.DocumentSubmission submission = 
+                submissionService.getSubmissionsByCourse(courseAssignmentId).stream()
+                        .filter(s -> s.getDocumentType() == documentType)
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalStateException("Submission not found after upload"));
+        
+        log.info("Successfully uploaded {} files for course assignment ID: {}", files.size(), courseAssignmentId);
+        
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Files uploaded successfully", submission));
+    }
+    
+    /**
+     * Replace files for an existing submission
+     */
+    @PutMapping("/submissions/{submissionId}/replace")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>> replaceFiles(
+            @PathVariable Long submissionId,
+            @RequestParam(required = false) String notes,
+            @RequestPart("files") List<MultipartFile> files) {
+        
+        log.info("Professor replacing files for submission ID: {}", submissionId);
+        
+        var currentUser = authService.getCurrentUser();
+        
+        // Get the submission and validate professor owns it
+        com.alqude.edu.ArchiveSystem.entity.DocumentSubmission submission = 
+                submissionService.getSubmission(submissionId);
+        
+        if (!submission.getProfessor().getId().equals(currentUser.getId())) {
+            throw new IllegalArgumentException("Professor does not own submission ID: " + submissionId);
+        }
+        
+        // Call FileService to replace files
+        fileService.replaceFiles(submissionId, files, notes);
+        
+        // Get updated submission
+        submission = submissionService.getSubmission(submissionId);
+        
+        log.info("Successfully replaced files for submission ID: {}", submissionId);
+        
+        return ResponseEntity.ok(ApiResponse.success("Files replaced successfully", submission));
+    }
+    
+    /**
+     * Get all submissions for the professor in a semester
+     */
+    @GetMapping("/submissions")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>>> getMySubmissions(
+            @RequestParam Long semesterId) {
+        
+        log.info("Professor fetching submissions for semester ID: {}", semesterId);
+        var currentUser = authService.getCurrentUser();
+        
+        List<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission> submissions = 
+                submissionService.getSubmissionsByProfessor(currentUser.getId(), semesterId);
+        
+        return ResponseEntity.ok(ApiResponse.success("Submissions retrieved successfully", submissions));
+    }
+    
+    /**
+     * Get a specific submission by ID
+     */
+    @GetMapping("/submissions/{submissionId}")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>> getSubmission(
+            @PathVariable Long submissionId) {
+        
+        log.info("Professor fetching submission ID: {}", submissionId);
+        var currentUser = authService.getCurrentUser();
+        
+        com.alqude.edu.ArchiveSystem.entity.DocumentSubmission submission = 
+                submissionService.getSubmission(submissionId);
+        
+        // Validate professor owns the submission or has read access (same department)
+        if (!submission.getProfessor().getId().equals(currentUser.getId()) &&
+            !submission.getProfessor().getDepartment().getId().equals(currentUser.getDepartment().getId())) {
+            throw new IllegalArgumentException("Professor does not have access to submission ID: " + submissionId);
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success("Submission retrieved successfully", submission));
+    }
+    
+    // ========== Semester-Based File Explorer Endpoints ==========
+    
+    /**
+     * Get file explorer root node for a semester
+     */
+    @GetMapping("/file-explorer/root")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode>> getFileExplorerRoot(
+            @RequestParam Long academicYearId,
+            @RequestParam Long semesterId) {
+        
+        log.info("Professor fetching file explorer root for academic year ID: {}, semester ID: {}", 
+                academicYearId, semesterId);
+        var currentUser = authService.getCurrentUser();
+        
+        com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode rootNode = 
+                fileExplorerService.getRootNode(academicYearId, semesterId, currentUser);
+        
+        return ResponseEntity.ok(ApiResponse.success("File explorer root retrieved successfully", rootNode));
+    }
+    
+    /**
+     * Get a specific node in the file explorer hierarchy
+     */
+    @GetMapping("/file-explorer/node")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode>> getFileExplorerNode(
+            @RequestParam String path) {
+        
+        log.info("Professor fetching file explorer node at path: {}", path);
+        var currentUser = authService.getCurrentUser();
+        
+        com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode node = 
+                fileExplorerService.getNode(path, currentUser);
+        
+        return ResponseEntity.ok(ApiResponse.success("File explorer node retrieved successfully", node));
+    }
+    
+    /**
+     * Download a file by ID
+     */
+    @GetMapping("/files/{fileId}/download")
+    public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) throws IOException {
+        
+        log.info("Professor downloading file ID: {}", fileId);
+        var currentUser = authService.getCurrentUser();
+        
+        // Get the file
+        com.alqude.edu.ArchiveSystem.entity.UploadedFile uploadedFile = fileService.getFile(fileId);
+        
+        // Check if professor has read access (same department)
+        com.alqude.edu.ArchiveSystem.entity.DocumentSubmission submission = uploadedFile.getDocumentSubmission();
+        if (!submission.getProfessor().getDepartment().getId().equals(currentUser.getDepartment().getId())) {
+            throw new IllegalArgumentException("Professor does not have access to file ID: " + fileId);
+        }
+        
+        // Load file as resource
+        Resource resource = fileService.loadFileAsResource(uploadedFile.getFileUrl());
+        
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                        "attachment; filename=\"" + uploadedFile.getOriginalFilename() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+    
+    // ========== Legacy Document Request Management ==========
     
     @GetMapping("/document-requests")
     public ResponseEntity<ApiResponse<Page<DocumentRequestResponse>>> getMyDocumentRequests(

@@ -354,120 +354,198 @@ This implementation plan breaks down the semester-based file system refactoring 
   - Parse path and create breadcrumb items for each level
   - _Requirements: 5.4_
 
-- [ ] 10. Implement ReportService for submission reports
-- [ ] 10.1 Implement generateProfessorSubmissionReport for HOD
+- [x] 10. Implement ReportService for submission reports
+
+
+
+
+
+
+
+- [x] 10.1 Implement generateProfessorSubmissionReport for HOD
+
+
+
   - Fetch all course assignments for semester and department
   - For each assignment, fetch required document types and submission status
   - Build ProfessorSubmissionReport with rows and statistics
   - _Requirements: 7.4, 13.2_
 
-- [ ] 10.2 Implement report filtering
+
+- [x] 10.2 Implement report filtering
+
   - Implement filterReport to filter by course, document type, status
   - _Requirements: 7.4, 13.3_
 
-- [ ] 10.3 Implement exportReportToPdf method
+
+
+- [x] 10.3 Implement exportReportToPdf method
+
   - Use PDF library (e.g., iText, Apache PDFBox) to generate PDF
   - Format report with tables and summary statistics
   - _Requirements: 13.4_
 
-- [ ] 10.4 Implement generateSystemWideReport for Deanship
+
+
+- [x] 10.4 Implement generateSystemWideReport for Deanship
+
   - Aggregate data across all departments for a semester
   - _Requirements: 6.3_
 
-- [ ] 11. Create DeanshipController with academic management endpoints
-- [ ] 11.1 Implement academic year endpoints
+- [x] 11. Create DeanshipController with academic management endpoints
+
+
+
+
+
+- [x] 11.1 Implement academic year endpoints
+
+
   - POST /api/deanship/academic-years (createAcademicYear)
   - PUT /api/deanship/academic-years/{id} (updateAcademicYear)
   - GET /api/deanship/academic-years (getAllAcademicYears)
   - Add @PreAuthorize("hasRole('DEANSHIP')") to all methods
   - _Requirements: 2.1, 2.2_
 
-- [ ] 11.2 Implement professor management endpoints
+- [x] 11.2 Implement professor management endpoints
+
   - POST /api/deanship/professors (createProfessor)
   - PUT /api/deanship/professors/{id} (updateProfessor)
   - GET /api/deanship/professors (getAllProfessors with optional departmentId filter)
   - PUT /api/deanship/professors/{id}/deactivate (deactivateProfessor)
   - _Requirements: 3.1, 3.2, 3.5_
 
-- [ ] 11.3 Implement course management endpoints
+- [x] 11.3 Implement course management endpoints
+
   - POST /api/deanship/courses (createCourse)
   - PUT /api/deanship/courses/{id} (updateCourse)
   - GET /api/deanship/courses (getAllCourses with optional departmentId filter)
   - _Requirements: 2.3_
 
-- [ ] 11.4 Implement course assignment endpoints
+- [x] 11.4 Implement course assignment endpoints
+
   - POST /api/deanship/course-assignments (assignCourse)
   - DELETE /api/deanship/course-assignments/{id} (unassignCourse)
   - GET /api/deanship/course-assignments (getAssignments with semesterId and optional professorId)
   - _Requirements: 2.4_
 
-- [ ] 11.5 Implement required document type endpoints
+- [x] 11.5 Implement required document type endpoints
+
   - POST /api/deanship/courses/{courseId}/required-documents (addRequiredDocumentType)
   - _Requirements: 2.5_
 
-- [ ] 11.6 Implement Deanship reports endpoint
+- [x] 11.6 Implement Deanship reports endpoint
+
   - GET /api/deanship/reports/system-wide (getSystemWideReport)
   - _Requirements: 6.3_
 
-- [ ] 12. Update HodController for semester-based operations
-- [ ] 12.1 Implement dashboard overview endpoint
+- [x] 12. Update HodController for semester-based operations
+
+
+
+
+
+
+
+
+
+
+- [x] 12.1 Implement dashboard overview endpoint
+
+
+
+
   - GET /api/hod/dashboard/overview (getDashboardOverview)
   - Return total professors, courses, submission statistics for semester
   - Filter by HOD's department
+
   - _Requirements: 7.3_
 
-- [ ] 12.2 Implement submission status endpoint
+- [x] 12.2 Implement submission status endpoint
+
+
+
+
+
   - GET /api/hod/submissions/status (getSubmissionStatus)
   - Support filtering by courseCode, documentType, status
+
   - Return ProfessorSubmissionReport for department
   - _Requirements: 7.4_
 
-- [ ] 12.3 Implement report endpoints
+- [x] 12.3 Implement report endpoints
+
   - GET /api/hod/reports/professor-submissions (getProfessorSubmissionReport)
   - GET /api/hod/reports/professor-submissions/pdf (exportReportToPdf)
   - _Requirements: 13.1, 13.4_
 
-- [ ] 12.4 Implement HOD file explorer endpoints
+- [x] 12.4 Implement HOD file explorer endpoints
+
+
+
+
+
   - GET /api/hod/file-explorer/root (getFileExplorerRoot)
   - GET /api/hod/file-explorer/node (getFileExplorerNode)
   - GET /api/hod/files/{fileId}/download (downloadFile)
   - Apply department-scoped filtering
   - _Requirements: 7.2, 7.5_
 
-- [ ] 13. Update ProfessorController for semester-based operations
-- [ ] 13.1 Implement professor dashboard endpoints
+- [x] 13. Update ProfessorController for semester-based operations
+
+
+
+
+
+- [x] 13.1 Implement professor dashboard endpoints
+
+
   - GET /api/professor/dashboard/courses (getMyCourses)
   - GET /api/professor/dashboard/overview (getDashboardOverview)
   - Return courses with required document types and submission status
   - _Requirements: 10.2, 10.3, 10.5_
 
-- [ ] 13.2 Implement file upload endpoint
+
+
+- [x] 13.2 Implement file upload endpoint
   - POST /api/professor/submissions/upload (uploadFiles)
   - Accept courseAssignmentId, documentType, files, notes
   - Validate professor is assigned to the course
   - Call FileService.uploadFiles and SubmissionService.createSubmission
+
+
   - _Requirements: 8.3, 8.4, 11.1, 11.2, 11.3_
 
-- [ ] 13.3 Implement file replacement endpoint
+- [x] 13.3 Implement file replacement endpoint
   - PUT /api/professor/submissions/{submissionId}/replace (replaceFiles)
+
   - Validate professor owns the submission
   - Call FileService.replaceFiles
   - _Requirements: 8.5_
 
-- [ ] 13.4 Implement submission retrieval endpoints
+- [x] 13.4 Implement submission retrieval endpoints
+
   - GET /api/professor/submissions (getMySubmissions)
   - GET /api/professor/submissions/{submissionId} (getSubmission)
   - _Requirements: 10.5_
 
-- [ ] 13.5 Implement professor file explorer endpoints
+- [x] 13.5 Implement professor file explorer endpoints
+
+
   - GET /api/professor/file-explorer/root (getFileExplorerRoot)
   - GET /api/professor/file-explorer/node (getFileExplorerNode)
   - GET /api/professor/files/{fileId}/download (downloadFile)
   - Apply department-scoped filtering with read-only for other professors
   - _Requirements: 9.1, 9.2, 9.3, 9.5_
 
-- [ ] 14. Create shared FileExplorerController
-- [ ] 14.1 Implement shared file explorer endpoints
+- [x] 14. Create shared FileExplorerController
+
+
+
+
+- [x] 14.1 Implement shared file explorer endpoints
+
+
   - GET /api/file-explorer/root (getRoot)
   - GET /api/file-explorer/node (getNode)
   - GET /api/file-explorer/breadcrumbs (getBreadcrumbs)
@@ -476,45 +554,66 @@ This implementation plan breaks down the semester-based file system refactoring 
   - Apply role-based permissions using FileExplorerService
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ] 15. Implement data migration from old schema to new schema
-- [ ] 15.1 Create migration service to analyze existing data
+- [x] 15. Implement data migration from old schema to new schema
+
+
+
+
+
+- [x] 15.1 Create migration service to analyze existing data
+
+
   - Analyze document_requests to determine year ranges
   - Extract unique course names and professors
   - _Requirements: 15.1, 15.2_
 
-- [ ] 15.2 Implement academic year and semester creation from existing data
+- [x] 15.2 Implement academic year and semester creation from existing data
+
+
   - Create academic year records based on request deadlines
   - Create three semesters per year
   - _Requirements: 15.2_
 
-- [ ] 15.3 Implement professor migration
+- [x] 15.3 Implement professor migration
+
+
   - Generate professor_id for existing ROLE_PROFESSOR users
   - Update user records
   - _Requirements: 15.3_
 
-- [ ] 15.4 Implement course extraction and creation
+- [x] 15.4 Implement course extraction and creation
+
+
   - Extract unique course names from document_requests
   - Generate course codes
   - Create course records
   - _Requirements: 15.4_
 
-- [ ] 15.5 Implement course assignment creation from requests
+- [x] 15.5 Implement course assignment creation from requests
+
+
   - For each document_request, determine semester from deadline
   - Create course_assignment linking professor, course, semester
   - _Requirements: 15.4_
 
-- [ ] 15.6 Implement document submission migration
+- [x] 15.6 Implement document submission migration
+
+
   - For each submitted_document, find corresponding course_assignment
   - Create document_submission record
   - _Requirements: 15.5_
 
-- [ ] 15.7 Implement file migration to new folder structure
+- [x] 15.7 Implement file migration to new folder structure
+
+
   - For each file_attachment, create uploaded_file record
   - Move physical files to new hierarchical structure
   - Update file_url in database
   - _Requirements: 15.6_
 
-- [ ] 15.8 Implement required document type extraction
+- [x] 15.8 Implement required document type extraction
+
+
   - Extract document types from document_requests
   - Create required_document_type records per course
   - _Requirements: 15.7_

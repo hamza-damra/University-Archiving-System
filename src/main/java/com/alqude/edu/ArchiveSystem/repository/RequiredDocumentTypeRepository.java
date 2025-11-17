@@ -12,4 +12,8 @@ public interface RequiredDocumentTypeRepository extends JpaRepository<RequiredDo
     List<RequiredDocumentType> findByCourseId(Long courseId);
     
     List<RequiredDocumentType> findByCourseIdAndSemesterId(Long courseId, Long semesterId);
+    
+    List<RequiredDocumentType> findByCourseIdAndDocumentType(
+            Long courseId, 
+            com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum documentType);
 }

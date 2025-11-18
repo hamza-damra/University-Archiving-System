@@ -35,8 +35,17 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/archive_system?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: root
-      FILE_UPLOAD_DIR: /app/uploads
+      # File Upload Configuration
+      APP_UPLOAD_BASE_PATH: /app/uploads
+      APP_UPLOAD_ALLOWED_EXTENSIONS: pdf,zip
+      APP_UPLOAD_MAX_FILE_COUNT: 10
+      APP_UPLOAD_MAX_TOTAL_SIZE_MB: 50
+      # Academic Configuration
+      APP_ACADEMIC_DEFAULT_YEAR: 2024-2025
+      APP_ACADEMIC_AUTO_CREATE_SEMESTERS: true
     volumes:
+      # Mount uploads directory for hierarchical file storage
+      # Format: {year}/{semester}/{professorId}/{courseCode}/{documentType}/
       - app_uploads:/app/uploads
     depends_on:
       mysql:
@@ -49,6 +58,8 @@ volumes:
     driver: local
   app_uploads:
     driver: local
+    # Persistent storage for hierarchical file structure
+    # Preserves files across container restarts
 
 networks:
   archive-network:

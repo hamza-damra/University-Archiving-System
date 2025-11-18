@@ -1,9 +1,9 @@
 /**
- * Professor Dashboard
+ * Professor Dashboard - Semester-based
  */
 
-import { professor, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
-import { showToast, showModal, formatDate, getTimeUntil, isOverdue, isValidFileExtension, formatFileSize } from './ui.js';
+import { professor, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, deanship } from './api.js';
+import { showToast, showModal, formatDate, getTimeUntil, isOverdue, formatFileSize } from './ui.js';
 
 // Check authentication
 if (!isAuthenticated()) {
@@ -17,13 +17,12 @@ if (userInfo.role !== 'ROLE_PROFESSOR') {
 }
 
 // State
-let requests = [];
+let academicYears = [];
+let semesters = [];
+let courses = [];
 let notifications = [];
-let currentFilter = 'all';
-let currentPage = 0;
-let totalPages = 0;
-let pageSize = 9;
-let totalElements = 0;
+let selectedAcademicYearId = null;
+let selectedSemesterId = null;
 
 // DOM Elements
 const professorName = document.getElementById('professorName');
@@ -33,17 +32,54 @@ const notificationBadge = document.getElementById('notificationBadge');
 const notificationsDropdown = document.getElementById('notificationsDropdown');
 const closeNotificationsDropdown = document.getElementById('closeNotificationsDropdown');
 const notificationsList = document.getElementById('notificationsList');
-const requestsGrid = document.getElementById('requestsGrid');
+const academicYearSelect = document.getElementById('academicYearSelect');
+const semesterSelect = document.getElementById('semesterSelect');
+const coursesContainer = document.getElementById('coursesContainer');
 const emptyState = document.getElementById('emptyState');
-const filterBtns = document.querySelectorAll('.filter-btn');
+const coursesTabContent = document.getElementById('coursesTabContent');
+const fileExplorerTabContent = document.getElementById('fileExplorerTabContent');
+const fileExplorerContainer = document.getElementById('fileExplorerContainer');
+const breadcrumbs = document.getElementById('breadcrumbs');
 
 // Initialize
 professorName.textContent = userInfo.fullName;
-loadRequests();
+loadAcademicYears();
 loadNotifications();
 
 // Poll notifications every 30 seconds
 setInterval(loadNotifications, 30000);
+
+// Tab Switching
+window.switchTab = function(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-button').forEach(btn => {
+        btn.classList.remove('active', 'border-blue-600', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-gray-500');
+    });
+    
+    const activeBtn = document.getElementById(`${tabName}Tab`);
+    if (activeBtn) {
+        activeBtn.classList.add('active', 'border-blue-600', 'text-blue-600');
+        activeBtn.classList.remove('border-transparent', 'text-gray-500');
+    }
+    
+    // Update tab content
+    document.getElementById('dashboardTabContent')?.classList.add('hidden');
+    document.getElementById('coursesTabContent')?.classList.add('hidden');
+    document.getElementById('fileExplorerTabContent')?.classList.add('hidden');
+    
+    const activeContent = document.getElementById(`${tabName}TabContent`);
+    if (activeContent) {
+        activeContent.classList.remove('hidden');
+    }
+    
+    // Load data for specific tabs
+    if (tabName === 'dashboard' && selectedSemesterId) {
+        loadDashboardOverview();
+    } else if (tabName === 'fileExplorer' && selectedSemesterId) {
+        loadFileExplorer();
+    }
+};
 
 // Logout
 logoutBtn.addEventListener('click', () => {
@@ -74,136 +110,257 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Filter buttons
-filterBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-        filterBtns.forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        renderRequests();
-    });
+// Academic year selection
+academicYearSelect.addEventListener('change', async (e) => {
+    selectedAcademicYearId = e.target.value ? parseInt(e.target.value) : null;
+    selectedSemesterId = null;
+    
+    if (selectedAcademicYearId) {
+        await loadSemesters(selectedAcademicYearId);
+    } else {
+        semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
+        courses = [];
+        renderCourses();
+    }
 });
 
-// Load requests with pagination
-async function loadRequests(page = 0) {
+// Semester selection
+semesterSelect.addEventListener('change', async (e) => {
+    selectedSemesterId = e.target.value ? parseInt(e.target.value) : null;
+    
+    if (selectedSemesterId) {
+        await loadCourses(selectedSemesterId);
+    } else {
+        courses = [];
+        renderCourses();
+    }
+});
+
+// Load academic years
+async function loadAcademicYears() {
     try {
-        const response = await professor.getRequests(page, pageSize);
-        const pageData = response.data;
-        requests = pageData.content || [];
-        currentPage = pageData.number || 0;
-        totalPages = pageData.totalPages || 0;
-        totalElements = pageData.totalElements || 0;
-        renderRequests();
-        renderPagination();
+        const response = await deanship.getAcademicYears();
+        academicYears = response.data || [];
+        
+        academicYearSelect.innerHTML = '<option value="">Select academic year</option>';
+        academicYears.forEach(year => {
+            const option = document.createElement('option');
+            option.value = year.id;
+            option.textContent = year.yearCode;
+            if (year.isActive) {
+                option.selected = true;
+                selectedAcademicYearId = year.id;
+            }
+            academicYearSelect.appendChild(option);
+        });
+        
+        // Load semesters for active year
+        if (selectedAcademicYearId) {
+            await loadSemesters(selectedAcademicYearId);
+        }
     } catch (error) {
-        console.error('Error loading requests:', error);
-        showToast('Failed to load requests', 'error');
-        requestsGrid.innerHTML = '<p class="text-red-600 text-sm col-span-full text-center">Error loading requests</p>';
+        console.error('Error loading academic years:', error);
+        showToast('Failed to load academic years', 'error');
+        academicYearSelect.innerHTML = '<option value="">Error loading years</option>';
     }
 }
 
-// Expose loadRequests to window for external calls (e.g., after file upload)
-window.loadRequests = loadRequests;
-
-// Render requests
-function renderRequests() {
-    let filtered = [...requests];
-
-    // Apply filter
-    if (currentFilter === 'pending') {
-        filtered = filtered.filter(req => !req.submittedDocument);
-    } else if (currentFilter === 'submitted') {
-        filtered = filtered.filter(req => req.submittedDocument);
-    } else if (currentFilter === 'overdue') {
-        filtered = filtered.filter(req => !req.submittedDocument && isOverdue(req.deadline));
+// Load semesters for selected academic year
+async function loadSemesters(academicYearId) {
+    try {
+        const response = await deanship.getSemesters(academicYearId);
+        semesters = response.data || [];
+        
+        semesterSelect.innerHTML = '<option value="">Select semester</option>';
+        semesters.forEach(semester => {
+            const option = document.createElement('option');
+            option.value = semester.id;
+            option.textContent = `${semester.type} Semester`;
+            semesterSelect.appendChild(option);
+        });
+        
+        // Auto-select first semester if available
+        if (semesters.length > 0) {
+            selectedSemesterId = semesters[0].id;
+            semesterSelect.value = selectedSemesterId;
+            await loadCourses(selectedSemesterId);
+        }
+    } catch (error) {
+        console.error('Error loading semesters:', error);
+        showToast('Failed to load semesters', 'error');
+        semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
     }
+}
 
-    if (filtered.length === 0) {
-        requestsGrid.innerHTML = '';
+// Load courses for selected semester
+async function loadCourses(semesterId) {
+    try {
+        coursesContainer.innerHTML = `
+            <div class="animate-pulse space-y-4">
+                <div class="h-32 bg-gray-200 rounded-lg"></div>
+                <div class="h-32 bg-gray-200 rounded-lg"></div>
+            </div>
+        `;
+        
+        const response = await professor.getMyCourses(semesterId);
+        courses = response.data || [];
+        renderCourses();
+    } catch (error) {
+        console.error('Error loading courses:', error);
+        showToast('Failed to load courses', 'error');
+        coursesContainer.innerHTML = '<p class="text-red-600 text-sm text-center py-4">Error loading courses</p>';
+    }
+}
+
+// Load dashboard overview
+async function loadDashboardOverview() {
+    if (!selectedSemesterId) {
+        return;
+    }
+    
+    try {
+        const response = await professor.getDashboardOverview(selectedSemesterId);
+        const overview = response.data || {};
+        
+        // Update overview cards
+        document.getElementById('totalCoursesCount').textContent = overview.totalCourses || 0;
+        document.getElementById('submittedDocsCount').textContent = overview.submittedDocuments || 0;
+        document.getElementById('pendingDocsCount').textContent = overview.pendingDocuments || 0;
+        document.getElementById('overdueDocsCount').textContent = overview.overdueDocuments || 0;
+        
+        // Update summary text
+        const summaryEl = document.getElementById('dashboardSummary');
+        if (overview.totalCourses === 0) {
+            summaryEl.textContent = 'You have no courses assigned for this semester.';
+        } else {
+            const pendingText = overview.pendingDocuments > 0 ? `${overview.pendingDocuments} pending` : 'all documents submitted';
+            const overdueText = overview.overdueDocuments > 0 ? ` (${overview.overdueDocuments} overdue)` : '';
+            summaryEl.textContent = `You have ${overview.totalCourses} course(s) with ${pendingText}${overdueText}.`;
+        }
+    } catch (error) {
+        console.error('Error loading dashboard overview:', error);
+        // Set default values on error
+        document.getElementById('totalCoursesCount').textContent = '0';
+        document.getElementById('submittedDocsCount').textContent = '0';
+        document.getElementById('pendingDocsCount').textContent = '0';
+        document.getElementById('overdueDocsCount').textContent = '0';
+        document.getElementById('dashboardSummary').textContent = 'Unable to load dashboard data.';
+    }
+}
+
+// Render courses
+function renderCourses() {
+    if (courses.length === 0) {
+        coursesContainer.innerHTML = '';
         emptyState.classList.remove('hidden');
         return;
     }
 
     emptyState.classList.add('hidden');
-    requestsGrid.innerHTML = filtered.map(req => createRequestCard(req)).join('');
+    coursesContainer.innerHTML = courses.map(course => createCourseCard(course)).join('');
 }
 
-// Create request card
-function createRequestCard(req) {
-    const deadline = new Date(req.deadline);
-    const isPastDue = isOverdue(deadline);
-    const isSubmitted = !!req.submittedDocument;
-    const timeUntil = getTimeUntil(deadline);
-
-    let statusClass = 'badge-gray';
-    let statusText = 'Pending';
-
-    if (isSubmitted) {
-        statusClass = req.submittedDocument.submittedLate ? 'badge-warning' : 'badge-success';
-        statusText = req.submittedDocument.submittedLate ? 'Submitted (Late)' : 'Submitted';
-    } else if (isPastDue) {
-        statusClass = 'badge-danger';
-        statusText = 'Overdue';
-    }
-
+// Create course card
+function createCourseCard(course) {
+    const documentTypes = Object.entries(course.documentStatuses || {});
+    
     return `
-        <div class="border border-gray-200 rounded-lg p-4 card-hover">
-            <div class="flex justify-between items-start mb-3">
+        <div class="border border-gray-200 rounded-lg p-6 mb-4">
+            <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h3 class="font-semibold text-gray-900">${req.courseName}</h3>
-                    <p class="text-sm text-gray-600">${req.documentType}</p>
+                    <h3 class="text-lg font-semibold text-gray-900">${course.courseCode} - ${course.courseName}</h3>
+                    <p class="text-sm text-gray-600">${course.departmentName} • ${course.courseLevel || 'N/A'}</p>
                 </div>
-                <span class="badge ${statusClass}">${statusText}</span>
             </div>
 
-            <div class="space-y-2 mb-4">
-                <div class="flex items-center text-sm text-gray-600">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    ${formatDate(deadline)}
+            ${documentTypes.length === 0 ? `
+                <p class="text-sm text-gray-500 italic">No required documents for this course</p>
+            ` : `
+                <div class="space-y-3">
+                    ${documentTypes.map(([docType, status]) => createDocumentTypeRow(course, docType, status)).join('')}
                 </div>
-                <div class="flex items-center text-sm ${isPastDue ? 'text-red-600' : 'text-blue-600'}">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    ${timeUntil}
+            `}
+        </div>
+    `;
+}
+
+// Create document type row
+function createDocumentTypeRow(course, docType, status) {
+    const isSubmitted = status.status === 'UPLOADED';
+    const isOverdue = status.status === 'OVERDUE';
+    const isNotUploaded = status.status === 'NOT_UPLOADED';
+    
+    let statusBadge = '';
+    let statusClass = '';
+    
+    if (isSubmitted) {
+        statusClass = status.isLateSubmission ? 'badge-warning' : 'badge-success';
+        statusBadge = status.isLateSubmission ? 'Submitted (Late)' : 'Submitted';
+    } else if (isOverdue) {
+        statusClass = 'badge-danger';
+        statusBadge = 'Overdue';
+    } else {
+        statusClass = 'badge-gray';
+        statusBadge = 'Not Uploaded';
+    }
+    
+    const deadline = status.deadline ? new Date(status.deadline) : null;
+    const timeUntil = deadline ? getTimeUntil(deadline) : 'No deadline';
+    const isPastDue = deadline ? isOverdue(deadline) : false;
+    
+    return `
+        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-2">
+                    <h4 class="font-medium text-gray-900">${formatDocumentType(docType)}</h4>
+                    <span class="badge ${statusClass}">${statusBadge}</span>
                 </div>
-                <div class="flex items-center text-sm text-gray-600">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    Allowed: ${req.requiredFileExtensions}
+                
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                    ${deadline ? `
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                            </svg>
+                            <span class="${isPastDue ? 'text-red-600 font-medium' : ''}">${formatDate(deadline)}</span>
+                        </div>
+                        <div class="flex items-center ${isPastDue ? 'text-red-600' : 'text-blue-600'}">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            ${timeUntil}
+                        </div>
+                    ` : '<span class="text-gray-500">No deadline</span>'}
+                    
+                    ${isSubmitted ? `
+                        <div class="flex items-center text-green-600">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            ${status.fileCount} file(s) uploaded
+                        </div>
+                    ` : ''}
                 </div>
-                ${isSubmitted ? `
-                    <div class="flex items-center text-sm text-green-600">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        ${req.submittedDocument.fileCount > 1 
-                            ? `${req.submittedDocument.fileCount} files uploaded` 
-                            : req.submittedDocument.originalFilename || 'File uploaded'}
+                
+                ${status.maxFileCount || status.maxTotalSizeMb ? `
+                    <div class="mt-2 text-xs text-gray-500">
+                        Max: ${status.maxFileCount || 'unlimited'} files, ${status.maxTotalSizeMb || 'unlimited'} MB total
                     </div>
                 ` : ''}
             </div>
-
-            <div class="flex gap-2">
+            
+            <div class="flex gap-2 ml-4">
                 <button 
-                    class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium text-sm"
-                    onclick="window.showMultiFileUploadModal(${req.id}, '${req.requiredFileExtensions}')"
+                    class="px-4 py-2 ${isSubmitted ? 'bg-gray-600' : 'bg-blue-600'} text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm font-medium"
+                    onclick="window.openUploadModal(${course.courseAssignmentId}, '${docType}', ${status.submissionId || 'null'}, ${isSubmitted}, ${JSON.stringify(status).replace(/"/g, '&quot;')})"
                 >
-                    <span class="flex items-center justify-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                        </svg>
-                        ${isSubmitted ? 'Replace Files' : 'Upload Files'}
-                    </span>
+                    ${isSubmitted ? 'Replace Files' : 'Upload Files'}
                 </button>
-                ${isSubmitted && req.submittedDocument && req.submittedDocument.fileCount > 1 ? `
+                ${isSubmitted && status.fileCount > 0 ? `
                     <button 
-                        class="bg-gray-100 text-gray-700 py-2 px-3 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 transition text-sm"
-                        onclick="window.viewSubmittedFiles(${req.id})"
-                        title="View all files (${req.submittedDocument.fileCount})"
+                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 transition text-sm"
+                        onclick="window.viewSubmissionFiles(${status.submissionId})"
+                        title="View files"
                     >
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -216,176 +373,23 @@ function createRequestCard(req) {
     `;
 }
 
-// Upload document
-window.uploadDocument = (requestId, allowedExtensions) => {
-    const content = `
-        <form id="uploadForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-2">
-                    Select Document
-                </label>
-                <div class="file-upload-area" id="fileUploadArea">
-                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
-                    <p class="text-xs text-gray-500 mt-1">Allowed: ${allowedExtensions}</p>
-                    <input 
-                        type="file" 
-                        id="fileInput" 
-                        name="file" 
-                        required 
-                        class="hidden"
-                        accept=".${allowedExtensions.split(',').join(',.')}"
-                    >
-                </div>
-                <div id="fileInfo" class="mt-2 hidden">
-                    <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                        <span id="fileName" class="text-sm text-gray-700"></span>
-                        <span id="fileSize" class="text-xs text-gray-500"></span>
-                    </div>
-                </div>
-                <p id="fileError" class="text-red-600 text-sm mt-1 hidden"></p>
-            </div>
-            <div id="uploadProgress" class="hidden">
-                <div class="progress-bar">
-                    <div id="progressFill" class="progress-bar-fill" style="width: 0%"></div>
-                </div>
-                <p id="progressText" class="text-sm text-gray-600 mt-1 text-center">Uploading...</p>
-            </div>
-        </form>
-    `;
-
-    const modal = showModal('Upload Document', content, {
-        size: 'md',
-        buttons: [
-            {
-                text: 'Cancel',
-                className: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
-                action: 'cancel',
-                onClick: (close) => close(),
-            },
-            {
-                text: 'Upload',
-                className: 'bg-blue-600 text-white hover:bg-blue-700',
-                action: 'upload',
-                onClick: async (close) => {
-                    const fileInput = document.getElementById('fileInput');
-                    const fileError = document.getElementById('fileError');
-                    const file = fileInput.files[0];
-
-                    if (!file) {
-                        fileError.textContent = 'Please select a file';
-                        fileError.classList.remove('hidden');
-                        return;
-                    }
-
-                    // Validate file extension
-                    if (!isValidFileExtension(file.name, allowedExtensions)) {
-                        fileError.textContent = `Invalid file type. Allowed: ${allowedExtensions}`;
-                        fileError.classList.remove('hidden');
-                        return;
-                    }
-
-                    // Validate file size (10MB max)
-                    if (file.size > 10 * 1024 * 1024) {
-                        fileError.textContent = 'File size must be less than 10MB';
-                        fileError.classList.remove('hidden');
-                        return;
-                    }
-
-                    const formData = new FormData();
-                    formData.append('file', file);
-
-                    // Show progress
-                    const uploadProgress = document.getElementById('uploadProgress');
-                    const progressFill = document.getElementById('progressFill');
-                    const progressText = document.getElementById('progressText');
-                    uploadProgress.classList.remove('hidden');
-
-                    // Disable upload button
-                    const uploadBtn = modal.querySelector('[data-action="upload"]');
-                    uploadBtn.disabled = true;
-                    uploadBtn.textContent = 'Uploading...';
-
-                    try {
-                        await professor.submitDocument(
-                            requestId,
-                            formData,
-                            (percent) => {
-                                progressFill.style.width = `${percent}%`;
-                                progressText.textContent = `Uploading... ${Math.round(percent)}%`;
-                            }
-                        );
-
-                        showToast('Document uploaded successfully', 'success');
-                        loadRequests();
-                        close();
-                    } catch (error) {
-                        console.error('Upload error:', error);
-                        fileError.textContent = error.message || 'Upload failed';
-                        fileError.classList.remove('hidden');
-                        uploadBtn.disabled = false;
-                        uploadBtn.textContent = 'Upload';
-                        uploadProgress.classList.add('hidden');
-                    }
-                },
-            },
-        ],
-    });
-
-    // File input handling
-    const fileInput = document.getElementById('fileInput');
-    const fileUploadArea = document.getElementById('fileUploadArea');
-    const fileInfo = document.getElementById('fileInfo');
-    const fileName = document.getElementById('fileName');
-    const fileSize = document.getElementById('fileSize');
-    const fileError = document.getElementById('fileError');
-
-    fileUploadArea.addEventListener('click', () => fileInput.click());
-
-    fileInput.addEventListener('change', (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            fileName.textContent = file.name;
-            fileSize.textContent = formatFileSize(file.size);
-            fileInfo.classList.remove('hidden');
-            fileError.classList.add('hidden');
-        }
-    });
-
-    // Drag and drop
-    fileUploadArea.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        fileUploadArea.classList.add('dragover');
-    });
-
-    fileUploadArea.addEventListener('dragleave', () => {
-        fileUploadArea.classList.remove('dragover');
-    });
-
-    fileUploadArea.addEventListener('drop', (e) => {
-        e.preventDefault();
-        fileUploadArea.classList.remove('dragover');
-        
-        const file = e.dataTransfer.files[0];
-        if (file) {
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(file);
-            fileInput.files = dataTransfer.files;
-            
-            fileName.textContent = file.name;
-            fileSize.textContent = formatFileSize(file.size);
-            fileInfo.classList.remove('hidden');
-        }
-    });
-};
+// Format document type enum to readable text
+function formatDocumentType(docType) {
+    const typeMap = {
+        'SYLLABUS': 'Syllabus',
+        'EXAM': 'Exam',
+        'ASSIGNMENT': 'Assignment',
+        'PROJECT_DOCS': 'Project Documents',
+        'LECTURE_NOTES': 'Lecture Notes',
+        'OTHER': 'Other'
+    };
+    return typeMap[docType] || docType;
+}
 
 // Load notifications
 async function loadNotifications() {
     try {
         const response = await professor.getNotifications();
-        // Sort notifications by date (newest first)
         notifications = (response.data || []).sort((a, b) => 
             new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -436,117 +440,336 @@ window.markNotificationSeen = async (notificationId) => {
     }
 };
 
-// Render pagination
-function renderPagination() {
-    const paginationContainer = document.getElementById('paginationContainer');
-    const pageInfo = document.getElementById('pageInfo');
-    const paginationButtons = document.getElementById('paginationButtons');
+// Open upload modal
+window.openUploadModal = (courseAssignmentId, documentType, submissionId, isReplacement, statusData) => {
+    const status = typeof statusData === 'string' ? JSON.parse(statusData) : statusData;
+    const maxFileCount = status.maxFileCount || 5;
+    const maxTotalSizeMb = status.maxTotalSizeMb || 50;
     
-    // Hide pagination if no requests or filtering
-    if (totalElements === 0 || currentFilter !== 'all') {
-        paginationContainer.classList.add('hidden');
+    const content = `
+        <form id="uploadForm" class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h4 class="font-medium text-blue-900 mb-2">${formatDocumentType(documentType)}</h4>
+                <div class="text-sm text-blue-800 space-y-1">
+                    <p><strong>Max files:</strong> ${maxFileCount}</p>
+                    <p><strong>Max total size:</strong> ${maxTotalSizeMb} MB</p>
+                    <p><strong>Allowed types:</strong> PDF, ZIP</p>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Select Files
+                </label>
+                <div class="file-upload-area" id="fileUploadArea">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-600">Click to upload or drag and drop</p>
+                    <p class="text-xs text-gray-500 mt-1">PDF and ZIP files only</p>
+                    <input 
+                        type="file" 
+                        id="fileInput" 
+                        name="files" 
+                        multiple
+                        class="hidden"
+                        accept=".pdf,.zip"
+                    >
+                </div>
+                <p id="fileError" class="text-red-600 text-sm mt-1 hidden"></p>
+            </div>
+            
+            <div id="filePreviewList" class="hidden space-y-2">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Selected Files
+                </label>
+                <div id="filePreviewContainer" class="space-y-2 max-h-48 overflow-y-auto">
+                    <!-- File previews will be inserted here -->
+                </div>
+            </div>
+            
+            <div>
+                <label for="notesInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    Notes (Optional)
+                </label>
+                <textarea 
+                    id="notesInput" 
+                    rows="3" 
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Add any notes about this submission..."
+                ></textarea>
+            </div>
+            
+            <div id="uploadProgress" class="hidden">
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-bar-fill" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-sm text-gray-600 mt-1 text-center">Uploading...</p>
+            </div>
+        </form>
+    `;
+
+    const modal = showModal(
+        isReplacement ? 'Replace Files' : 'Upload Files', 
+        content, 
+        {
+            size: 'lg',
+            buttons: [
+                {
+                    text: 'Cancel',
+                    className: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+                    action: 'cancel',
+                    onClick: (close) => close(),
+                },
+                {
+                    text: isReplacement ? 'Replace' : 'Upload',
+                    className: 'bg-blue-600 text-white hover:bg-blue-700',
+                    action: 'upload',
+                    onClick: async (close) => {
+                        await handleFileUpload(
+                            courseAssignmentId, 
+                            documentType, 
+                            submissionId, 
+                            isReplacement, 
+                            maxFileCount, 
+                            maxTotalSizeMb,
+                            close
+                        );
+                    },
+                },
+            ],
+        }
+    );
+
+    setupFileUploadHandlers(maxFileCount, maxTotalSizeMb);
+};
+
+// Setup file upload handlers
+function setupFileUploadHandlers(maxFileCount, maxTotalSizeMb) {
+    const fileInput = document.getElementById('fileInput');
+    const fileUploadArea = document.getElementById('fileUploadArea');
+    const filePreviewList = document.getElementById('filePreviewList');
+    const filePreviewContainer = document.getElementById('filePreviewContainer');
+    const fileError = document.getElementById('fileError');
+
+    fileUploadArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+        handleFileSelection(e.target.files, maxFileCount, maxTotalSizeMb);
+    });
+
+    // Drag and drop
+    fileUploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.add('dragover');
+    });
+
+    fileUploadArea.addEventListener('dragleave', () => {
+        fileUploadArea.classList.remove('dragover');
+    });
+
+    fileUploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        fileUploadArea.classList.remove('dragover');
+        handleFileSelection(e.dataTransfer.files, maxFileCount, maxTotalSizeMb);
+    });
+}
+
+// Handle file selection
+function handleFileSelection(files, maxFileCount, maxTotalSizeMb) {
+    const fileInput = document.getElementById('fileInput');
+    const filePreviewList = document.getElementById('filePreviewList');
+    const filePreviewContainer = document.getElementById('filePreviewContainer');
+    const fileError = document.getElementById('fileError');
+    
+    fileError.classList.add('hidden');
+    
+    if (files.length === 0) return;
+    
+    // Validate file count
+    if (files.length > maxFileCount) {
+        fileError.textContent = `Maximum ${maxFileCount} files allowed`;
+        fileError.classList.remove('hidden');
         return;
     }
     
-    paginationContainer.classList.remove('hidden');
+    // Validate file types and calculate total size
+    let totalSize = 0;
+    const validFiles = [];
     
-    // Update page info
-    const start = currentPage * pageSize + 1;
-    const end = Math.min((currentPage + 1) * pageSize, totalElements);
-    pageInfo.textContent = `${start}-${end} of ${totalElements}`;
-    
-    // Clear existing buttons
-    paginationButtons.innerHTML = '';
-    
-    // Previous button
-    const prevBtn = document.createElement('button');
-    prevBtn.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-        </svg>
-    `;
-    prevBtn.className = `px-3 py-2 rounded-md ${currentPage === 0 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'}`;
-    prevBtn.disabled = currentPage === 0;
-    prevBtn.onclick = () => {
-        if (currentPage > 0) {
-            loadRequests(currentPage - 1);
+    for (let file of files) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'pdf' && ext !== 'zip') {
+            fileError.textContent = `Invalid file type: ${file.name}. Only PDF and ZIP files are allowed.`;
+            fileError.classList.remove('hidden');
+            return;
         }
-    };
-    paginationButtons.appendChild(prevBtn);
-    
-    // Page numbers
-    const maxVisiblePages = 5;
-    let startPage = Math.max(0, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages - 1, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage < maxVisiblePages - 1) {
-        startPage = Math.max(0, endPage - maxVisiblePages + 1);
+        totalSize += file.size;
+        validFiles.push(file);
     }
     
-    if (startPage > 0) {
-        const firstBtn = createPageButton(0, '1');
-        paginationButtons.appendChild(firstBtn);
-        
-        if (startPage > 1) {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.className = 'px-3 py-2 text-gray-500';
-            paginationButtons.appendChild(dots);
-        }
+    // Validate total size
+    const totalSizeMb = totalSize / (1024 * 1024);
+    if (totalSizeMb > maxTotalSizeMb) {
+        fileError.textContent = `Total file size (${totalSizeMb.toFixed(2)} MB) exceeds maximum of ${maxTotalSizeMb} MB`;
+        fileError.classList.remove('hidden');
+        return;
     }
     
-    for (let i = startPage; i <= endPage; i++) {
-        const pageBtn = createPageButton(i, (i + 1).toString());
-        paginationButtons.appendChild(pageBtn);
-    }
+    // Update file input
+    const dataTransfer = new DataTransfer();
+    validFiles.forEach(file => dataTransfer.items.add(file));
+    fileInput.files = dataTransfer.files;
     
-    if (endPage < totalPages - 1) {
-        if (endPage < totalPages - 2) {
-            const dots = document.createElement('span');
-            dots.textContent = '...';
-            dots.className = 'px-3 py-2 text-gray-500';
-            paginationButtons.appendChild(dots);
-        }
-        
-        const lastBtn = createPageButton(totalPages - 1, totalPages.toString());
-        paginationButtons.appendChild(lastBtn);
-    }
-    
-    // Next button
-    const nextBtn = document.createElement('button');
-    nextBtn.innerHTML = `
-        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-        </svg>
-    `;
-    nextBtn.className = `px-3 py-2 rounded-md ${currentPage === totalPages - 1 ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'}`;
-    nextBtn.disabled = currentPage === totalPages - 1;
-    nextBtn.onclick = () => {
-        if (currentPage < totalPages - 1) {
-            loadRequests(currentPage + 1);
-        }
-    };
-    paginationButtons.appendChild(nextBtn);
+    // Show file previews
+    filePreviewList.classList.remove('hidden');
+    filePreviewContainer.innerHTML = validFiles.map((file, index) => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div class="flex items-center space-x-3 flex-1">
+                <span class="text-2xl">${getFileIcon(file.type)}</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-900 truncate">${file.name}</p>
+                    <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                </div>
+            </div>
+            <button 
+                type="button"
+                onclick="removeFileFromSelection(${index})"
+                class="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                title="Remove"
+            >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `).join('');
 }
 
-function createPageButton(pageNum, label) {
-    const btn = document.createElement('button');
-    btn.textContent = label;
-    btn.className = pageNum === currentPage 
-        ? 'px-3 py-2 rounded-md bg-blue-600 text-white font-medium'
-        : 'px-3 py-2 rounded-md bg-white text-gray-700 hover:bg-gray-50 border border-gray-300';
-    btn.onclick = () => {
-        if (pageNum !== currentPage) {
-            loadRequests(pageNum);
-        }
-    };
-    return btn;
-}
+// Remove file from selection
+window.removeFileFromSelection = (index) => {
+    const fileInput = document.getElementById('fileInput');
+    const files = Array.from(fileInput.files);
+    files.splice(index, 1);
+    
+    const dataTransfer = new DataTransfer();
+    files.forEach(file => dataTransfer.items.add(file));
+    fileInput.files = dataTransfer.files;
+    
+    // Re-render previews
+    const filePreviewContainer = document.getElementById('filePreviewContainer');
+    const filePreviewList = document.getElementById('filePreviewList');
+    
+    if (files.length === 0) {
+        filePreviewList.classList.add('hidden');
+    } else {
+        filePreviewContainer.innerHTML = files.map((file, idx) => `
+            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="flex items-center space-x-3 flex-1">
+                    <span class="text-2xl">${getFileIcon(file.type)}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-gray-900 truncate">${file.name}</p>
+                        <p class="text-xs text-gray-500">${formatFileSize(file.size)}</p>
+                    </div>
+                </div>
+                <button 
+                    type="button"
+                    onclick="removeFileFromSelection(${idx})"
+                    class="text-red-600 hover:text-red-700 p-1 rounded hover:bg-red-50"
+                    title="Remove"
+                >
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `).join('');
+    }
+};
 
-// View submitted files modal
-window.viewSubmittedFiles = async (requestId) => {
+// Handle file upload
+async function handleFileUpload(courseAssignmentId, documentType, submissionId, isReplacement, maxFileCount, maxTotalSizeMb, closeModal) {
+    const fileInput = document.getElementById('fileInput');
+    const notesInput = document.getElementById('notesInput');
+    const fileError = document.getElementById('fileError');
+    const uploadProgress = document.getElementById('uploadProgress');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    const files = fileInput.files;
+    const notes = notesInput.value.trim();
+    
+    if (files.length === 0) {
+        fileError.textContent = 'Please select at least one file';
+        fileError.classList.remove('hidden');
+        return;
+    }
+    
+    // Create FormData
+    const formData = new FormData();
+    for (let file of files) {
+        formData.append('files', file);
+    }
+    if (notes) {
+        formData.append('notes', notes);
+    }
+    
+    // Show progress
+    uploadProgress.classList.remove('hidden');
+    
+    // Disable upload button
+    const uploadBtn = document.querySelector('[data-action="upload"]');
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+    }
+    
     try {
-        const response = await professor.getFileAttachments(requestId);
+        if (isReplacement && submissionId) {
+            await professor.replaceFiles(
+                submissionId,
+                formData,
+                (percent) => {
+                    progressFill.style.width = `${percent}%`;
+                    progressText.textContent = `Uploading... ${Math.round(percent)}%`;
+                }
+            );
+            showToast('Files replaced successfully', 'success');
+        } else {
+            await professor.uploadFiles(
+                courseAssignmentId,
+                documentType,
+                formData,
+                (percent) => {
+                    progressFill.style.width = `${percent}%`;
+                    progressText.textContent = `Uploading... ${Math.round(percent)}%`;
+                }
+            );
+            showToast('Files uploaded successfully', 'success');
+        }
+        
+        // Reload courses
+        if (selectedSemesterId) {
+            await loadCourses(selectedSemesterId);
+        }
+        closeModal();
+    } catch (error) {
+        console.error('Upload error:', error);
+        fileError.textContent = error.message || 'Upload failed';
+        fileError.classList.remove('hidden');
+        
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = isReplacement ? 'Replace' : 'Upload';
+        }
+        uploadProgress.classList.add('hidden');
+    }
+}
+
+// View submission files
+window.viewSubmissionFiles = async (submissionId) => {
+    try {
+        const response = await professor.getSubmissionFiles(submissionId);
         const files = response.data || [];
         
         if (files.length === 0) {
@@ -564,13 +787,13 @@ window.viewSubmittedFiles = async (requestId) => {
                         <div class="flex items-center space-x-3 flex-1">
                             <span class="text-2xl">${getFileIcon(file.fileType)}</span>
                             <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-900 truncate">${file.fileName || file.originalFilename}</p>
+                                <p class="text-sm font-medium text-gray-900 truncate">${file.originalFilename}</p>
                                 <p class="text-xs text-gray-500">${formatFileSize(file.fileSize)}</p>
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
                             <button 
-                                onclick="downloadFileAttachment(${file.id}, '${file.fileName || file.originalFilename}')"
+                                onclick="downloadSubmissionFile(${file.id}, '${file.originalFilename}')"
                                 class="text-blue-600 hover:text-blue-700 p-2 rounded hover:bg-blue-50"
                                 title="Download"
                             >
@@ -601,10 +824,10 @@ window.viewSubmittedFiles = async (requestId) => {
     }
 };
 
-// Download file attachment
-window.downloadFileAttachment = async (attachmentId, filename) => {
+// Download submission file
+window.downloadSubmissionFile = async (fileId, filename) => {
     try {
-        const response = await professor.downloadFileAttachment(attachmentId);
+        const response = await professor.downloadSubmissionFile(fileId);
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -633,3 +856,219 @@ function getFileIcon(mimeType) {
     if (mimeType.includes('zip') || mimeType.includes('compressed')) return '📦';
     return '📎';
 }
+
+
+// Tab switching
+let currentTab = 'courses';
+let currentPath = '';
+let fileExplorerData = null;
+
+window.switchTab = (tab) => {
+    currentTab = tab;
+    
+    // Update tab buttons
+    document.getElementById('coursesTab').classList.remove('active', 'border-blue-600', 'text-blue-600');
+    document.getElementById('coursesTab').classList.add('border-transparent', 'text-gray-500');
+    document.getElementById('fileExplorerTab').classList.remove('active', 'border-blue-600', 'text-blue-600');
+    document.getElementById('fileExplorerTab').classList.add('border-transparent', 'text-gray-500');
+    
+    if (tab === 'courses') {
+        document.getElementById('coursesTab').classList.add('active', 'border-blue-600', 'text-blue-600');
+        document.getElementById('coursesTab').classList.remove('border-transparent', 'text-gray-500');
+        coursesTabContent.classList.remove('hidden');
+        fileExplorerTabContent.classList.add('hidden');
+    } else if (tab === 'fileExplorer') {
+        document.getElementById('fileExplorerTab').classList.add('active', 'border-blue-600', 'text-blue-600');
+        document.getElementById('fileExplorerTab').classList.remove('border-transparent', 'text-gray-500');
+        coursesTabContent.classList.add('hidden');
+        fileExplorerTabContent.classList.remove('hidden');
+        
+        // Load file explorer if semester is selected
+        if (selectedAcademicYearId && selectedSemesterId) {
+            loadFileExplorer();
+        } else {
+            fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Please select an academic year and semester first</p>';
+        }
+    }
+};
+
+// Load file explorer
+async function loadFileExplorer(path = '') {
+    try {
+        fileExplorerContainer.innerHTML = `
+            <div class="animate-pulse space-y-4">
+                <div class="h-16 bg-gray-200 rounded-lg"></div>
+                <div class="h-16 bg-gray-200 rounded-lg"></div>
+            </div>
+        `;
+        
+        let response;
+        if (path) {
+            response = await professor.getFileExplorerNode(path);
+        } else {
+            response = await professor.getFileExplorerRoot(selectedAcademicYearId, selectedSemesterId);
+        }
+        
+        fileExplorerData = response.data;
+        currentPath = path;
+        renderFileExplorer(fileExplorerData);
+        renderBreadcrumbs(path);
+    } catch (error) {
+        console.error('Error loading file explorer:', error);
+        showToast('Failed to load file explorer', 'error');
+        fileExplorerContainer.innerHTML = '<p class="text-red-600 text-center py-8">Error loading file explorer</p>';
+    }
+}
+
+// Render file explorer
+function renderFileExplorer(data) {
+    if (!data) {
+        fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No data available</p>';
+        return;
+    }
+    
+    const children = data.children || [];
+    
+    if (children.length === 0) {
+        fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No items found</p>';
+        return;
+    }
+    
+    // Separate folders and files
+    const folders = children.filter(item => item.type !== 'FILE');
+    const files = children.filter(item => item.type === 'FILE');
+    
+    let html = '';
+    
+    // Render folders
+    if (folders.length > 0) {
+        html += '<div class="mb-6"><h3 class="text-sm font-medium text-gray-700 mb-3">Folders</h3><div class="space-y-2">';
+        folders.forEach(folder => {
+            const canWrite = folder.canWrite ? 'text-blue-600' : 'text-gray-600';
+            const writeIndicator = folder.canWrite ? '<span class="text-xs text-blue-600 ml-2">(Your folder)</span>' : '';
+            
+            html += `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors cursor-pointer"
+                    onclick="navigateToPath('${folder.path}')">
+                    <div class="flex items-center space-x-3 flex-1">
+                        <svg class="w-6 h-6 ${canWrite}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-gray-900">${folder.name}${writeIndicator}</p>
+                            ${folder.metadata && folder.metadata.description ? `<p class="text-xs text-gray-500">${folder.metadata.description}</p>` : ''}
+                        </div>
+                    </div>
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+    }
+    
+    // Render files
+    if (files.length > 0) {
+        html += '<div><h3 class="text-sm font-medium text-gray-700 mb-3">Files</h3><div class="space-y-2">';
+        files.forEach(file => {
+            const metadata = file.metadata || {};
+            const fileSize = metadata.fileSize ? formatFileSize(metadata.fileSize) : 'Unknown size';
+            const uploadDate = metadata.uploadedAt ? formatDate(metadata.uploadedAt) : 'Unknown date';
+            
+            html += `
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                    <div class="flex items-center space-x-3 flex-1">
+                        <span class="text-2xl">${getFileIcon(metadata.fileType)}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-900 truncate">${file.name}</p>
+                            <p class="text-xs text-gray-500">${fileSize} • ${uploadDate}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        ${file.canRead ? `
+                            <button 
+                                onclick="downloadFileFromExplorer(${file.entityId}, '${file.name}')"
+                                class="text-blue-600 hover:text-blue-700 p-2 rounded hover:bg-blue-50"
+                                title="Download"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div></div>';
+    }
+    
+    fileExplorerContainer.innerHTML = html;
+}
+
+// Render breadcrumbs
+function renderBreadcrumbs(path) {
+    if (!path) {
+        breadcrumbs.innerHTML = `
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+            </svg>
+            <button onclick="loadFileExplorer('')" class="text-blue-600 hover:underline">Home</button>
+        `;
+        return;
+    }
+    
+    const parts = path.split('/').filter(p => p);
+    let html = `
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+        </svg>
+        <button onclick="loadFileExplorer('')" class="text-blue-600 hover:underline">Home</button>
+    `;
+    
+    let currentPath = '';
+    parts.forEach((part, index) => {
+        currentPath += (currentPath ? '/' : '') + part;
+        const isLast = index === parts.length - 1;
+        
+        html += `
+            <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+        `;
+        
+        if (isLast) {
+            html += `<span class="text-gray-700 font-medium">${part}</span>`;
+        } else {
+            html += `<button onclick="loadFileExplorer('${currentPath}')" class="text-blue-600 hover:underline">${part}</button>`;
+        }
+    });
+    
+    breadcrumbs.innerHTML = html;
+}
+
+// Navigate to path
+window.navigateToPath = (path) => {
+    loadFileExplorer(path);
+};
+
+// Download file from explorer
+window.downloadFileFromExplorer = async (fileId, filename) => {
+    try {
+        const response = await professor.downloadSubmissionFile(fileId);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showToast('File downloaded successfully', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showToast('Failed to download file', 'error');
+    }
+};

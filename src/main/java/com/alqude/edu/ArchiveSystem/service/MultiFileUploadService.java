@@ -28,7 +28,14 @@ import java.util.stream.Collectors;
 
 /**
  * Enhanced service for handling multi-file uploads professionally
+ * 
+ * NOTE: This service uses legacy entities (DocumentRequest, SubmittedDocument, FileAttachment)
+ * for backward compatibility and migration support. Deprecation warnings are suppressed
+ * as this is intentional usage of archived code.
+ * 
+ * @deprecated This service will be replaced by FileService in the new semester-based system
  */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -101,6 +108,11 @@ public class MultiFileUploadService {
                 isNewSubmission = false;
                 log.info("Found existing submission created by concurrent request, will update it instead");
             }
+        }
+
+        // Ensure submittedDocument is not null (should never happen due to logic above)
+        if (submittedDocument == null) {
+            throw new IllegalStateException("Failed to create or retrieve submission for request id: " + requestId);
         }
 
         if (!isNewSubmission) {

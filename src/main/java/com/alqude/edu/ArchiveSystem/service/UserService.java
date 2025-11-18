@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
+@SuppressWarnings("deprecation")
 public class UserService implements UserDetailsService {
     
     private final UserRepository userRepository;

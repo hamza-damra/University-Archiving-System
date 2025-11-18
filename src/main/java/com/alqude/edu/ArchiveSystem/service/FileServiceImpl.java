@@ -6,6 +6,7 @@ import com.alqude.edu.ArchiveSystem.exception.FileUploadException;
 import com.alqude.edu.ArchiveSystem.repository.CourseAssignmentRepository;
 import com.alqude.edu.ArchiveSystem.repository.DocumentSubmissionRepository;
 import com.alqude.edu.ArchiveSystem.repository.UploadedFileRepository;
+import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,11 +31,13 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class FileServiceImpl implements FileService {
     
     private final CourseAssignmentRepository courseAssignmentRepository;
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UploadedFileRepository uploadedFileRepository;
+    private final UserRepository userRepository;
     
     @Value("${file.upload.directory:uploads/}")
     private String uploadDirectory;
@@ -52,6 +55,13 @@ public class FileServiceImpl implements FileService {
         // Validate course assignment exists
         CourseAssignment courseAssignment = courseAssignmentRepository.findById(courseAssignmentId)
                 .orElseThrow(() -> new EntityNotFoundException("Course assignment not found with ID: " + courseAssignmentId));
+        
+        // Check write permission
+        User currentUser = getCurrentUser();
+        if (!canWriteToCourseAssignment(courseAssignment, currentUser)) {
+            throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                    "User does not have permission to upload files to this course assignment");
+        }
         
         // Validate files
         if (files == null || files.isEmpty()) {
@@ -114,6 +124,13 @@ public class FileServiceImpl implements FileService {
         DocumentSubmission submission = documentSubmissionRepository.findById(submissionId)
                 .orElseThrow(() -> new EntityNotFoundException("Document submission not found with ID: " + submissionId));
         
+        // Check write permission (professor must own the submission)
+        User currentUser = getCurrentUser();
+        if (currentUser == null || !submission.getProfessor().getId().equals(currentUser.getId())) {
+            throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                    "User does not have permission to replace files for this submission");
+        }
+        
         // Validate files
         if (files == null || files.isEmpty()) {
             throw new IllegalArgumentException("No files provided for replacement");
@@ -157,20 +174,64 @@ public class FileServiceImpl implements FileService {
     @Transactional(readOnly = true)
     public UploadedFile getFile(Long fileId) {
         log.debug("Fetching file with ID: {}", fileId);
-        return uploadedFileRepository.findById(fileId)
+        UploadedFile file = uploadedFileRepository.findById(fileId)
                 .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
+        
+        // Check read permission
+        User currentUser = getCurrentUser();
+        if (currentUser != null && !canReadFile(file, currentUser)) {
+            throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                    "User does not have permission to access this file");
+        }
+        
+        return file;
     }
     
     @Override
     @Transactional(readOnly = true)
     public List<UploadedFile> getFilesBySubmission(Long submissionId) {
         log.debug("Fetching files for submission ID: {}", submissionId);
+        
+        // Verify submission exists
+        DocumentSubmission submission = documentSubmissionRepository.findById(submissionId)
+                .orElseThrow(() -> new EntityNotFoundException("Document submission not found with ID: " + submissionId));
+        
+        // Check read permission for the submission
+        User currentUser = getCurrentUser();
+        if (currentUser != null) {
+            // Get any file from the submission to check permissions
+            List<UploadedFile> files = uploadedFileRepository.findByDocumentSubmissionIdOrderByFileOrderAsc(submissionId);
+            
+            // If there are files, check permission on the first one
+            // If no files yet, check if user can read based on department
+            if (!files.isEmpty()) {
+                if (!canReadFile(files.get(0), currentUser)) {
+                    throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                            "User does not have permission to access files for this submission");
+                }
+            } else {
+                // No files yet, check department access
+                User submissionOwner = submission.getProfessor();
+                if (currentUser.getRole() != Role.ROLE_DEANSHIP) {
+                    if (currentUser.getDepartment() == null || submissionOwner.getDepartment() == null ||
+                        !currentUser.getDepartment().getId().equals(submissionOwner.getDepartment().getId())) {
+                        throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                                "User does not have permission to access files for this submission");
+                    }
+                }
+            }
+            
+            return files;
+        }
+        
         return uploadedFileRepository.findByDocumentSubmissionIdOrderByFileOrderAsc(submissionId);
     }
     
     @Override
     public Resource loadFileAsResource(String fileUrl) {
         try {
+            // Note: Permission checking for file download should be done at the controller level
+            // where we have the fileId and can check canRead permission
             Path filePath = Paths.get(uploadDirectory).resolve(fileUrl).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             
@@ -185,6 +246,25 @@ public class FileServiceImpl implements FileService {
         }
     }
     
+    /**
+     * Load file as resource with permission checking.
+     * This method should be used by controllers to ensure proper access control.
+     *
+     * @param fileId the file ID
+     * @param currentUser the current authenticated user
+     * @return the file resource
+     * @throws com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException if user lacks read permission
+     */
+    public Resource loadFileAsResourceWithPermissionCheck(Long fileId, User currentUser) {
+        log.debug("Loading file {} with permission check for user {}", fileId, currentUser.getEmail());
+        
+        // Get file and check read permission
+        UploadedFile file = getFile(fileId); // This already checks read permission
+        
+        // Load the resource
+        return loadFileAsResource(file.getFileUrl());
+    }
+    
     @Override
     @Transactional
     public void deleteFile(Long fileId) {
@@ -192,6 +272,13 @@ public class FileServiceImpl implements FileService {
         
         UploadedFile file = uploadedFileRepository.findById(fileId)
                 .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
+        
+        // Check delete permission
+        User currentUser = getCurrentUser();
+        if (!canDeleteFile(file, currentUser)) {
+            throw new com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException(
+                    "User does not have permission to delete this file");
+        }
         
         DocumentSubmission submission = file.getDocumentSubmission();
         
@@ -388,5 +475,192 @@ public class FileServiceImpl implements FileService {
         String uniquePart = UUID.randomUUID().toString().substring(0, 8) + "_" + System.currentTimeMillis();
         
         return nameWithoutExtension + "_" + uniquePart + extension;
+    }
+    
+    /**
+     * Check if user can read a file.
+     * Permission rules (Requirements 5.5, 7.5, 9.4):
+     * - Deanship: can read all files across all departments
+     * - HOD: can read files only within their department (read-only)
+     * - Professor: can read files within their department (own and colleagues)
+     * 
+     * @param file the file to check
+     * @param user the user requesting access
+     * @return true if user has read permission, false otherwise
+     */
+    private boolean canReadFile(UploadedFile file, User user) {
+        if (user == null) {
+            log.warn("Cannot check read permission for null user");
+            return false;
+        }
+        
+        // Deanship can read all files
+        if (user.getRole() == Role.ROLE_DEANSHIP) {
+            log.debug("Deanship user {} has read access to all files", user.getEmail());
+            return true;
+        }
+        
+        // Get the professor who owns the file
+        DocumentSubmission submission = file.getDocumentSubmission();
+        User fileOwner = submission.getProfessor();
+        
+        // Check if user is in the same department
+        if (user.getDepartment() != null && fileOwner.getDepartment() != null) {
+            boolean sameDepart = user.getDepartment().getId().equals(fileOwner.getDepartment().getId());
+            log.debug("User {} department access check: {}", user.getEmail(), sameDepart);
+            return sameDepart;
+        }
+        
+        log.warn("User {} or file owner has no department assigned", user.getEmail());
+        return false;
+    }
+    
+    /**
+     * Check if user can write/upload files for a course assignment.
+     * Permission rules (Requirements 5.5, 9.4):
+     * - Only professors can write/upload files
+     * - Professors can only write to their own course assignments
+     * - Deanship and HOD have read-only access
+     * 
+     * @param courseAssignment the course assignment to check
+     * @param user the user requesting access
+     * @return true if user has write permission, false otherwise
+     */
+    private boolean canWriteToCourseAssignment(CourseAssignment courseAssignment, User user) {
+        if (user == null) {
+            log.warn("Cannot check write permission for null user");
+            return false;
+        }
+        
+        if (user.getRole() != Role.ROLE_PROFESSOR) {
+            log.debug("User {} with role {} cannot write files (only professors can write)", 
+                     user.getEmail(), user.getRole());
+            return false;
+        }
+        
+        // Professor can only write to their own course assignments
+        boolean isOwnCourse = courseAssignment.getProfessor().getId().equals(user.getId());
+        log.debug("User {} write access to course assignment {}: {}", 
+                 user.getEmail(), courseAssignment.getId(), isOwnCourse);
+        return isOwnCourse;
+    }
+    
+    /**
+     * Check if user can delete a file.
+     * Permission rules (Requirements 5.5, 7.5, 9.4):
+     * - Only professors can delete files
+     * - Professors can only delete their own files
+     * - Deanship and HOD cannot delete any files
+     * - Additional deadline checks may apply (not implemented here)
+     * 
+     * @param file the file to check
+     * @param user the user requesting access
+     * @return true if user has delete permission, false otherwise
+     */
+    private boolean canDeleteFile(UploadedFile file, User user) {
+        if (user == null) {
+            log.warn("Cannot check delete permission for null user");
+            return false;
+        }
+        
+        if (user.getRole() != Role.ROLE_PROFESSOR) {
+            log.debug("User {} with role {} cannot delete files (only professors can delete)", 
+                     user.getEmail(), user.getRole());
+            return false;
+        }
+        
+        // Get the professor who owns the file
+        DocumentSubmission submission = file.getDocumentSubmission();
+        User fileOwner = submission.getProfessor();
+        
+        // Professor can only delete their own files
+        boolean isOwnFile = fileOwner.getId().equals(user.getId());
+        log.debug("User {} delete access to file {}: {}", 
+                 user.getEmail(), file.getId(), isOwnFile);
+        return isOwnFile;
+    }
+    
+    /**
+     * Get the current authenticated user.
+     */
+    private User getCurrentUser() {
+        org.springframework.security.core.Authentication authentication = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+        
+        if (authentication == null || !authentication.isAuthenticated()) {
+            return null;
+        }
+        
+        String email = authentication.getName();
+        return userRepository.findByEmail(email).orElse(null);
+    }
+    
+    // ========== Public Permission Checking Methods ==========
+    
+    @Override
+    public boolean canUserReadFile(Long fileId, User user) {
+        if (user == null || fileId == null) {
+            return false;
+        }
+        
+        try {
+            UploadedFile file = uploadedFileRepository.findById(fileId)
+                    .orElse(null);
+            
+            if (file == null) {
+                log.warn("File not found with ID: {}", fileId);
+                return false;
+            }
+            
+            return canReadFile(file, user);
+        } catch (Exception e) {
+            log.error("Error checking read permission for file {}: {}", fileId, e.getMessage());
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean canUserWriteToCourseAssignment(Long courseAssignmentId, User user) {
+        if (user == null || courseAssignmentId == null) {
+            return false;
+        }
+        
+        try {
+            CourseAssignment courseAssignment = courseAssignmentRepository.findById(courseAssignmentId)
+                    .orElse(null);
+            
+            if (courseAssignment == null) {
+                log.warn("Course assignment not found with ID: {}", courseAssignmentId);
+                return false;
+            }
+            
+            return canWriteToCourseAssignment(courseAssignment, user);
+        } catch (Exception e) {
+            log.error("Error checking write permission for course assignment {}: {}", 
+                     courseAssignmentId, e.getMessage());
+            return false;
+        }
+    }
+    
+    @Override
+    public boolean canUserDeleteFile(Long fileId, User user) {
+        if (user == null || fileId == null) {
+            return false;
+        }
+        
+        try {
+            UploadedFile file = uploadedFileRepository.findById(fileId)
+                    .orElse(null);
+            
+            if (file == null) {
+                log.warn("File not found with ID: {}", fileId);
+                return false;
+            }
+            
+            return canDeleteFile(file, user);
+        } catch (Exception e) {
+            log.error("Error checking delete permission for file {}: {}", fileId, e.getMessage());
+            return false;
+        }
     }
 }

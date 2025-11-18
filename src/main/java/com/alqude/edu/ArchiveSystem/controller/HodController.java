@@ -40,6 +40,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('HOD')")
+@SuppressWarnings("deprecation")
 public class HodController {
     
     private final UserService userService;
@@ -50,6 +51,28 @@ public class HodController {
     private final SemesterReportService semesterReportService;
     private final FileExplorerService fileExplorerService;
     private final FileService fileService;
+    private final com.alqude.edu.ArchiveSystem.service.AcademicService academicService;
+    
+    // ==================== Academic Year Management ====================
+    
+    /**
+     * Get all academic years (read-only for HOD)
+     * 
+     * @return List of all academic years
+     */
+    @GetMapping("/academic-years")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.AcademicYear>>> getAllAcademicYears() {
+        log.info("HOD retrieving all academic years");
+        
+        try {
+            List<com.alqude.edu.ArchiveSystem.entity.AcademicYear> academicYears = academicService.getAllAcademicYears();
+            return ResponseEntity.ok(ApiResponse.success("Academic years retrieved successfully", academicYears));
+        } catch (Exception e) {
+            log.error("Error retrieving academic years", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve academic years: " + e.getMessage()));
+        }
+    }
     
     // User Management Endpoints
     
@@ -509,9 +532,11 @@ public class HodController {
     
     /**
      * Download a file (read-only access for HOD)
+     * Security: HOD can only access files in their department
      * Task 12.4
      */
     @GetMapping("/files/{fileId}/download")
+    @PreAuthorize("hasRole('HOD')")
     public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) {
         log.info("HOD downloading file with id: {}", fileId);
         

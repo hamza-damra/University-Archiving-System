@@ -14,6 +14,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,7 @@ public class FileExplorerController {
      * @return root node with filtered children
      */
     @GetMapping("/root")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FileExplorerNode>> getRoot(
             @RequestParam Long academicYearId,
             @RequestParam Long semesterId,
@@ -69,6 +71,7 @@ public class FileExplorerController {
      * @return the node with its children
      */
     @GetMapping("/node")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<FileExplorerNode>> getNode(
             @RequestParam String path,
             Authentication authentication) {
@@ -105,6 +108,7 @@ public class FileExplorerController {
      * @return file metadata
      */
     @GetMapping("/files/{fileId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<UploadedFile>> getFileMetadata(
             @PathVariable Long fileId) {
         
@@ -127,6 +131,7 @@ public class FileExplorerController {
      * @return file resource for download
      */
     @GetMapping("/files/{fileId}/download")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> downloadFile(
             @PathVariable Long fileId,
             Authentication authentication) {
@@ -136,9 +141,12 @@ public class FileExplorerController {
         User currentUser = authService.getCurrentUser();
         UploadedFile file = fileService.getFile(fileId);
         
-        // Note: Permission checking is handled by FileExplorerService.canRead()
-        // which is called internally when accessing file metadata
-        // Additional permission checks can be added here if needed based on user role
+        // Check permission using FileExplorerService
+        if (!fileExplorerService.canRead(file.getFileUrl(), currentUser)) {
+            log.error("User {} does not have permission to access file: {}", 
+                    currentUser.getEmail(), fileId);
+            return ResponseEntity.status(403).build();
+        }
         
         // Load file as resource
         Resource resource = fileService.loadFileAsResource(file.getFileUrl());

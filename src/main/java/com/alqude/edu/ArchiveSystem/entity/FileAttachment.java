@@ -12,9 +12,28 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 /**
+ * LEGACY ENTITY - ARCHIVED
+ * 
  * Entity representing an individual file attachment for a submitted document
  * Supports multiple files per document request
+ * 
+ * This entity is part of the old request-based document system and has been replaced
+ * by the new semester-based UploadedFile entity.
+ * 
+ * Replacement entity:
+ * - UploadedFile: Stores file metadata within the semester-based structure
+ * 
+ * This entity is kept for:
+ * 1. Historical data access
+ * 2. Rollback capability
+ * 3. Data migration reference
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by UploadedFile in semester-based system
+ * @see com.alqude.edu.ArchiveSystem.entity.UploadedFile
  */
+@Deprecated(since = "2.0", forRemoval = false)
 @Entity
 @Table(name = "file_attachments")
 @Data

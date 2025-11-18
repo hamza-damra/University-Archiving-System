@@ -2,8 +2,9 @@
  * HOD Dashboard
  */
 
-import { hod, auth, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
-import { showToast, showModal, showConfirm, formatDate, debounce } from './ui.js';
+import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
+import { showToast, showModal, formatDate } from './ui.js';
+import { FileExplorer } from './file-explorer.js';
 
 // Check authentication
 if (!isAuthenticated()) {
@@ -17,27 +18,143 @@ if (userInfo.role !== 'ROLE_HOD') {
 }
 
 // State
-let professors = [];
 let requests = [];
-let currentPage = 1;
-const pageSize = 10;
+let academicYears = [];
+let semesters = [];
+let selectedAcademicYear = null;
+let selectedSemester = null;
+let fileExplorerInstance = null;
 
 // DOM Elements
 const hodName = document.getElementById('hodName');
 const logoutBtn = document.getElementById('logoutBtn');
-const professorsList = document.getElementById('professorsList');
-const professorSearch = document.getElementById('professorSearch');
-const addProfessorBtn = document.getElementById('addProfessorBtn');
-const createRequestForm = document.getElementById('createRequestForm');
-const professorIdSelect = document.getElementById('professorId');
+const academicYearSelect = document.getElementById('academicYearSelect');
+const semesterSelect = document.getElementById('semesterSelect');
+const dashboardOverview = document.getElementById('dashboardOverview');
+const submissionStatusSection = document.getElementById('submissionStatusSection');
+const submissionStatusTableBody = document.getElementById('submissionStatusTableBody');
+const fileExplorerSection = document.getElementById('fileExplorerSection');
 const requestsTableBody = document.getElementById('requestsTableBody');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const downloadReportBtn = document.getElementById('downloadReportBtn');
+const filterCourse = document.getElementById('filterCourse');
+const filterDocType = document.getElementById('filterDocType');
+const filterStatus = document.getElementById('filterStatus');
 
 // Initialize
 hodName.textContent = userInfo.fullName;
-loadProfessors();
-loadRequests();
+loadAcademicYears();
+loadLegacyRequests();
+initializeFileExplorer();
+initializeTabSwitching();
+initializeReportButtons();
+
+// Tab Switching
+function initializeTabSwitching() {
+    const navTabs = document.querySelectorAll('.nav-tab');
+    navTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabName = tab.getAttribute('data-tab');
+            switchTab(tabName);
+        });
+    });
+}
+
+// Report Buttons
+function initializeReportButtons() {
+    const viewReportBtnTab = document.getElementById('viewReportBtnTab');
+    const downloadReportBtnTab = document.getElementById('downloadReportBtnTab');
+    
+    if (viewReportBtnTab) {
+        viewReportBtnTab.addEventListener('click', viewReport);
+    }
+    if (downloadReportBtnTab) {
+        downloadReportBtnTab.addEventListener('click', downloadReport);
+    }
+    
+    // Also handle the buttons in submission status section
+    if (viewReportBtn) {
+        viewReportBtn.addEventListener('click', viewReport);
+    }
+    if (downloadReportBtn) {
+        downloadReportBtn.addEventListener('click', downloadReport);
+    }
+}
+
+async function viewReport() {
+    if (!selectedSemester) {
+        showToast('Please select a semester first', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await hod.getProfessorSubmissionReport(selectedSemester);
+        const report = response.data;
+        
+        // Display report in a modal or new section
+        displayReportModal(report);
+    } catch (error) {
+        console.error('Error viewing report:', error);
+        showToast('Failed to load report', 'error');
+    }
+}
+
+async function downloadReport() {
+    if (!selectedSemester) {
+        showToast('Please select a semester first', 'warning');
+        return;
+    }
+    
+    try {
+        showToast('Generating PDF report...', 'info');
+        const blob = await hod.downloadProfessorSubmissionReportPdf(selectedSemester);
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `professor-submission-report-${selectedSemester}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        showToast('Report downloaded successfully', 'success');
+    } catch (error) {
+        console.error('Error downloading report:', error);
+        showToast('Failed to download report', 'error');
+    }
+}
+
+function switchTab(tabName) {
+    // Update nav tabs
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        if (tab.getAttribute('data-tab') === tabName) {
+            tab.classList.add('active', 'border-blue-600', 'text-blue-600');
+            tab.classList.remove('border-transparent', 'text-gray-500');
+        } else {
+            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
+            tab.classList.add('border-transparent', 'text-gray-500');
+        }
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.add('hidden');
+    });
+    
+    const activeTab = document.getElementById(`${tabName}-tab`);
+    if (activeTab) {
+        activeTab.classList.remove('hidden');
+    }
+    
+    // Load data for specific tabs
+    if (tabName === 'submission-status' && selectedSemester) {
+        loadSubmissionStatus();
+    } else if (tabName === 'file-explorer' && selectedSemester) {
+        loadFileExplorerData();
+    }
+}
 
 // Logout
 logoutBtn.addEventListener('click', () => {
@@ -46,348 +163,330 @@ logoutBtn.addEventListener('click', () => {
     redirectToLogin();
 });
 
-// Load professors
-async function loadProfessors() {
+// Load academic years
+async function loadAcademicYears() {
     try {
-        const response = await hod.getProfessors();
-        const pageData = response.data || {};
-        professors = Array.isArray(pageData) ? pageData : (pageData.content || []);
-        renderProfessors();
-        populateProfessorSelect();
-    } catch (error) {
-        console.error('Error loading professors:', error);
-        showToast('Failed to load professors', 'error');
-        professorsList.innerHTML = '<p class="text-red-600 text-sm">Error loading professors</p>';
-    }
-}
-
-// Render professors list
-function renderProfessors(filterText = '') {
-    const filtered = professors.filter(prof => 
-        prof.firstName.toLowerCase().includes(filterText.toLowerCase()) ||
-        prof.lastName.toLowerCase().includes(filterText.toLowerCase()) ||
-        prof.email.toLowerCase().includes(filterText.toLowerCase())
-    );
-
-    if (filtered.length === 0) {
-        professorsList.innerHTML = '<p class="text-gray-500 text-sm">No professors found</p>';
-        return;
-    }
-
-    professorsList.innerHTML = filtered.map(prof => `
-        <div class="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
-            <div class="flex justify-between items-start">
-                <div class="flex-1">
-                    <h4 class="font-medium text-gray-900">${prof.firstName} ${prof.lastName}</h4>
-                    <p class="text-sm text-gray-600">${prof.email}</p>
-                    ${prof.department ? `<p class="text-xs text-gray-500 mt-1">${prof.department.name}</p>` : ''}
-                </div>
-                <div class="flex space-x-1">
-                    <button 
-                        class="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                        onclick="window.editProfessor(${prof.id})"
-                        title="Edit"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                    </button>
-                    <button 
-                        class="p-1 text-red-600 hover:bg-red-50 rounded"
-                        onclick="window.deleteProfessor(${prof.id})"
-                        title="Delete"
-                    >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
-// Populate professor select in form
-function populateProfessorSelect() {
-    professorIdSelect.innerHTML = '<option value="">Select professor...</option>' +
-        professors.map(prof => `
-            <option value="${prof.id}">${prof.firstName} ${prof.lastName}</option>
-        `).join('');
-}
-
-// Search professors
-professorSearch.addEventListener('input', debounce((e) => {
-    renderProfessors(e.target.value);
-}, 300));
-
-// Add professor
-addProfessorBtn.addEventListener('click', () => {
-    showProfessorModal();
-});
-
-// Edit professor
-window.editProfessor = (id) => {
-    const professor = professors.find(p => p.id === id);
-    if (professor) {
-        showProfessorModal(professor);
-    }
-};
-
-// Delete professor
-window.deleteProfessor = (id) => {
-    const professor = professors.find(p => p.id === id);
-    if (!professor) return;
-
-    showConfirm(
-        'Delete Professor',
-        `Are you sure you want to delete ${professor.firstName} ${professor.lastName}? This action cannot be undone.`,
-        async () => {
-            try {
-                await hod.deleteProfessor(id);
-                showToast('Professor deleted successfully', 'success');
-                loadProfessors();
-            } catch (error) {
-                console.error('Error deleting professor:', error);
-                showToast(error.message || 'Failed to delete professor', 'error');
-            }
-        },
-        { danger: true, confirmText: 'Delete' }
-    );
-};
-
-function bindPasswordToggle(formElement) {
-    const passwordInput = formElement?.querySelector('input[name="password"]');
-    const toggleBtn = formElement?.querySelector('[data-toggle-password]');
-
-    if (!passwordInput || !toggleBtn) {
-        return;
-    }
-
-    const eyeOpen = toggleBtn.querySelector('[data-eye-open]');
-    const eyeClosed = toggleBtn.querySelector('[data-eye-closed]');
-
-    const updateToggleState = () => {
-        const isHidden = passwordInput.type === 'password';
-        toggleBtn.setAttribute('aria-label', `${isHidden ? 'Show' : 'Hide'} password`);
-        toggleBtn.setAttribute('title', `${isHidden ? 'Show' : 'Hide'} password`);
-        if (eyeOpen && eyeClosed) {
-            eyeOpen.classList.toggle('hidden', !isHidden);
-            eyeClosed.classList.toggle('hidden', isHidden);
+        const response = await hod.getAcademicYears();
+        academicYears = response.data || [];
+        
+        if (academicYears.length === 0) {
+            academicYearSelect.innerHTML = '<option value="">No academic years available</option>';
+            showToast('No academic years found. Please contact Deanship to set up academic structure.', 'warning');
+            return;
         }
-    };
-
-    toggleBtn.addEventListener('click', (event) => {
-        event.preventDefault();
-        passwordInput.type = passwordInput.type === 'password' ? 'text' : 'password';
-        updateToggleState();
-    });
-
-    updateToggleState();
-}
-
-// Show professor modal
-function showProfessorModal(professor = null) {
-    const isEdit = !!professor;
-    const title = isEdit ? 'Edit Professor' : 'Add Professor';
-
-    const content = `
-        <form id="professorForm" class="space-y-4">
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
-                    <input type="text" name="firstName" required value="${professor?.firstName || ''}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
-                    <input type="text" name="lastName" required value="${professor?.lastName || ''}"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                </div>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                <input type="email" name="email" required value="${professor?.email || ''}"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                <p class="mt-1 text-xs text-red-600 hidden" data-email-error>Professor with this email already exists.</p>
-            </div>
-            ${!isEdit ? `
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Password *</label>
-                <div class="relative" data-password-wrapper>
-                    <input type="password" name="password" required minlength="8"
-                        pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z\\d\\s])[^\\s]{8,}"
-                        title="8+ chars with uppercase, lowercase, number, and special character"
-                        class="w-full px-3 py-2 pr-12 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
-                    <button type="button" data-toggle-password
-                        class="absolute inset-y-0 right-2 flex items-center text-gray-500 hover:text-blue-600 focus:outline-none"
-                        aria-label="Show password"
-                        title="Show password">
-                        <svg data-eye-open class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M1.5 12C2.7 7.5 6.9 4 12 4s9.3 3.5 10.5 8c-1.2 4.5-5.4 8-10.5 8s-9.3-3.5-10.5-8z"></path>
-                            <circle cx="12" cy="12" r="3" stroke-width="2"></circle>
-                        </svg>
-                        <svg data-eye-closed class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18M10.584 10.59A2.5 2.5 0 0113.42 13.4m4.042.892C17.955 14.735 18.5 14 19.5 12c-1.2-4.5-5.4-8-10.5-8-1.41 0-2.76.27-4 .76"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.122 6.13C4.046 7.327 2.568 9.305 1.5 12c1.2 4.5 5.4 8 10.5 8 1.79 0 3.48-.4 5-.96"></path>
-                        </svg>
-                    </button>
-                </div>
-                <p class="mt-1 text-xs text-gray-500">Use at least 8 characters with uppercase, lowercase, number, and special symbol.</p>
-            </div>
-            ` : ''}
-        </form>
-    `;
-
-    const modal = showModal(title, content, {
-        buttons: [
-            {
-                text: 'Cancel',
-                className: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
-                action: 'cancel',
-                onClick: (close) => close(),
-            },
-            {
-                text: isEdit ? 'Update' : 'Create',
-                className: 'bg-blue-600 text-white hover:bg-blue-700',
-                action: 'save',
-                onClick: async (close) => {
-                    const form = document.getElementById('professorForm');
-                    const emailInput = form.querySelector('input[name="email"]');
-                    if (emailInput) {
-                        emailInput.dispatchEvent(new Event('input'));
-                    }
-
-                    if (!form.checkValidity()) {
-                        form.reportValidity();
-                        return;
-                    }
-
-                    const formData = new FormData(form);
-                    const data = {
-                        firstName: formData.get('firstName'),
-                        lastName: formData.get('lastName'),
-                        email: formData.get('email'),
-                    };
-
-                    if (!isEdit) {
-                        data.password = formData.get('password');
-                        data.role = 'ROLE_PROFESSOR';
-                        
-                        // Get department ID from userInfo or fetch from API
-                        let departmentId = userInfo?.departmentId;
-                        
-                        if (!departmentId) {
-                            try {
-                                const currentUserResp = await auth.getCurrentUser();
-                                const currentUser = currentUserResp?.data;
-                                departmentId = currentUser?.departmentId;
-                            } catch (error) {
-                                console.error('Failed to fetch current user:', error);
-                            }
-                        }
-                        
-                        if (!departmentId) {
-                            showToast('Unable to determine department. Please log out and log in again.', 'error');
-                            return;
-                        }
-                        
-                        data.departmentId = departmentId;
-                    }
-
-                    try {
-                        if (isEdit) {
-                            await hod.updateProfessor(professor.id, data);
-                            showToast('Professor updated successfully', 'success');
-                        } else {
-                            await hod.createProfessor(data);
-                            showToast('Professor created successfully', 'success');
-                        }
-                        loadProfessors();
-                        close();
-                    } catch (error) {
-                        console.error('Error saving professor:', error);
-                        showToast(error.message || 'Failed to save professor', 'error');
-                    }
-                },
-            },
-        ],
-    });
-
-    // Initialize password toggle once modal content is in DOM
-    const formElement = document.getElementById('professorForm');
-    bindPasswordToggle(formElement);
-
-    if (formElement) {
-        const emailInput = formElement.querySelector('input[name="email"]');
-        const emailError = formElement.querySelector('[data-email-error]');
-
-        const validateDuplicateEmail = () => {
-            if (!emailInput) return;
-            const value = emailInput.value.trim().toLowerCase();
-            const isDuplicate = professors.some(prof => {
-                const sameEmail = (prof.email || '').toLowerCase() === value;
-                const isSameProfessor = professor && prof.id === professor.id;
-                return sameEmail && !isSameProfessor;
-            });
-
-            if (isDuplicate) {
-                emailInput.setCustomValidity('Professor with this email already exists');
-                emailError?.classList.remove('hidden');
-            } else {
-                emailInput.setCustomValidity('');
-                emailError?.classList.add('hidden');
-            }
-        };
-
-        emailInput?.addEventListener('input', validateDuplicateEmail);
-        validateDuplicateEmail();
+        
+        // Find active academic year or use the first one
+        const activeYear = academicYears.find(year => year.isActive) || academicYears[0];
+        
+        academicYearSelect.innerHTML = academicYears.map(year => 
+            `<option value="${year.id}" ${year.id === activeYear.id ? 'selected' : ''}>
+                ${year.yearCode}
+            </option>`
+        ).join('');
+        
+        selectedAcademicYear = activeYear.id;
+        await loadSemesters(activeYear.id);
+    } catch (error) {
+        console.error('Error loading academic years:', error);
+        showToast('Failed to load academic years', 'error');
+        academicYearSelect.innerHTML = '<option value="">Error loading academic years</option>';
     }
 }
 
-// Create request form
-createRequestForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData(createRequestForm);
-    const data = {
-        courseName: formData.get('courseName'),
-        documentType: formData.get('documentType'),
-        requiredFileExtensions: ['pdf', 'doc', 'docx'],
-        deadline: new Date(formData.get('deadline')).toISOString(),
-        professorId: parseInt(formData.get('professorId')),
-    };
-
+// Load semesters for selected academic year
+async function loadSemesters(academicYearId) {
     try {
-        await hod.createRequest(data);
-        showToast('Request created successfully', 'success');
-        createRequestForm.reset();
-        loadRequests();
+        semesterSelect.disabled = true;
+        semesterSelect.innerHTML = '<option value="">Loading semesters...</option>';
+        
+        const year = academicYears.find(y => y.id === academicYearId);
+        if (!year || !year.semesters) {
+            semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+            return;
+        }
+        
+        semesters = year.semesters;
+        
+        if (semesters.length === 0) {
+            semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+            return;
+        }
+        
+        // Sort semesters by type (FIRST, SECOND, SUMMER)
+        const semesterOrder = { 'FIRST': 1, 'SECOND': 2, 'SUMMER': 3 };
+        semesters.sort((a, b) => semesterOrder[a.type] - semesterOrder[b.type]);
+        
+        semesterSelect.innerHTML = semesters.map(semester => 
+            `<option value="${semester.id}">
+                ${formatSemesterName(semester.type)}
+            </option>`
+        ).join('');
+        
+        semesterSelect.disabled = false;
+        
+        // Auto-select first semester and load data
+        if (semesters.length > 0) {
+            selectedSemester = semesters[0].id;
+            await loadDashboardData();
+        }
     } catch (error) {
-        console.error('Error creating request:', error);
-        showToast(error.message || 'Failed to create request', 'error');
+        console.error('Error loading semesters:', error);
+        showToast('Failed to load semesters', 'error');
+        semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+    }
+}
+
+// Format semester name
+function formatSemesterName(type) {
+    const names = {
+        'FIRST': 'First Semester (Fall)',
+        'SECOND': 'Second Semester (Spring)',
+        'SUMMER': 'Summer Semester'
+    };
+    return names[type] || type;
+}
+
+// Academic year change handler
+academicYearSelect.addEventListener('change', async (e) => {
+    selectedAcademicYear = parseInt(e.target.value);
+    if (selectedAcademicYear) {
+        await loadSemesters(selectedAcademicYear);
     }
 });
 
-// Load requests
-async function loadRequests() {
+// Semester change handler
+semesterSelect.addEventListener('change', async (e) => {
+    selectedSemester = parseInt(e.target.value);
+    if (selectedSemester) {
+        await loadDashboardData();
+    }
+});
+
+// Load dashboard data for selected semester
+async function loadDashboardData() {
+    if (!selectedSemester) {
+        return;
+    }
+    
+    try {
+        // Show loading state
+        dashboardOverview.classList.remove('hidden');
+        submissionStatusSection.classList.remove('hidden');
+        fileExplorerSection.classList.remove('hidden');
+        
+        // Load dashboard overview
+        await loadDashboardOverview();
+        
+        // Load submission status
+        await loadSubmissionStatus();
+        
+        // Load file explorer
+        await loadFileExplorerData();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        showToast('Failed to load dashboard data', 'error');
+    }
+}
+
+// Load dashboard overview
+async function loadDashboardOverview() {
+    try {
+        const response = await hod.getDashboardOverview(selectedSemester);
+        const overview = response.data;
+        
+        // Update overview cards with data from API
+        document.getElementById('totalProfessors').textContent = overview.totalProfessors || 0;
+        document.getElementById('totalCourses').textContent = overview.totalCourses || 0;
+        
+        // Get submission statistics from the nested object
+        const stats = overview.submissionStatistics || {};
+        document.getElementById('submittedCount').textContent = stats.submittedDocuments || 0;
+        document.getElementById('missingCount').textContent = stats.missingDocuments || 0;
+        document.getElementById('overdueCount').textContent = stats.overdueDocuments || 0;
+    } catch (error) {
+        console.error('Error loading dashboard overview:', error);
+        // Set default values on error
+        document.getElementById('totalProfessors').textContent = '0';
+        document.getElementById('totalCourses').textContent = '0';
+        document.getElementById('submittedCount').textContent = '0';
+        document.getElementById('missingCount').textContent = '0';
+        document.getElementById('overdueCount').textContent = '0';
+    }
+}
+
+// Load submission status
+async function loadSubmissionStatus() {
+    try {
+        const filters = {
+            courseCode: filterCourse?.value || undefined,
+            documentType: filterDocType?.value || undefined,
+            status: filterStatus?.value || undefined
+        };
+        
+        // Remove undefined values
+        Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
+        
+        const response = await hod.getSubmissionStatus(selectedSemester, filters);
+        const report = response.data;
+        
+        renderSubmissionStatus(report);
+        populateCourseFilter(report);
+    } catch (error) {
+        console.error('Error loading submission status:', error);
+        submissionStatusTableBody.innerHTML = 
+            '<tr><td colspan="5" class="px-4 py-8 text-center text-red-600">Error loading submission status</td></tr>';
+    }
+}
+
+// Render submission status table
+function renderSubmissionStatus(report) {
+    if (!report || !report.rows || report.rows.length === 0) {
+        submissionStatusTableBody.innerHTML = 
+            '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No submission data available for this semester</td></tr>';
+        return;
+    }
+    
+    const rows = [];
+    report.rows.forEach(row => {
+        // Create a row for each document type
+        Object.entries(row.documentStatuses || {}).forEach(([docType, status]) => {
+            rows.push({
+                professorName: row.professorName,
+                courseCode: row.courseCode,
+                courseName: row.courseName,
+                documentType: docType,
+                status: status.status,
+                deadline: status.deadline
+            });
+        });
+    });
+    
+    submissionStatusTableBody.innerHTML = rows.map(row => {
+        const statusBadge = getStatusBadgeNew(row.status);
+        return `
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-sm text-gray-900">${row.professorName}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">
+                    <div>${row.courseCode}</div>
+                    <div class="text-xs text-gray-500">${row.courseName}</div>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-600">${formatDocumentType(row.documentType)}</td>
+                <td class="px-4 py-3">${statusBadge}</td>
+                <td class="px-4 py-3 text-sm text-gray-600">${row.deadline ? formatDate(row.deadline) : 'No deadline'}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Get status badge for new system
+function getStatusBadgeNew(status) {
+    const badges = {
+        'UPLOADED': '<span class="badge badge-success">Uploaded</span>',
+        'NOT_UPLOADED': '<span class="badge badge-gray">Not Uploaded</span>',
+        'OVERDUE': '<span class="badge badge-danger">Overdue</span>'
+    };
+    return badges[status] || '<span class="badge badge-gray">Unknown</span>';
+}
+
+// Format document type
+function formatDocumentType(type) {
+    const types = {
+        'SYLLABUS': 'Syllabus',
+        'EXAM': 'Exam',
+        'ASSIGNMENT': 'Assignment',
+        'PROJECT_DOCS': 'Project Docs',
+        'LECTURE_NOTES': 'Lecture Notes',
+        'OTHER': 'Other'
+    };
+    return types[type] || type;
+}
+
+// Populate course filter
+function populateCourseFilter(report) {
+    if (!filterCourse || !report || !report.rows) return;
+    
+    const courses = new Set();
+    report.rows.forEach(row => {
+        if (row.courseCode) {
+            courses.add(`${row.courseCode}|${row.courseName}`);
+        }
+    });
+    
+    const options = Array.from(courses).map(course => {
+        const [code, name] = course.split('|');
+        return `<option value="${code}">${code} - ${name}</option>`;
+    }).join('');
+    
+    filterCourse.innerHTML = '<option value="">All Courses</option>' + options;
+}
+
+// Filter change handlers
+if (filterCourse) {
+    filterCourse.addEventListener('change', () => loadSubmissionStatus());
+}
+if (filterDocType) {
+    filterDocType.addEventListener('change', () => loadSubmissionStatus());
+}
+if (filterStatus) {
+    filterStatus.addEventListener('change', () => loadSubmissionStatus());
+}
+
+// ============================================================================
+// FILE EXPLORER
+// ============================================================================
+
+/**
+ * Initialize file explorer component
+ */
+function initializeFileExplorer() {
+    try {
+        fileExplorerInstance = new FileExplorer('hodFileExplorer', {
+            readOnly: true
+        });
+        
+        // Make it globally accessible for event handlers
+        window.fileExplorerInstance = fileExplorerInstance;
+    } catch (error) {
+        console.error('Error initializing file explorer:', error);
+        showToast('Failed to initialize file explorer', 'error');
+    }
+}
+
+/**
+ * Load file explorer data for selected semester
+ */
+async function loadFileExplorerData() {
+    if (!selectedAcademicYear || !selectedSemester || !fileExplorerInstance) {
+        return;
+    }
+    
+    try {
+        await fileExplorerInstance.loadRoot(selectedAcademicYear, selectedSemester);
+    } catch (error) {
+        console.error('Error loading file explorer data:', error);
+        showToast('Failed to load file explorer', 'error');
+    }
+}
+
+// Load legacy requests (kept for backward compatibility)
+async function loadLegacyRequests() {
     try {
         const response = await hod.getRequests();
         const pageData = response.data || {};
         requests = Array.isArray(pageData) ? pageData : (pageData.content || []);
-        renderRequests();
+        renderLegacyRequests();
     } catch (error) {
-        console.error('Error loading requests:', error);
-        showToast('Failed to load requests', 'error');
+        console.error('Error loading legacy requests:', error);
         requestsTableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-red-600">Error loading requests</td></tr>';
     }
 }
 
-// Render requests table
-function renderRequests() {
+// Render legacy requests table
+function renderLegacyRequests() {
     const items = Array.isArray(requests) ? requests : [];
 
     if (items.length === 0) {
-        requestsTableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No requests yet</td></tr>';
+        requestsTableBody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No legacy requests</td></tr>';
         return;
     }
 
@@ -406,9 +505,9 @@ function renderRequests() {
                 <td class="px-4 py-3">
                     <button 
                         class="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                        onclick="window.viewReport(${req.id})"
+                        onclick="window.viewLegacyReport(${req.id})"
                     >
-                        View Report
+                        View
                     </button>
                 </td>
             </tr>
@@ -430,8 +529,8 @@ function getStatusBadge(submittedDoc, isOverdue) {
     </span>`;
 }
 
-// View report
-window.viewReport = async (requestId) => {
+// View legacy report
+window.viewLegacyReport = async (requestId) => {
     try {
         const response = await hod.getRequestDetails(requestId);
         const report = response.data;
@@ -467,18 +566,23 @@ window.viewReport = async (requestId) => {
             </div>
         `;
 
-        showModal('Request Report', content, { size: 'lg' });
+        showModal('Legacy Request Report', content, { size: 'lg' });
     } catch (error) {
         console.error('Error loading report:', error);
         showToast(error.message || 'Failed to load report', 'error');
     }
 };
 
-// View Submission Summary Report
+// View Semester-based Submission Report
 viewReportBtn.addEventListener('click', async () => {
+    if (!selectedSemester) {
+        showToast('Please select a semester first', 'warning');
+        return;
+    }
+    
     try {
         showToast('Loading report...', 'info');
-        const response = await hod.getSubmissionSummaryReport();
+        const response = await hod.getProfessorSubmissionReport(selectedSemester);
         const report = response.data;
         
         displaySubmissionReport(report);
@@ -488,11 +592,16 @@ viewReportBtn.addEventListener('click', async () => {
     }
 });
 
-// Download Submission Summary Report as PDF
+// Download Semester-based Report as PDF
 downloadReportBtn.addEventListener('click', async () => {
+    if (!selectedSemester) {
+        showToast('Please select a semester first', 'warning');
+        return;
+    }
+    
     try {
         showToast('Generating PDF...', 'info');
-        const response = await hod.downloadSubmissionSummaryPdf();
+        const response = await hod.exportReportToPdf(selectedSemester);
         
         if (!response.ok) {
             throw new Error('Failed to download PDF');
@@ -502,7 +611,11 @@ downloadReportBtn.addEventListener('click', async () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `department-submission-report-${new Date().getTime()}.pdf`;
+        
+        const semester = semesters.find(s => s.id === selectedSemester);
+        const semesterName = semester ? formatSemesterName(semester.type).replace(/\s+/g, '-') : 'semester';
+        a.download = `professor-submission-report-${semesterName}-${new Date().getTime()}.pdf`;
+        
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -517,6 +630,14 @@ downloadReportBtn.addEventListener('click', async () => {
 
 // Display submission report in modal
 function displaySubmissionReport(report) {
+    if (!report || !report.statistics) {
+        showToast('No report data available', 'warning');
+        return;
+    }
+    
+    const stats = report.statistics;
+    const rows = report.rows || [];
+    
     const content = `
         <div class="space-y-6">
             <!-- Overall Statistics -->
@@ -524,30 +645,30 @@ function displaySubmissionReport(report) {
                 <h3 class="font-semibold text-blue-900 mb-3">Overall Statistics</h3>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-blue-600">${report.totalProfessors}</div>
+                        <div class="text-2xl font-bold text-blue-600">${stats.totalProfessors || 0}</div>
                         <div class="text-xs text-gray-600">Professors</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-blue-600">${report.totalRequests}</div>
-                        <div class="text-xs text-gray-600">Total Requests</div>
+                        <div class="text-2xl font-bold text-blue-600">${stats.totalCourses || 0}</div>
+                        <div class="text-xs text-gray-600">Courses</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-green-600">${report.totalSubmitted}</div>
+                        <div class="text-2xl font-bold text-green-600">${stats.submittedDocuments || 0}</div>
                         <div class="text-xs text-gray-600">Submitted</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-2xl font-bold text-yellow-600">${report.totalPending}</div>
-                        <div class="text-xs text-gray-600">Pending</div>
+                        <div class="text-2xl font-bold text-yellow-600">${stats.missingDocuments || 0}</div>
+                        <div class="text-xs text-gray-600">Missing</div>
                     </div>
                 </div>
                 <div class="grid grid-cols-2 gap-4 mt-4">
                     <div class="text-center">
-                        <div class="text-xl font-bold text-red-600">${report.totalOverdue}</div>
+                        <div class="text-xl font-bold text-red-600">${stats.overdueDocuments || 0}</div>
                         <div class="text-xs text-gray-600">Overdue</div>
                     </div>
                     <div class="text-center">
-                        <div class="text-xl font-bold text-blue-600">${report.overallCompletionRate.toFixed(1)}%</div>
-                        <div class="text-xs text-gray-600">Completion Rate</div>
+                        <div class="text-xl font-bold text-blue-600">${stats.totalRequiredDocuments || 0}</div>
+                        <div class="text-xs text-gray-600">Total Required</div>
                     </div>
                 </div>
             </div>
@@ -560,40 +681,41 @@ function displaySubmissionReport(report) {
                         <thead class="bg-gray-50 sticky top-0">
                             <tr>
                                 <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Professor</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Total</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Submitted</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Pending</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Overdue</th>
-                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Completion</th>
+                                <th class="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase">Course</th>
+                                <th class="px-3 py-2 text-center text-xs font-medium text-gray-500 uppercase">Document Types</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white divide-y divide-gray-200">
-                            ${report.professorSummaries.map(prof => `
-                                <tr class="hover:bg-gray-50">
-                                    <td class="px-3 py-2">
-                                        <div class="font-medium text-gray-900">${prof.professorName}</div>
-                                        <div class="text-xs text-gray-500">${prof.professorEmail}</div>
-                                    </td>
-                                    <td class="px-3 py-2 text-center">${prof.totalRequests}</td>
-                                    <td class="px-3 py-2 text-center">
-                                        <span class="text-green-600 font-medium">${prof.submittedRequests}</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        <span class="text-yellow-600 font-medium">${prof.pendingRequests}</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        <span class="text-red-600 font-medium">${prof.overdueRequests}</span>
-                                    </td>
-                                    <td class="px-3 py-2 text-center">
-                                        <div class="flex items-center justify-center">
-                                            <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
-                                                <div class="bg-blue-600 h-2 rounded-full" style="width: ${prof.completionRate}%"></div>
-                                            </div>
-                                            <span class="text-xs font-medium">${prof.completionRate.toFixed(1)}%</span>
-                                        </div>
+                            ${rows.length > 0 ? rows.map(row => {
+                                const docStatuses = Object.entries(row.documentStatuses || {}).map(([type, status]) => {
+                                    const badge = getStatusBadgeNew(status.status);
+                                    return `<div class="flex items-center justify-between mb-1">
+                                        <span class="text-xs">${formatDocumentType(type)}</span>
+                                        ${badge}
+                                    </div>`;
+                                }).join('');
+                                
+                                return `
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-3 py-2">
+                                            <div class="font-medium text-gray-900">${row.professorName}</div>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <div class="font-medium text-gray-700">${row.courseCode}</div>
+                                            <div class="text-xs text-gray-500">${row.courseName}</div>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            ${docStatuses || '<span class="text-xs text-gray-500">No documents</span>'}
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('') : `
+                                <tr>
+                                    <td colspan="3" class="px-3 py-8 text-center text-gray-500">
+                                        No submission data available
                                     </td>
                                 </tr>
-                            `).join('')}
+                            `}
                         </tbody>
                     </table>
                 </div>
@@ -601,10 +723,10 @@ function displaySubmissionReport(report) {
 
             <!-- Report Footer -->
             <div class="text-xs text-gray-500 text-center pt-4 border-t">
-                Generated on ${formatDate(report.generatedAt)} by ${report.generatedBy}
+                Report for ${report.semesterName || 'Selected Semester'} - ${report.departmentName || 'Department'}
             </div>
         </div>
     `;
 
-    showModal('Department Submission Report', content, { size: 'xl' });
+    showModal('Professor Submission Report', content, { size: 'xl' });
 }

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <div class="container mx-auto p-6">
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h1 class="text-2xl font-bold text-gray-900 mb-4">File Explorer Component Demo</h1>
+            
+            <!-- Controls -->
+            <div class="flex gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Academic Year</label>
+                    <select id="academicYearSelect" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Select Year</option>
+                        <option value="1">2024-2025</option>
+                        <option value="2">2023-2024</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Semester</label>
+                    <select id="semesterSelect" class="border border-gray-300 rounded-md px-3 py-2">
+                        <option value="">Select Semester</option>
+                        <option value="1">First Semester</option>
+                        <option value="2">Second Semester</option>
+                        <option value="3">Summer</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="loadBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        Load Files
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Explorer Container -->
+        <div id="fileExplorerContainer" class="bg-white rounded-lg shadow-lg overflow-hidden"></div>
+    </div>
+
+    <script type="module">
+        import { FileExplorer } from './js/file-explorer.js';
+        
+        // Initialize file explorer
+        let fileExplorer = null;
+        
+        try {
+            fileExplorer = new FileExplorer('fileExplorerContainer', {
+                readOnly: false
+            });
+            
+            // Make it globally accessible for event handlers
+            window.fileExplorerInstance = fileExplorer;
+            
+            console.log('File Explorer initialized successfully');
+        } catch (error) {
+            console.error('Error initializing File Explorer:', error);
+        }
+        
+        // Load button handler
+        document.getElementById('loadBtn').addEventListener('click', async () => {
+            const academicYearId = document.getElementById('academicYearSelect').value;
+            const semesterId = document.getElementById('semesterSelect').value;
+            
+            if (!academicYearId || !semesterId) {
+                alert('Please select both Academic Year and Semester');
+                return;
+            }
+            
+            if (fileExplorer) {
+                await fileExplorer.loadRoot(academicYearId, semesterId);
+            }
+        });
+    </script>
+</body>
+</html>

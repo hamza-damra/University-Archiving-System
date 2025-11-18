@@ -13,7 +13,10 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "uploaded_files")
+@Table(name = "uploaded_files",
+       indexes = {
+           @Index(name = "idx_uploaded_files_submission", columnList = "document_submission_id")
+       })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

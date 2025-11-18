@@ -1,7 +1,6 @@
 package com.alqude.edu.ArchiveSystem.dto.report;
 
 import com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum;
-import com.alqude.edu.ArchiveSystem.entity.SubmissionStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,6 +25,6 @@ public class ProfessorSubmissionRow {
     private String courseCode;
     private String courseName;
     
-    // Map of document type to submission status
-    private Map<DocumentTypeEnum, SubmissionStatus> documentStatuses;
+    // Map of document type to submission status info (includes status, deadline, etc.)
+    private Map<DocumentTypeEnum, DocumentStatusInfo> documentStatuses;
 }

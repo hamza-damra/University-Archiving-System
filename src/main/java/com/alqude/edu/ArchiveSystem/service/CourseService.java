@@ -18,6 +18,8 @@ public interface CourseService {
     
     Course getCourse(Long id);
     
+    List<Course> getAllCourses();
+    
     List<Course> getCoursesByDepartment(Long departmentId);
     
     void deactivateCourse(Long id);

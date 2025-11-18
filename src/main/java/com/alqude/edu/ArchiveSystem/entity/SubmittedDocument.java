@@ -14,6 +14,26 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * LEGACY ENTITY - ARCHIVED
+ * 
+ * This entity is part of the old request-based document system and has been replaced
+ * by the new semester-based DocumentSubmission entity.
+ * 
+ * Replacement entity:
+ * - DocumentSubmission: Tracks document submissions within the semester-based structure
+ * 
+ * This entity is kept for:
+ * 1. Historical data access
+ * 2. Rollback capability
+ * 3. Data migration reference
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by DocumentSubmission in semester-based system
+ * @see com.alqude.edu.ArchiveSystem.entity.DocumentSubmission
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Entity
 @Table(name = "submitted_documents")
 @Data

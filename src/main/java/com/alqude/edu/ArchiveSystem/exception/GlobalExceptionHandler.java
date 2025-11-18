@@ -26,8 +26,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+/**
+ * Global exception handler for the application.
+ * 
+ * NOTE: This handler includes support for legacy DocumentRequestException
+ * for backward compatibility during the transition period.
+ */
 @RestControllerAdvice
 @Slf4j
+@SuppressWarnings("deprecation")
 public class GlobalExceptionHandler {
     
     private String generateRequestId() {
@@ -36,6 +43,58 @@ public class GlobalExceptionHandler {
     
     private String getRequestPath(WebRequest request) {
         return request.getDescription(false).replace("uri=", "");
+    }
+    
+    // ========== Archive System Exceptions ==========
+    
+    @ExceptionHandler(ArchiveSystemException.class)
+    public ResponseEntity<ApiResponse<Object>> handleArchiveSystemException(
+            ArchiveSystemException ex, WebRequest request) {
+        
+        String requestId = generateRequestId();
+        HttpStatus status = ex.getHttpStatus();
+        log.warn("Archive system exception [{}]: {} - {} (Status: {})", 
+                requestId, ex.getErrorCode(), ex.getMessage(), status.value());
+        
+        ErrorResponse errorResponse = ErrorResponse.of(ex.getErrorCode(), ex.getMessage())
+                .withPath(getRequestPath(request))
+                .withStatus(status.value())
+                .withSuggestions(ex.getSuggestions());
+        
+        return ResponseEntity.status(status)
+                .body(ApiResponse.error(errorResponse).withRequestId(requestId));
+    }
+    
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity<ApiResponse<Object>> handleResourceNotFoundException(
+            ResourceNotFoundException ex, WebRequest request) {
+        
+        String requestId = generateRequestId();
+        log.warn("Resource not found [{}]: {} - {}", requestId, ex.getErrorCode(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.of(ex.getErrorCode(), ex.getMessage())
+                .withPath(getRequestPath(request))
+                .withStatus(HttpStatus.NOT_FOUND.value())
+                .withSuggestions(ex.getSuggestions());
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(errorResponse).withRequestId(requestId));
+    }
+    
+    @ExceptionHandler(UnauthorizedAccessException.class)
+    public ResponseEntity<ApiResponse<Object>> handleUnauthorizedAccessException(
+            UnauthorizedAccessException ex, WebRequest request) {
+        
+        String requestId = generateRequestId();
+        log.warn("Unauthorized access [{}]: {} - {}", requestId, ex.getErrorCode(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.of(ex.getErrorCode(), ex.getMessage())
+                .withPath(getRequestPath(request))
+                .withStatus(HttpStatus.FORBIDDEN.value())
+                .withSuggestions(ex.getSuggestions());
+        
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(errorResponse).withRequestId(requestId));
     }
     
     // ========== Business Logic Exceptions ==========
@@ -78,9 +137,10 @@ public class GlobalExceptionHandler {
             FileUploadException ex, WebRequest request) {
         
         String requestId = generateRequestId();
-        log.warn("File upload exception [{}]: {} - {}", requestId, ex.getErrorCode(), ex.getMessage());
+        HttpStatus status = ex.getHttpStatus();
+        log.warn("File upload exception [{}]: {} - {} (Status: {})", 
+                requestId, ex.getErrorCode(), ex.getMessage(), status.value());
         
-        HttpStatus status = determineFileUploadStatus(ex.getErrorCode());
         ErrorResponse errorResponse = ErrorResponse.of(ex.getErrorCode(), ex.getMessage())
                 .withPath(getRequestPath(request))
                 .withStatus(status.value())
@@ -112,11 +172,17 @@ public class GlobalExceptionHandler {
             ValidationException ex, WebRequest request) {
         
         String requestId = generateRequestId();
-        log.warn("Validation exception [{}]: {}", requestId, ex.getMessage());
+        log.warn("Validation exception [{}]: {} - {}", requestId, ex.getErrorCode(), ex.getMessage());
         
         ErrorResponse errorResponse = ErrorResponse.validation(ex.getValidationErrors())
                 .withPath(getRequestPath(request))
-                .withStatus(HttpStatus.BAD_REQUEST.value());
+                .withStatus(HttpStatus.BAD_REQUEST.value())
+                .withSuggestions(ex.getSuggestions());
+        
+        // Override error code if provided
+        if (ex.getValidationErrors() != null && !ex.getValidationErrors().isEmpty()) {
+            errorResponse.setErrorCode(ex.getErrorCode());
+        }
         
         return ResponseEntity.badRequest()
                 .body(ApiResponse.error(errorResponse).withRequestId(requestId));
@@ -441,15 +507,7 @@ public class GlobalExceptionHandler {
         };
     }
     
-    private HttpStatus determineFileUploadStatus(String errorCode) {
-        return switch (errorCode) {
-            case FileUploadException.FILE_TOO_LARGE -> HttpStatus.PAYLOAD_TOO_LARGE;
-            case FileUploadException.FILE_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case FileUploadException.STORAGE_ERROR -> HttpStatus.INSUFFICIENT_STORAGE;
-            default -> HttpStatus.BAD_REQUEST;
-        };
-    }
-    
+
     private HttpStatus determineUserExceptionStatus(String errorCode) {
         return switch (errorCode) {
             case UserException.USER_NOT_FOUND -> HttpStatus.NOT_FOUND;

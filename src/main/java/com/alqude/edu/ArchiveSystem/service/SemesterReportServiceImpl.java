@@ -18,6 +18,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SemesterReportServiceImpl implements SemesterReportService {
     
     private final SemesterRepository semesterRepository;
@@ -27,6 +28,7 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UserRepository userRepository;
     private final PdfReportService pdfReportService;
+    private final DepartmentScopedFilterService departmentScopedFilterService;
     
     @Override
     @Transactional(readOnly = true)
@@ -43,6 +45,9 @@ public class SemesterReportServiceImpl implements SemesterReportService {
         
         // Get current user for report metadata
         User currentUser = getCurrentUser();
+        
+        // Validate department access for HOD and Professor roles
+        departmentScopedFilterService.validateDepartmentAccess(departmentId, currentUser);
         
         // Fetch all course assignments for this semester and department
         List<CourseAssignment> courseAssignments = courseAssignmentRepository.findBySemesterId(semesterId)
@@ -80,7 +85,7 @@ public class SemesterReportServiceImpl implements SemesterReportService {
             }
             
             // Build document status map
-            Map<DocumentTypeEnum, SubmissionStatus> documentStatuses = new HashMap<>();
+            Map<DocumentTypeEnum, DocumentStatusInfo> documentStatuses = new HashMap<>();
             
             for (RequiredDocumentType requiredDoc : requiredDocs) {
                 totalRequiredDocuments++;
@@ -90,8 +95,15 @@ public class SemesterReportServiceImpl implements SemesterReportService {
                         .findByCourseAssignmentIdAndDocumentType(assignment.getId(), requiredDoc.getDocumentType());
                 
                 SubmissionStatus status;
+                LocalDateTime submittedAt = null;
+                Boolean isLateSubmission = false;
+                
                 if (submission.isPresent()) {
-                    status = submission.get().getStatus();
+                    DocumentSubmission sub = submission.get();
+                    status = sub.getStatus();
+                    submittedAt = sub.getSubmittedAt();
+                    isLateSubmission = sub.getIsLateSubmission();
+                    
                     if (status == SubmissionStatus.UPLOADED) {
                         submittedDocuments++;
                     } else if (status == SubmissionStatus.OVERDUE) {
@@ -110,7 +122,15 @@ public class SemesterReportServiceImpl implements SemesterReportService {
                     missingDocuments++;
                 }
                 
-                documentStatuses.put(requiredDoc.getDocumentType(), status);
+                // Create DocumentStatusInfo with all relevant information
+                DocumentStatusInfo statusInfo = DocumentStatusInfo.builder()
+                        .status(status)
+                        .deadline(requiredDoc.getDeadline())
+                        .submittedAt(submittedAt)
+                        .isLateSubmission(isLateSubmission)
+                        .build();
+                
+                documentStatuses.put(requiredDoc.getDocumentType(), statusInfo);
             }
             
             // Create row if there are required documents
@@ -348,14 +368,14 @@ public class SemesterReportServiceImpl implements SemesterReportService {
         if (filter.getStatus() != null) {
             if (filter.getDocumentType() != null) {
                 // Check specific document type status
-                SubmissionStatus status = row.getDocumentStatuses().get(filter.getDocumentType());
-                if (status != filter.getStatus()) {
+                DocumentStatusInfo statusInfo = row.getDocumentStatuses().get(filter.getDocumentType());
+                if (statusInfo == null || statusInfo.getStatus() != filter.getStatus()) {
                     return false;
                 }
             } else {
                 // Check if any document has the specified status
                 boolean hasStatus = row.getDocumentStatuses().values().stream()
-                        .anyMatch(status -> status == filter.getStatus());
+                        .anyMatch(statusInfo -> statusInfo.getStatus() == filter.getStatus());
                 if (!hasStatus) {
                     return false;
                 }
@@ -381,33 +401,33 @@ public class SemesterReportServiceImpl implements SemesterReportService {
             uniqueProfessors.add(row.getProfessorId());
             uniqueCourses.add(row.getCourseCode());
             
-            Map<DocumentTypeEnum, SubmissionStatus> statuses = row.getDocumentStatuses();
+            Map<DocumentTypeEnum, DocumentStatusInfo> statuses = row.getDocumentStatuses();
             
             // If filtering by specific document type, only count that type
             if (specificDocType != null) {
                 if (statuses.containsKey(specificDocType)) {
                     totalRequiredDocuments++;
-                    SubmissionStatus status = statuses.get(specificDocType);
+                    DocumentStatusInfo statusInfo = statuses.get(specificDocType);
                     
-                    if (status == SubmissionStatus.UPLOADED) {
+                    if (statusInfo.getStatus() == SubmissionStatus.UPLOADED) {
                         submittedDocuments++;
                     } else {
                         missingDocuments++;
-                        if (status == SubmissionStatus.OVERDUE) {
+                        if (statusInfo.getStatus() == SubmissionStatus.OVERDUE) {
                             overdueDocuments++;
                         }
                     }
                 }
             } else {
                 // Count all document types
-                for (Map.Entry<DocumentTypeEnum, SubmissionStatus> entry : statuses.entrySet()) {
+                for (Map.Entry<DocumentTypeEnum, DocumentStatusInfo> entry : statuses.entrySet()) {
                     totalRequiredDocuments++;
                     
-                    if (entry.getValue() == SubmissionStatus.UPLOADED) {
+                    if (entry.getValue().getStatus() == SubmissionStatus.UPLOADED) {
                         submittedDocuments++;
                     } else {
                         missingDocuments++;
-                        if (entry.getValue() == SubmissionStatus.OVERDUE) {
+                        if (entry.getValue().getStatus() == SubmissionStatus.OVERDUE) {
                             overdueDocuments++;
                         }
                     }

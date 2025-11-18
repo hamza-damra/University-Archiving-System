@@ -1,5 +1,7 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -31,6 +33,7 @@ public class Semester implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "academic_year_id", nullable = false)
     @lombok.ToString.Exclude
+    @JsonBackReference
     private AcademicYear academicYear;
     
     @NotNull(message = "Semester type is required")
@@ -51,6 +54,7 @@ public class Semester implements Serializable {
     
     @OneToMany(mappedBy = "semester", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @lombok.ToString.Exclude
+    @JsonManagedReference("semester-assignments")
     private List<CourseAssignment> courseAssignments = new ArrayList<>();
     
     @CreationTimestamp

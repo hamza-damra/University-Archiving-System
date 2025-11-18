@@ -618,77 +618,173 @@ This implementation plan breaks down the semester-based file system refactoring 
   - Create required_document_type records per course
   - _Requirements: 15.7_
 
-- [ ] 16. Create Deanship frontend dashboard
-- [ ] 16.1 Create deanship-dashboard.html page structure
+- [x] 16. Create Deanship frontend dashboard
+
+
+
+
+- [x] 16.1 Create deanship-dashboard.html page structure
+
+
   - Add navigation menu with sections: Academic Years, Professors, Courses, Assignments, Reports, File Explorer
   - Add academic year selector dropdown
   - Add semester tabs (First, Second, Summer)
   - _Requirements: 14.1_
 
-- [ ] 16.2 Implement academic year management UI
+
+
+- [x] 16.2 Implement academic year management UI
+
+
+
+
+
   - Create form to add/edit academic years
   - Display table of academic years with edit/activate actions
+
+
   - Wire to /api/deanship/academic-years endpoints
   - _Requirements: 2.1, 2.2_
 
-- [ ] 16.3 Implement professor management UI
+- [x] 16.3 Implement professor management UI
+
+
   - Create form to add/edit professors
   - Display table of professors with edit/deactivate actions
   - Wire to /api/deanship/professors endpoints
   - _Requirements: 3.1, 3.2_
 
-- [ ] 16.4 Implement course management UI
+
+
+
+
+- [x] 16.4 Implement course management UI
+
+
+
+
+
+
+
   - Create form to add/edit courses
   - Display table of courses with edit actions
+
+
   - Wire to /api/deanship/courses endpoints
   - _Requirements: 2.3_
 
-- [ ] 16.5 Implement course assignment UI
+- [x] 16.5 Implement course assignment UI
+
+
+
+
+
+
+
+
+
   - Create form with professor, course, semester selectors
   - Display table of assignments with unassign action
   - Wire to /api/deanship/course-assignments endpoints
   - _Requirements: 2.4_
 
-- [ ] 16.6 Implement Deanship file explorer UI
+- [x] 16.6 Implement Deanship file explorer UI
+
+
+
+
+
+
+
   - Integrate file explorer component (tree view + file list)
   - Wire to /api/file-explorer endpoints
   - _Requirements: 6.1, 6.5_
 
-- [ ] 17. Update HOD frontend dashboard
-- [ ] 17.1 Update hod-dashboard.html with semester selector
+- [x] 17. Update HOD frontend dashboard
+
+
+
+- [x] 17.1 Update hod-dashboard.html with semester selector
+
+
+
+
   - Add academic year and semester dropdown selectors
   - Remove old professor management UI
   - _Requirements: 7.1, 14.2_
 
-- [ ] 17.2 Implement HOD overview widgets
+- [x] 17.2 Implement HOD overview widgets
+
+
+
+
+
   - Display cards for total professors, courses, submitted, missing, overdue
   - Wire to /api/hod/dashboard/overview endpoint
   - _Requirements: 7.3_
 
-- [ ] 17.3 Implement professor submission status table
+- [x] 17.3 Implement professor submission status table
+
+
+
+
+
   - Display table with professor, course, document types, status columns
   - Add filters for course, document type, status
   - Wire to /api/hod/submissions/status endpoint
   - _Requirements: 7.4_
+- [x] 17.4 Implement HOD report generation and export
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 - [ ] 17.4 Implement HOD report generation and export
+
   - Add "Generate Report" button
   - Add "Export to PDF" button
   - Wire to /api/hod/reports endpoints
   - _Requirements: 13.1, 13.4_
 
-- [ ] 17.5 Implement HOD file explorer UI
+- [x] 17.5 Implement HOD file explorer UI
+
+
+
+
+
   - Integrate file explorer component (read-only)
   - Wire to /api/hod/file-explorer endpoints
   - _Requirements: 7.2_
 
-- [ ] 18. Update Professor frontend dashboard
-- [ ] 18.1 Update prof-dashboard.html with semester selector
+- [x] 18. Update Professor frontend dashboard
+
+
+
+
+- [x] 18.1 Update prof-dashboard.html with semester selector
+
+
   - Add academic year and semester dropdown selectors
   - Remove old request-based card view
   - _Requirements: 10.1, 14.3_
 
-- [ ] 18.2 Implement semester-based course view
+- [x] 18.2 Implement semester-based course view
+
+
   - Display assigned courses for selected semester
   - For each course, show required document types with status indicators
   - Show deadlines for each document type
@@ -696,7 +792,9 @@ This implementation plan breaks down the semester-based file system refactoring 
   - Wire to /api/professor/dashboard/courses endpoint
   - _Requirements: 10.2, 10.3, 10.4, 10.5_
 
-- [ ] 18.3 Update upload modal for multi-file upload
+
+- [x] 18.3 Update upload modal for multi-file upload
+
   - Display course name and document type
   - Show file requirements (allowed types, max count, max size)
   - Add drag-and-drop file zone
@@ -705,204 +803,351 @@ This implementation plan breaks down the semester-based file system refactoring 
   - Wire to /api/professor/submissions/upload endpoint
   - _Requirements: 8.3, 8.4, 11.1, 11.2_
 
-- [ ] 18.4 Implement file replacement functionality
+- [x] 18.4 Implement file replacement functionality
+
   - Add "Replace Files" button for uploaded document types
   - Reuse upload modal with replace mode
   - Wire to /api/professor/submissions/{id}/replace endpoint
   - _Requirements: 8.5_
 
-- [ ] 18.5 Implement professor file explorer UI
+- [x] 18.5 Implement professor file explorer UI
+
+
   - Integrate file explorer component
   - Show own folders with write access, other folders read-only
   - Wire to /api/professor/file-explorer endpoints
   - _Requirements: 9.1, 9.2, 9.5_
 
-- [ ] 19. Create shared file explorer JavaScript component
-- [ ] 19.1 Implement FileExplorer class with tree view rendering
+- [x] 19. Create shared file explorer JavaScript component
+
+
+
+
+- [x] 19.1 Implement FileExplorer class with tree view rendering
+
+
   - Render hierarchical tree structure (year → semester → professor → course → document type)
   - Support lazy loading of tree nodes on expand
   - Handle node selection and navigation
   - _Requirements: 5.1, 5.2_
 
-- [ ] 19.2 Implement breadcrumb navigation
+- [x] 19.2 Implement breadcrumb navigation
+
+
   - Display breadcrumbs showing current path
   - Support clicking breadcrumb items to navigate
   - Wire to /api/file-explorer/breadcrumbs endpoint
   - _Requirements: 5.4_
 
-- [ ] 19.3 Implement file list table rendering
+
+
+- [x] 19.3 Implement file list table rendering
+
+
+
+
+
   - Display files with columns: name, size, uploaded date, uploader, actions
   - Show View and Download buttons based on permissions
   - Wire to /api/file-explorer/node endpoint
+
+
   - _Requirements: 5.3, 5.5_
 
-- [ ] 19.4 Implement file download functionality
+- [x] 19.4 Implement file download functionality
+
+
+
+
+
   - Handle file download via /api/file-explorer/files/{id}/download
   - _Requirements: 5.5, 6.5, 9.3_
 
-- [ ] 20. Update authentication and navigation
-- [ ] 20.1 Update login page to support three roles
+- [x] 20. Update authentication and navigation
+
+
+
+
+
+- [x] 20.1 Update login page to support three roles
+
+
   - Update authentication logic to handle ROLE_DEANSHIP
   - Redirect to appropriate dashboard based on role
   - _Requirements: 1.2, 14.5_
 
-- [ ] 20.2 Update navigation menus for each role
+- [x] 20.2 Update navigation menus for each role
+
+
   - Deanship: show Academic Years, Professors, Courses, Assignments, Reports, File Explorer
   - HOD: show Dashboard, Submission Status, Reports, File Explorer
   - Professor: show Dashboard, My Courses, File Explorer, Notifications
   - Hide unauthorized menu items
   - _Requirements: 14.1, 14.2, 14.3, 14.4_
 
-- [ ] 20.3 Display current user role and name in header
+
+
+- [x] 20.3 Display current user role and name in header
+
+
+
+
+
   - Update header to show role badge
   - _Requirements: 14.5_
 
-- [ ] 21. Implement security and permission enforcement
-- [ ] 21.1 Add method-level security annotations to all controller methods
+- [x] 21. Implement security and permission enforcement
+
+
+
+
+- [x] 21.1 Add method-level security annotations to all controller methods
+
+
   - Add @PreAuthorize annotations for role-based access
   - Add custom security expressions for ownership checks (e.g., professor owns submission)
   - _Requirements: 1.3, 1.4, 1.5_
 
-- [ ] 21.2 Implement department-scoped filtering in services
+
+
+- [x] 21.2 Implement department-scoped filtering in services
+
+
+
+
+
   - For HOD: filter all queries by department
   - For Professor: filter by department for read, by assignment for write
+
+
   - _Requirements: 7.1, 9.1_
 
-- [ ] 21.3 Implement file permission checks in FileService
+- [x] 21.3 Implement file permission checks in FileService
+
+
+
+
+
   - Check canRead, canWrite, canDelete before file operations
   - Throw UnauthorizedAccessException if permission denied
   - _Requirements: 5.5, 7.5, 9.4_
 
-- [ ] 22. Add database indexes for performance
-- [ ] 22.1 Create indexes on foreign keys and frequently queried columns
+- [-] 22. Add database indexes for performance
+
+
+- [x] 22.1 Create indexes on foreign keys and frequently queried columns
+
+
+
   - Add indexes: course_assignments(semester_id), course_assignments(professor_id)
   - Add indexes: document_submissions(course_assignment_id), document_submissions(professor_id)
   - Add indexes: uploaded_files(document_submission_id)
   - Add indexes: users(department_id), users(role)
   - _Requirements: Performance optimization_
 
-- [ ] 23. Implement error handling and validation
-- [ ] 23.1 Create custom exception classes
+- [x] 23. Implement error handling and validation
+
+
+
+
+
+- [x] 23.1 Create custom exception classes
+
+
   - Create ArchiveSystemException base class
   - Create ResourceNotFoundException, UnauthorizedAccessException, ValidationException, FileUploadException
   - _Requirements: 1.4, 1.5_
 
-- [ ] 23.2 Implement global exception handler
+- [x] 23.2 Implement global exception handler
+
+
   - Create @ControllerAdvice class to handle exceptions
   - Return consistent error response format with timestamp, status, errorCode, message, path
   - _Requirements: Error handling_
 
-- [ ] 23.3 Add validation to DTOs and entities
+
+
+- [x] 23.3 Add validation to DTOs and entities
+
   - Add @Valid annotations to controller parameters
   - Add validation constraints to entity fields
   - _Requirements: 11.1, 11.2_
 
-- [ ] 24. Write unit tests for services
-- [ ] 24.1 Write unit tests for AcademicService
+- [x] 24. Write unit tests for services
+
+
+
+
+
+- [x] 24.1 Write unit tests for AcademicService
   - Test createAcademicYear auto-creates three semesters
   - Test setActiveAcademicYear
+
+
   - _Requirements: 2.2_
 
-- [ ] 24.2 Write unit tests for CourseService
+- [x] 24.2 Write unit tests for CourseService
   - Test assignCourse creates CourseAssignment
   - Test getAssignmentsByProfessor filters correctly
   - _Requirements: 2.4_
 
-- [ ] 24.3 Write unit tests for FileService
+- [x] 24.3 Write unit tests for FileService
+
+
   - Test generateFilePath creates correct hierarchical path
   - Test validateFileType and validateFileSize
   - Test uploadFiles creates UploadedFile records
   - _Requirements: 11.1, 11.2, 11.3_
 
-- [ ] 24.4 Write unit tests for SubmissionService
+- [x] 24.4 Write unit tests for SubmissionService
+
+
   - Test calculateSubmissionStatus with various deadline scenarios
   - Test getStatisticsBySemester aggregates correctly
   - _Requirements: 12.1, 12.2_
 
-- [ ] 24.5 Write unit tests for FileExplorerService
+- [x] 24.5 Write unit tests for FileExplorerService
+
+
+
   - Test getRootNode applies role-based filtering
   - Test canRead, canWrite, canDelete permission checks
   - _Requirements: 5.1, 9.3_
 
-- [ ] 25. Write integration tests for controllers
-- [ ] 25.1 Write integration tests for DeanshipController
+- [-] 25. Write integration tests for controllers
+
+
+- [x] 25.1 Write integration tests for DeanshipController
+
+
   - Test POST /api/deanship/academic-years creates year and semesters
   - Test POST /api/deanship/professors creates professor with professor_id
   - Test POST /api/deanship/course-assignments creates assignment
   - _Requirements: 2.2, 3.2, 2.4_
 
-- [ ] 25.2 Write integration tests for HodController
+- [x] 25.2 Write integration tests for HodController
+
+
   - Test GET /api/hod/dashboard/overview returns department-scoped data
   - Test GET /api/hod/submissions/status filters by department
   - Test HOD cannot access other departments' data
   - _Requirements: 7.1, 7.3, 7.4_
 
-- [ ] 25.3 Write integration tests for ProfessorController
+- [x] 25.3 Write integration tests for ProfessorController
+
+
   - Test POST /api/professor/submissions/upload creates submission and files
   - Test professor cannot upload to unassigned course
   - Test professor can read other professors' files in same department
   - _Requirements: 8.3, 8.4, 9.1, 9.2_
 
-- [ ] 25.4 Write integration tests for FileExplorerController
+- [x] 25.4 Write integration tests for FileExplorerController
+
+
+
   - Test file explorer returns correct nodes based on role
   - Test file download enforces permissions
   - _Requirements: 5.1, 5.5_
 
-- [ ] 26. Create database migration scripts
-- [ ] 26.1 Create Flyway migration for new tables
+- [x] 26. Create database migration scripts
+
+
+
+
+
+
+
+- [x] 26.1 Create Flyway migration for new tables
+
+
   - Create V2__create_academic_structure_tables.sql
   - Add tables: academic_years, semesters, courses, course_assignments, required_document_types, document_submissions, uploaded_files
   - _Requirements: 15.1_
 
-- [ ] 26.2 Create Flyway migration to update existing tables
+
+- [x] 26.2 Create Flyway migration to update existing tables
+
   - Create V3__update_users_table.sql
   - Add professor_id column to users
   - Update role enum to include ROLE_DEANSHIP
   - _Requirements: 15.1_
 
-- [ ] 26.3 Create Flyway migration for indexes
+
+
+- [x] 26.3 Create Flyway migration for indexes
+
+
   - Create V4__add_indexes.sql
   - Add performance indexes
   - _Requirements: Performance optimization_
 
-- [ ] 27. Execute data migration
-- [ ] 27.1 Create migration endpoint or command-line tool
+- [-] 27. Execute data migration
+
+
+- [x] 27.1 Create migration endpoint or command-line tool
+
+
   - Create /api/admin/migrate endpoint or Spring Boot CommandLineRunner
   - Call MigrationService methods in sequence
   - _Requirements: 15.1_
 
-- [ ] 27.2 Run migration and verify data integrity
+- [x] 27.2 Run migration and verify data integrity
+
+
   - Execute migration on test database
   - Verify all document_requests converted to course_assignments
   - Verify all submitted_documents converted to document_submissions
   - Verify all files moved to new folder structure
   - _Requirements: 15.5_
 
-- [ ] 28. Update configuration and deployment
-- [ ] 28.1 Update application.properties with new settings
+- [x] 28. Update configuration and deployment
+
+
+
+
+- [x] 28.1 Update application.properties with new settings
+
+
   - Add file upload settings (max-file-size, max-request-size)
   - Add app.upload.* settings (base-path, allowed-extensions, max-file-count, max-total-size-mb)
   - Add app.academic.* settings (default-year, auto-create-semesters)
   - _Requirements: Configuration_
 
-- [ ] 28.2 Update Docker configuration if applicable
+- [x] 28.2 Update Docker configuration if applicable
+
+
   - Update Dockerfile and docker-compose.yml for new file storage structure
   - Ensure uploads directory is mounted as volume
   - _Requirements: Deployment_
 
-- [ ] 29. Documentation and cleanup
-- [ ] 29.1 Update API documentation
+- [x] 29. Documentation and cleanup
+
+
+
+
+- [x] 29.1 Update API documentation
+
+
   - Document all new endpoints with request/response examples
   - Update Swagger/OpenAPI spec if used
   - _Requirements: Documentation_
 
-- [ ] 29.2 Update user guides
+
+- [x] 29.2 Update user guides
+
   - Create Deanship user guide for academic structure management
   - Update HOD user guide for semester-based reporting
   - Update Professor user guide for semester-based file upload
   - _Requirements: Documentation_
 
-- [ ] 29.3 Archive old code and tables
+
+
+- [x] 29.3 Archive old code and tables
+
+
+
+
+
   - Comment out or remove old controller methods
   - Keep old tables for rollback capability
   - _Requirements: 15.1_

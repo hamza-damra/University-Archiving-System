@@ -20,6 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
+@SuppressWarnings("null")
 public class CourseServiceImpl implements CourseService {
     
     private final CourseRepository courseRepository;
@@ -28,6 +29,7 @@ public class CourseServiceImpl implements CourseService {
     private final DepartmentRepository departmentRepository;
     private final SemesterRepository semesterRepository;
     private final UserRepository userRepository;
+    private final DepartmentScopedFilterService departmentScopedFilterService;
     
     // ==================== Course Management ====================
     
@@ -104,6 +106,22 @@ public class CourseServiceImpl implements CourseService {
     
     @Override
     @Transactional(readOnly = true)
+    public List<Course> getAllCourses() {
+        log.debug("Fetching all courses");
+        List<Course> courses = courseRepository.findAll();
+        
+        // Eagerly load department to avoid lazy loading issues in JSON serialization
+        courses.forEach(course -> {
+            if (course.getDepartment() != null) {
+                course.getDepartment().getName(); // Force load
+            }
+        });
+        
+        return courses;
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
     public List<Course> getCoursesByDepartment(Long departmentId) {
         log.debug("Fetching courses for department id: {}", departmentId);
         
@@ -112,7 +130,16 @@ public class CourseServiceImpl implements CourseService {
             throw new EntityNotFoundException("Department not found with id: " + departmentId);
         }
         
-        return courseRepository.findByDepartmentId(departmentId);
+        List<Course> courses = courseRepository.findByDepartmentId(departmentId);
+        
+        // Eagerly load department to avoid lazy loading issues in JSON serialization
+        courses.forEach(course -> {
+            if (course.getDepartment() != null) {
+                course.getDepartment().getName(); // Force load
+            }
+        });
+        
+        return courses;
     }
     
     @Override
@@ -198,7 +225,69 @@ public class CourseServiceImpl implements CourseService {
             throw new EntityNotFoundException("Semester not found with id: " + semesterId);
         }
         
-        return courseAssignmentRepository.findBySemesterId(semesterId);
+        List<CourseAssignment> assignments = courseAssignmentRepository.findBySemesterId(semesterId);
+        // Eagerly fetch lazy-loaded relationships to avoid serialization issues
+        assignments.forEach(assignment -> {
+            if (assignment.getProfessor() != null) {
+                assignment.getProfessor().getName(); // Force load
+                if (assignment.getProfessor().getDepartment() != null) {
+                    assignment.getProfessor().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getCourse() != null) {
+                assignment.getCourse().getCourseCode(); // Force load
+                if (assignment.getCourse().getDepartment() != null) {
+                    assignment.getCourse().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getSemester() != null) {
+                assignment.getSemester().getType(); // Force load
+            }
+        });
+        return assignments;
+    }
+    
+    /**
+     * Get course assignments for a semester with department-scoped filtering.
+     * For HOD and Professor: only returns assignments in their department.
+     * For Deanship: returns all assignments.
+     * 
+     * @param semesterId The semester ID
+     * @param currentUser The current authenticated user
+     * @return Filtered list of course assignments
+     */
+    @Transactional(readOnly = true)
+    public List<CourseAssignment> getAssignmentsBySemester(Long semesterId, User currentUser) {
+        log.debug("Fetching course assignments for semester id: {} with department filtering for user: {}", 
+                semesterId, currentUser.getEmail());
+        
+        // Validate semester exists
+        if (!semesterRepository.existsById(semesterId)) {
+            throw new EntityNotFoundException("Semester not found with id: " + semesterId);
+        }
+        
+        List<CourseAssignment> assignments = courseAssignmentRepository.findBySemesterId(semesterId);
+        // Eagerly fetch lazy-loaded relationships to avoid serialization issues
+        assignments.forEach(assignment -> {
+            if (assignment.getProfessor() != null) {
+                assignment.getProfessor().getName(); // Force load
+                if (assignment.getProfessor().getDepartment() != null) {
+                    assignment.getProfessor().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getCourse() != null) {
+                assignment.getCourse().getCourseCode(); // Force load
+                if (assignment.getCourse().getDepartment() != null) {
+                    assignment.getCourse().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getSemester() != null) {
+                assignment.getSemester().getType(); // Force load
+            }
+        });
+        
+        // Apply department-scoped filtering
+        return departmentScopedFilterService.filterCourseAssignments(assignments, currentUser);
     }
     
     @Override
@@ -216,7 +305,26 @@ public class CourseServiceImpl implements CourseService {
             throw new EntityNotFoundException("Semester not found with id: " + semesterId);
         }
         
-        return courseAssignmentRepository.findByProfessorIdAndSemesterId(professorId, semesterId);
+        List<CourseAssignment> assignments = courseAssignmentRepository.findByProfessorIdAndSemesterId(professorId, semesterId);
+        // Eagerly fetch lazy-loaded relationships to avoid serialization issues
+        assignments.forEach(assignment -> {
+            if (assignment.getProfessor() != null) {
+                assignment.getProfessor().getName(); // Force load
+                if (assignment.getProfessor().getDepartment() != null) {
+                    assignment.getProfessor().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getCourse() != null) {
+                assignment.getCourse().getCourseCode(); // Force load
+                if (assignment.getCourse().getDepartment() != null) {
+                    assignment.getCourse().getDepartment().getName(); // Force load
+                }
+            }
+            if (assignment.getSemester() != null) {
+                assignment.getSemester().getType(); // Force load
+            }
+        });
+        return assignments;
     }
     
     // ==================== Required Document Type Management ====================

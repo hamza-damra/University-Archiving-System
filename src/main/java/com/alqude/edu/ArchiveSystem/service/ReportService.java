@@ -17,6 +17,16 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Report service for generating reports from legacy and new systems.
+ * 
+ * NOTE: This service uses legacy services (DocumentRequestService, FileUploadService)
+ * to generate reports from historical data during the transition period.
+ * Deprecation warnings are suppressed as this is intentional for backward compatibility.
+ * 
+ * @deprecated This service will be replaced by new reporting services in the semester-based system
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @RequiredArgsConstructor
 @Slf4j

@@ -345,8 +345,10 @@ public class PdfReportService {
             addTableCell(table, row.getCourseCode(), false);
             
             for (com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum docType : documentTypes) {
+                com.alqude.edu.ArchiveSystem.dto.report.DocumentStatusInfo statusInfo = 
+                        row.getDocumentStatuses().get(docType);
                 com.alqude.edu.ArchiveSystem.entity.SubmissionStatus status = 
-                        row.getDocumentStatuses().getOrDefault(docType, com.alqude.edu.ArchiveSystem.entity.SubmissionStatus.NOT_UPLOADED);
+                        statusInfo != null ? statusInfo.getStatus() : com.alqude.edu.ArchiveSystem.entity.SubmissionStatus.NOT_UPLOADED;
                 addStatusCell(table, status);
             }
         }

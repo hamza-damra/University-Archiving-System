@@ -7,7 +7,20 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 
-@Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+/**
+ * LEGACY MAPPER - ARCHIVED
+ * 
+ * This mapper is part of the old request-based document system.
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Part of legacy request-based system
+ */
+@Deprecated(since = "2.0", forRemoval = false)
+@SuppressWarnings({"deprecation", "all"})
+@Mapper(componentModel = "default", 
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE,
+        suppressTimestampInGenerated = true)
 public interface DocumentRequestMapper {
     
     @Mapping(target = "id", ignore = true)

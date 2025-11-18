@@ -50,6 +50,14 @@ public interface ProfessorService {
     List<User> getProfessorsByDepartment(Long departmentId);
     
     /**
+     * Get all professors across all departments.
+     * For Deanship role only.
+     * 
+     * @return List of all professors
+     */
+    List<User> getAllProfessors();
+    
+    /**
      * Deactivate a professor (soft delete).
      * Only accessible by Deanship role.
      * 

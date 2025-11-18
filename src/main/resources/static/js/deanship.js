@@ -18,6 +18,7 @@ let departments = [];
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    restoreActiveTab();
     initializeEventListeners();
     loadInitialData();
 });
@@ -103,10 +104,42 @@ async function loadInitialData() {
 }
 
 /**
+ * Restore active tab from localStorage
+ */
+function restoreActiveTab() {
+    const savedTab = localStorage.getItem('deanship-active-tab');
+    if (savedTab) {
+        currentTab = savedTab;
+        // Update UI to show the saved tab
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            if (tab.dataset.tab === savedTab) {
+                tab.classList.add('active', 'border-blue-600', 'text-blue-600');
+                tab.classList.remove('border-transparent', 'text-gray-500');
+            } else {
+                tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
+                tab.classList.add('border-transparent', 'text-gray-500');
+            }
+        });
+        
+        // Show the saved tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        const tabContent = document.getElementById(`${savedTab}-tab`);
+        if (tabContent) {
+            tabContent.classList.remove('hidden');
+        }
+    }
+}
+
+/**
  * Switch tab
  */
 function switchTab(tabName) {
     currentTab = tabName;
+    
+    // Save active tab to localStorage
+    localStorage.setItem('deanship-active-tab', tabName);
 
     // Update tab buttons
     document.querySelectorAll('.nav-tab').forEach(tab => {

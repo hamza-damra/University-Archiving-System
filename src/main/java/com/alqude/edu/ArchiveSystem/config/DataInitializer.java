@@ -715,6 +715,7 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Legacy system data initialization completed");
     }
     
+    @SuppressWarnings("unused")
     private Department createDepartmentIfNotExists(String name, String description) {
         return departmentRepository.findByName(name)
                 .orElseGet(() -> {
@@ -727,6 +728,7 @@ public class DataInitializer implements CommandLineRunner {
                 });
     }
     
+    @SuppressWarnings("unused")
     private User createUserIfNotExists(String email, String password, String firstName, 
                                      String lastName, Role role, Department department) {
         return userRepository.findByEmail(email)
@@ -1605,8 +1607,9 @@ public class DataInitializer implements CommandLineRunner {
         log.info("Created {} uploaded files", savedFiles.size());
         
         // Update all submissions with file counts
-        documentSubmissionRepository.saveAll(submissionsWithFiles);
-        log.info("Updated {} submissions with file counts and sizes", submissionsWithFiles.size());
+        @SuppressWarnings("null")
+        List<DocumentSubmission> updatedSubmissions = documentSubmissionRepository.saveAll(submissionsWithFiles);
+        log.info("Updated {} submissions with file counts and sizes", updatedSubmissions.size());
         
         // Log distribution statistics
         Map<DocumentTypeEnum, Long> filesByDocType = savedFiles.stream()

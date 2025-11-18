@@ -32,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
     "mock.data.skip-if-exists=false"
 })
 @Transactional
+@SuppressWarnings("null")
 class MockDataIntegrationTest {
 
     @Autowired
@@ -60,13 +61,13 @@ class MockDataIntegrationTest {
         mockMvc.perform(get("/api/hod/professors")
                 .param("page", "0")
                 .param("size", "50")
-                .contentType(MediaType.APPLICATION_JSON))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON))
             // Then: Should return success with professor data
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").exists())
             .andExpect(jsonPath("$.data.content").isArray())
-            .andExpect(jsonPath("$.data.content.length()").value(greaterThan(0)))
+            .andExpect(jsonPath("$.data.content.length()").value(org.hamcrest.Matchers.greaterThan(0)))
             .andExpect(jsonPath("$.data.totalElements").value(25));
     }
 

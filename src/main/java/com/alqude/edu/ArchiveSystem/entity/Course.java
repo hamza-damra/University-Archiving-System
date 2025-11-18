@@ -1,5 +1,7 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -39,6 +41,7 @@ public class Course implements Serializable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id", nullable = false)
     @lombok.ToString.Exclude
+    @JsonIgnoreProperties({"users"})
     private Department department;
     
     @Column(length = 100)
@@ -52,10 +55,12 @@ public class Course implements Serializable {
     
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<CourseAssignment> courseAssignments = new ArrayList<>();
     
     @OneToMany(mappedBy = "course", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<RequiredDocumentType> requiredDocumentTypes = new ArrayList<>();
     
     @CreationTimestamp

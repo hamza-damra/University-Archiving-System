@@ -21,10 +21,20 @@ import java.util.stream.Collectors;
 
 /**
  * Service for migrating data from old request-based schema to new semester-based schema
+ * 
+ * NOTE: This service intentionally uses legacy entities (DocumentRequest, SubmittedDocument, FileAttachment)
+ * to perform data migration from the old system to the new semester-based structure.
+ * Deprecation warnings are suppressed as this is the intended purpose of this service.
+ * 
+ * This service is critical for:
+ * - Initial data migration from legacy system
+ * - Rollback procedures
+ * - Data validation and integrity checks
  */
 @Service
 @Slf4j
 @RequiredArgsConstructor
+@SuppressWarnings("deprecation")
 public class DataMigrationService {
 
     private final DocumentRequestRepository documentRequestRepository;

@@ -27,6 +27,17 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+/**
+ * File upload service for legacy request-based document system.
+ * 
+ * NOTE: This service uses legacy entities (DocumentRequest, SubmittedDocument)
+ * for backward compatibility with the old request-based system.
+ * Deprecation warnings are suppressed as this service maintains compatibility
+ * during the transition period.
+ * 
+ * @deprecated This service will be replaced by FileService in the new semester-based system
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @RequiredArgsConstructor
 @Slf4j

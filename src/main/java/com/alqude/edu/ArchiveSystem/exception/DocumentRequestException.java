@@ -2,6 +2,16 @@ package com.alqude.edu.ArchiveSystem.exception;
 
 import java.util.List;
 
+/**
+ * LEGACY EXCEPTION - ARCHIVED
+ * 
+ * This exception is part of the old request-based document system.
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Part of legacy request-based system
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 public class DocumentRequestException extends BusinessException {
     
     public static final String INVALID_DEADLINE = "INVALID_DEADLINE";

@@ -31,6 +31,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
+@SuppressWarnings("null")
 public class ProfessorServiceImpl implements ProfessorService {
     
     private final UserRepository userRepository;
@@ -148,7 +149,74 @@ public class ProfessorServiceImpl implements ProfessorService {
             throw new EntityNotFoundException("Department not found with ID: " + departmentId);
         }
         
-        return userRepository.findByDepartmentIdAndRole(departmentId, Role.ROLE_PROFESSOR);
+        List<User> professors = userRepository.findByDepartmentIdAndRole(departmentId, Role.ROLE_PROFESSOR);
+        
+        // Eagerly load department to avoid lazy loading issues in JSON serialization
+        professors.forEach(prof -> {
+            if (prof.getDepartment() != null) {
+                prof.getDepartment().getName(); // Force load
+            }
+        });
+        
+        return professors;
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<User> getAllProfessors() {
+        log.debug("Fetching all professors across all departments");
+        
+        // Get all users and filter by professor role
+        List<User> professors = userRepository.findAll().stream()
+                .filter(user -> user.getRole() == Role.ROLE_PROFESSOR)
+                .collect(java.util.stream.Collectors.toList());
+        
+        // Eagerly load department to avoid lazy loading issues in JSON serialization
+        professors.forEach(prof -> {
+            if (prof.getDepartment() != null) {
+                prof.getDepartment().getName(); // Force load
+            }
+        });
+        
+        return professors;
+    }
+    
+    /**
+     * Get all professors with department-scoped filtering.
+     * For HOD and Professor: only returns professors in their department.
+     * For Deanship: returns all professors.
+     * 
+     * @param currentUser The current authenticated user
+     * @return Filtered list of professors
+     */
+    @Transactional(readOnly = true)
+    public List<User> getAllProfessors(User currentUser) {
+        log.debug("Fetching all professors with department filtering for user: {}", currentUser.getEmail());
+        
+        // For Deanship, get all professors from all departments
+        if (currentUser.getRole() == Role.ROLE_DEANSHIP) {
+            // Get all professors by querying all departments
+            List<User> allProfessors = userRepository.findAll().stream()
+                    .filter(user -> user.getRole() == Role.ROLE_PROFESSOR)
+                    .collect(java.util.stream.Collectors.toList());
+            log.debug("Deanship user - returning all {} professors", allProfessors.size());
+            return allProfessors;
+        }
+        
+        // For HOD and Professor, get only professors in their department
+        if (currentUser.getDepartment() == null) {
+            log.warn("User {} has no department assigned", currentUser.getEmail());
+            return List.of();
+        }
+        
+        List<User> departmentProfessors = userRepository.findByDepartmentIdAndRole(
+                currentUser.getDepartment().getId(), Role.ROLE_PROFESSOR);
+        
+        log.debug("{} user - returning {} professors in department {}", 
+                currentUser.getRole(), departmentProfessors.size(), 
+                currentUser.getDepartment().getName());
+        
+        return departmentProfessors;
     }
     
     @Override

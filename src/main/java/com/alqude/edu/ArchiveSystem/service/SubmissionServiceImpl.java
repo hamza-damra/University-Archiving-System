@@ -15,6 +15,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class SubmissionServiceImpl implements SubmissionService {
     
     private final DocumentSubmissionRepository documentSubmissionRepository;
@@ -22,6 +23,7 @@ public class SubmissionServiceImpl implements SubmissionService {
     private final UserRepository userRepository;
     private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
     private final SemesterRepository semesterRepository;
+    private final DepartmentScopedFilterService departmentScopedFilterService;
     
     /**
      * Create a new DocumentSubmission record for a course assignment and document type.
@@ -170,6 +172,42 @@ public class SubmissionServiceImpl implements SubmissionService {
     }
     
     /**
+     * Get all submissions for a semester with department-scoped filtering.
+     * For HOD and Professor: only returns submissions in their department.
+     * For Deanship: returns all submissions.
+     * 
+     * @param semesterId The ID of the semester
+     * @param currentUser The current authenticated user
+     * @return Filtered list of DocumentSubmissions
+     */
+    @Transactional(readOnly = true)
+    public List<DocumentSubmission> getSubmissionsBySemester(Long semesterId, User currentUser) {
+        log.debug("Getting submissions for semesterId: {} with department filtering for user: {}", 
+                semesterId, currentUser.getEmail());
+        
+        // Validate semester exists
+        if (!semesterRepository.existsById(semesterId)) {
+            throw new EntityNotFoundException("Semester not found with id: " + semesterId);
+        }
+        
+        // Get all course assignments for the semester
+        List<CourseAssignment> assignments = courseAssignmentRepository.findBySemesterId(semesterId);
+        
+        // Apply department-scoped filtering to assignments
+        List<CourseAssignment> filteredAssignments = 
+                departmentScopedFilterService.filterCourseAssignments(assignments, currentUser);
+        
+        // Get submissions for filtered assignments
+        List<DocumentSubmission> submissions = filteredAssignments.stream()
+                .flatMap(assignment -> documentSubmissionRepository
+                        .findByCourseAssignmentId(assignment.getId()).stream())
+                .collect(java.util.stream.Collectors.toList());
+        
+        log.debug("Found {} submissions after department filtering", submissions.size());
+        return submissions;
+    }
+    
+    /**
      * Get all submissions for a specific course assignment.
      * 
      * @param courseAssignmentId The ID of the course assignment
@@ -265,7 +303,8 @@ public class SubmissionServiceImpl implements SubmissionService {
         // Filter by department if specified
         if (departmentId != null) {
             courseAssignments = courseAssignments.stream()
-                    .filter(ca -> ca.getCourse().getDepartment().getId().equals(departmentId))
+                    .filter(ca -> ca.getCourse().getDepartment() != null && 
+                                 ca.getCourse().getDepartment().getId().equals(departmentId))
                     .toList();
         }
         
@@ -342,6 +381,27 @@ public class SubmissionServiceImpl implements SubmissionService {
                 .missingDocuments(counts[2])
                 .overdueDocuments(counts[3])
                 .build();
+    }
+    
+    /**
+     * Get submission statistics for a semester with automatic department-scoped filtering.
+     * For HOD and Professor: only includes statistics for their department.
+     * For Deanship: includes all departments.
+     * 
+     * @param semesterId The ID of the semester
+     * @param currentUser The current authenticated user
+     * @return SubmissionStatistics with aggregated counts
+     */
+    @Transactional(readOnly = true)
+    public SubmissionStatistics getStatisticsBySemester(Long semesterId, User currentUser) {
+        log.info("Getting statistics for semesterId: {} with department filtering for user: {}", 
+                semesterId, currentUser.getEmail());
+        
+        // Get department ID for filtering based on user role
+        Long departmentId = departmentScopedFilterService.getDepartmentIdForFiltering(currentUser);
+        
+        // Use existing method with department filtering
+        return getStatisticsBySemester(semesterId, departmentId);
     }
     
     /**

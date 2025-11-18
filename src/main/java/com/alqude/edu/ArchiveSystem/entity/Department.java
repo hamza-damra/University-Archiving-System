@@ -1,5 +1,6 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -32,6 +33,7 @@ public class Department implements Serializable {
     
     @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<User> users;
     
     @CreationTimestamp

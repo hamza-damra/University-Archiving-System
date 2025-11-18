@@ -29,6 +29,29 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+/**
+ * LEGACY SERVICE - ARCHIVED
+ * 
+ * This service is part of the old request-based document system.
+ * 
+ * Replacement services:
+ * - CourseService: For managing courses and course assignments
+ * - SubmissionService: For managing document submissions
+ * - FileService: For file operations
+ * 
+ * This service is kept for:
+ * 1. Historical data access
+ * 2. Data migration operations
+ * 3. Rollback capability
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by CourseService, SubmissionService, and FileService in semester-based system
+ * @see com.alqude.edu.ArchiveSystem.service.CourseService
+ * @see com.alqude.edu.ArchiveSystem.service.SubmissionService
+ * @see com.alqude.edu.ArchiveSystem.service.FileService
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Service
 @RequiredArgsConstructor
 @Slf4j

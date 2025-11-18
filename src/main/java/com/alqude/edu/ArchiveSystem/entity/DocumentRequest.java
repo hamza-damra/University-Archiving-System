@@ -12,6 +12,28 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * LEGACY ENTITY - ARCHIVED
+ * 
+ * This entity is part of the old request-based document system and has been replaced
+ * by the new semester-based structure using CourseAssignment and RequiredDocumentType entities.
+ * 
+ * Replacement entities:
+ * - CourseAssignment: Links professors to courses within semesters
+ * - RequiredDocumentType: Defines required document types per course
+ * 
+ * This entity is kept for:
+ * 1. Historical data access
+ * 2. Rollback capability
+ * 3. Data migration reference
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by CourseAssignment and RequiredDocumentType in semester-based system
+ * @see com.alqude.edu.ArchiveSystem.entity.CourseAssignment
+ * @see com.alqude.edu.ArchiveSystem.entity.RequiredDocumentType
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Entity
 @Table(name = "document_requests")
 @Data

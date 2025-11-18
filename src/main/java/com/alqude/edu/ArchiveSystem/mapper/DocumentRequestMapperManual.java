@@ -5,6 +5,16 @@ import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.entity.DocumentRequest;
 import org.springframework.stereotype.Component;
 
+/**
+ * LEGACY MAPPER - ARCHIVED
+ * 
+ * This mapper is part of the old request-based document system.
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Part of legacy request-based system
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Component("documentRequestMapper")
 public class DocumentRequestMapperManual implements DocumentRequestMapper {
     

@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/hod-dashboard.html", "/prof-dashboard.html").permitAll()
+                        .requestMatchers("/", "/index.html", "/hod-dashboard.html", "/prof-dashboard.html", "/deanship-dashboard.html").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.ico").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
@@ -45,6 +45,7 @@ public class SecurityConfig {
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .requestMatchers("/api/hod/**").hasRole("HOD")
                         .requestMatchers("/api/professor/**").hasRole("PROFESSOR")
+                        .requestMatchers("/api/deanship/**").hasRole("DEANSHIP")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

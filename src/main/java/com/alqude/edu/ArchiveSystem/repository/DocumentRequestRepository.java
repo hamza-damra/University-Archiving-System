@@ -11,6 +11,27 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDateTime;
 import java.util.List;
 
+/**
+ * LEGACY REPOSITORY - ARCHIVED
+ * 
+ * This repository is part of the old request-based document system.
+ * 
+ * Replacement repositories:
+ * - CourseAssignmentRepository: For course assignments
+ * - RequiredDocumentTypeRepository: For required document types
+ * 
+ * This repository is kept for:
+ * 1. Historical data access
+ * 2. Data migration operations
+ * 3. Rollback capability
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by CourseAssignmentRepository and RequiredDocumentTypeRepository
+ * @see com.alqude.edu.ArchiveSystem.repository.CourseAssignmentRepository
+ * @see com.alqude.edu.ArchiveSystem.repository.RequiredDocumentTypeRepository
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Repository
 public interface DocumentRequestRepository extends JpaRepository<DocumentRequest, Long> {
     

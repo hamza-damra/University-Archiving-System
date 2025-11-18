@@ -39,11 +39,22 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Professor Controller providing both new semester-based endpoints and legacy request-based endpoints.
+ * 
+ * NOTE: This controller includes legacy endpoints for backward compatibility.
+ * Legacy endpoints use deprecated services (DocumentRequestService, MultiFileUploadService)
+ * to maintain compatibility with existing clients during the transition period.
+ * 
+ * Deprecation warnings are suppressed for legacy endpoint methods.
+ * New development should use the semester-based endpoints.
+ */
 @RestController
 @RequestMapping("/api/professor")
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('PROFESSOR')")
+@SuppressWarnings("deprecation")
 public class ProfessorController {
     
     private final DocumentRequestService documentRequestService;
@@ -126,8 +137,10 @@ public class ProfessorController {
     
     /**
      * Replace files for an existing submission
+     * Security: Professor must own the submission
      */
     @PutMapping("/submissions/{submissionId}/replace")
+    @PreAuthorize("hasRole('PROFESSOR') and @securityExpressionService.ownsSubmission(#submissionId)")
     public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>> replaceFiles(
             @PathVariable Long submissionId,
             @RequestParam(required = false) String notes,
@@ -174,8 +187,10 @@ public class ProfessorController {
     
     /**
      * Get a specific submission by ID
+     * Security: Professor must own the submission or be in the same department
      */
     @GetMapping("/submissions/{submissionId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
     public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.DocumentSubmission>> getSubmission(
             @PathVariable Long submissionId) {
         
@@ -232,8 +247,10 @@ public class ProfessorController {
     
     /**
      * Download a file by ID
+     * Security: Professor must be in the same department as the file owner
      */
     @GetMapping("/files/{fileId}/download")
+    @PreAuthorize("hasRole('PROFESSOR')")
     public ResponseEntity<Resource> downloadFile(@PathVariable Long fileId) throws IOException {
         
         log.info("Professor downloading file ID: {}", fileId);
@@ -254,7 +271,7 @@ public class ProfessorController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, 
                         "attachment; filename=\"" + uploadedFile.getOriginalFilename() + "\"")
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentType(Objects.requireNonNull(MediaType.APPLICATION_OCTET_STREAM))
                 .body(resource);
     }
     

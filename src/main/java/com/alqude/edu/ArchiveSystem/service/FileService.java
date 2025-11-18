@@ -37,4 +37,32 @@ public interface FileService {
     // File Path Generation
     String generateFilePath(String yearCode, String semesterType, String professorId, 
                            String courseCode, DocumentTypeEnum documentType, String filename);
+    
+    // Permission Checking (for use by controllers and other services)
+    /**
+     * Check if a user can read a specific file.
+     * 
+     * @param fileId the file ID
+     * @param user the user to check
+     * @return true if user has read permission
+     */
+    boolean canUserReadFile(Long fileId, com.alqude.edu.ArchiveSystem.entity.User user);
+    
+    /**
+     * Check if a user can write/upload to a course assignment.
+     * 
+     * @param courseAssignmentId the course assignment ID
+     * @param user the user to check
+     * @return true if user has write permission
+     */
+    boolean canUserWriteToCourseAssignment(Long courseAssignmentId, com.alqude.edu.ArchiveSystem.entity.User user);
+    
+    /**
+     * Check if a user can delete a specific file.
+     * 
+     * @param fileId the file ID
+     * @param user the user to check
+     * @return true if user has delete permission
+     */
+    boolean canUserDeleteFile(Long fileId, com.alqude.edu.ArchiveSystem.entity.User user);
 }

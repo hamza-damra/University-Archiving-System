@@ -42,6 +42,7 @@ public class DeanshipController {
     private final ProfessorService professorService;
     private final CourseService courseService;
     private final SemesterReportService semesterReportService;
+    private final com.alqude.edu.ArchiveSystem.repository.DepartmentRepository departmentRepository;
     
     // ==================== Academic Year Management ====================
     
@@ -112,6 +113,27 @@ public class DeanshipController {
         }
     }
     
+    /**
+     * Activate an academic year (set as the active year).
+     * 
+     * @param id Academic year ID
+     * @return Success response
+     */
+    @PutMapping("/academic-years/{id}/activate")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<String>> activateAcademicYear(@PathVariable Long id) {
+        log.info("Deanship activating academic year with id: {}", id);
+        
+        try {
+            academicService.setActiveAcademicYear(id);
+            return ResponseEntity.ok(ApiResponse.success("Academic year activated successfully", "Academic year has been set as active"));
+        } catch (Exception e) {
+            log.error("Error activating academic year with id: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     // ==================== Professor Management ====================
     
     /**
@@ -179,8 +201,8 @@ public class DeanshipController {
             if (departmentId != null) {
                 professors = professorService.getProfessorsByDepartment(departmentId);
             } else {
-                // Get all professors - we'll need to add this method or get all departments
-                professors = professorService.getProfessorsByDepartment(departmentId);
+                // Get all professors across all departments
+                professors = professorService.getAllProfessors();
             }
             return ResponseEntity.ok(ApiResponse.success("Professors retrieved successfully", professors));
         } catch (Exception e) {
@@ -206,6 +228,27 @@ public class DeanshipController {
             return ResponseEntity.ok(ApiResponse.success("Professor deactivated successfully", "Professor has been deactivated"));
         } catch (Exception e) {
             log.error("Error deactivating professor with id: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Activate a professor.
+     * 
+     * @param id Professor ID
+     * @return Success response
+     */
+    @PutMapping("/professors/{id}/activate")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<String>> activateProfessor(@PathVariable Long id) {
+        log.info("Deanship activating professor with id: {}", id);
+        
+        try {
+            professorService.activateProfessor(id);
+            return ResponseEntity.ok(ApiResponse.success("Professor activated successfully", "Professor has been activated"));
+        } catch (Exception e) {
+            log.error("Error activating professor with id: {}", id, e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
@@ -278,14 +321,34 @@ public class DeanshipController {
             if (departmentId != null) {
                 courses = courseService.getCoursesByDepartment(departmentId);
             } else {
-                // Get all courses - we'll need to add this method or get all departments
-                courses = courseService.getCoursesByDepartment(departmentId);
+                courses = courseService.getAllCourses();
             }
             return ResponseEntity.ok(ApiResponse.success("Courses retrieved successfully", courses));
         } catch (Exception e) {
             log.error("Error retrieving courses", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to retrieve courses: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Deactivate a course (soft delete).
+     * 
+     * @param id Course ID
+     * @return Success response
+     */
+    @PutMapping("/courses/{id}/deactivate")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<String>> deactivateCourse(@PathVariable Long id) {
+        log.info("Deanship deactivating course with id: {}", id);
+        
+        try {
+            courseService.deactivateCourse(id);
+            return ResponseEntity.ok(ApiResponse.success("Course deactivated successfully", "Course has been deactivated"));
+        } catch (Exception e) {
+            log.error("Error deactivating course with id: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
     
@@ -391,6 +454,28 @@ public class DeanshipController {
             log.error("Error adding required document type for course: {}", courseId, e);
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    // ==================== Department Management ====================
+    
+    /**
+     * Get all departments.
+     * 
+     * @return List of all departments
+     */
+    @GetMapping("/departments")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Department>>> getAllDepartments() {
+        log.info("Deanship retrieving all departments");
+        
+        try {
+            List<com.alqude.edu.ArchiveSystem.entity.Department> departments = departmentRepository.findAll();
+            return ResponseEntity.ok(ApiResponse.success("Departments retrieved successfully", departments));
+        } catch (Exception e) {
+            log.error("Error retrieving departments", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve departments: " + e.getMessage()));
         }
     }
     

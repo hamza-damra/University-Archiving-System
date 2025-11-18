@@ -1,0 +1,96 @@
+{
+  "groups": [
+    {
+      "name": "app.upload",
+      "type": "com.alqude.edu.ArchiveSystem.config.UploadProperties",
+      "sourceType": "com.alqude.edu.ArchiveSystem.config.UploadProperties",
+      "description": "Configuration properties for file upload settings."
+    },
+    {
+      "name": "app.academic",
+      "type": "com.alqude.edu.ArchiveSystem.config.AcademicProperties",
+      "sourceType": "com.alqude.edu.ArchiveSystem.config.AcademicProperties",
+      "description": "Configuration properties for academic settings."
+    }
+  ],
+  "properties": [
+    {
+      "name": "app.upload.base-path",
+      "type": "java.lang.String",
+      "description": "Base path for file uploads (e.g., 'uploads/')",
+      "defaultValue": "uploads/"
+    },
+    {
+      "name": "app.upload.allowed-extensions",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed file extensions (e.g., 'pdf,zip')",
+      "defaultValue": "pdf,zip"
+    },
+    {
+      "name": "app.upload.max-file-count",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of files per upload",
+      "defaultValue": 10
+    },
+    {
+      "name": "app.upload.max-total-size-mb",
+      "type": "java.lang.Integer",
+      "description": "Maximum total size in MB for all files in a single upload",
+      "defaultValue": 50
+    },
+    {
+      "name": "app.upload.create-directories",
+      "type": "java.lang.Boolean",
+      "description": "Whether to automatically create directories if they don't exist",
+      "defaultValue": true
+    },
+    {
+      "name": "app.academic.default-year",
+      "type": "java.lang.String",
+      "description": "Default academic year (e.g., '2024-2025')",
+      "defaultValue": "2024-2025"
+    },
+    {
+      "name": "app.academic.auto-create-semesters",
+      "type": "java.lang.Boolean",
+      "description": "Whether to automatically create three semesters when creating an academic year",
+      "defaultValue": true
+    },
+    {
+      "name": "app.academic.semester-first-start-month",
+      "type": "java.lang.Integer",
+      "description": "Start month for first semester (1-12)",
+      "defaultValue": 9
+    },
+    {
+      "name": "app.academic.semester-first-end-month",
+      "type": "java.lang.Integer",
+      "description": "End month for first semester (1-12)",
+      "defaultValue": 12
+    },
+    {
+      "name": "app.academic.semester-second-start-month",
+      "type": "java.lang.Integer",
+      "description": "Start month for second semester (1-12)",
+      "defaultValue": 1
+    },
+    {
+      "name": "app.academic.semester-second-end-month",
+      "type": "java.lang.Integer",
+      "description": "End month for second semester (1-12)",
+      "defaultValue": 5
+    },
+    {
+      "name": "app.academic.semester-summer-start-month",
+      "type": "java.lang.Integer",
+      "description": "Start month for summer semester (1-12)",
+      "defaultValue": 6
+    },
+    {
+      "name": "app.academic.semester-summer-end-month",
+      "type": "java.lang.Integer",
+      "description": "End month for summer semester (1-12)",
+      "defaultValue": 8
+    }
+  ]
+}

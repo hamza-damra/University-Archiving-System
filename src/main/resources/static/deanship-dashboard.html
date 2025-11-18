@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deanship Dashboard - Al-Quds University Archiving System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/custom.css">
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Al-Quds University</h1>
+                    <p class="text-sm text-gray-600">Deanship Dashboard</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">Deanship</span>
+                        <span id="deanshipName" class="text-gray-700 font-medium"></span>
+                    </div>
+                    <button 
+                        id="logoutBtn"
+                        class="group p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+                        title="Logout"
+                        aria-label="Logout"
+                    >
+                        <svg class="w-6 h-6 transition-transform group-hover:scale-110" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+                            <defs>
+                                <linearGradient id="logout-gradient-deanship" x1="17.503" x2="345.973" y1="420.235" y2="91.765" gradientUnits="userSpaceOnUse">
+                                    <stop offset="0" stop-color="#f8ae1f"></stop>
+                                    <stop offset="1" stop-color="#ca2157"></stop>
+                                </linearGradient>
+                            </defs>
+                            <path fill="url(#logout-gradient-deanship)" fill-rule="evenodd" d="M85.476 466.805c-28.539 0-51.763-23.224-51.763-51.764V96.959c0-28.539 23.224-51.763 51.763-51.763h174.845c28.539 0 51.763 23.224 51.763 51.763v80.702c0 10.787-8.798 19.585-19.585 19.585h-6.172c-10.787 0-19.585-8.798-19.585-19.585V96.959c0-3.509-2.914-6.422-6.422-6.422H85.475c-3.509 0-6.422 2.913-6.422 6.422v318.082c0 3.509 2.914 6.422 6.422 6.422H260.32c3.508 0 6.422-2.914 6.422-6.422v-80.702c0-10.787 8.798-19.585 19.585-19.585h6.172c10.787 0 19.585 8.798 19.585 19.585v80.702c0 28.539-23.224 51.764-51.763 51.764H85.476zm273.123-123.312c-8.852 8.852-8.852 23.205 0 32.058 8.853 8.853 23.205 8.853 32.058 0l65.129-65.129c30.001-30.002 30.001-78.843 0-108.844l-65.129-65.129c-8.852-8.852-23.205-8.852-32.058 0-8.852 8.853-8.852 23.205 0 32.058l56.465 56.465c3.087 3.087.903 8.358-3.462 8.358H145.346c-12.52 0-22.67 10.15-22.67 22.671s10.15 22.671 22.67 22.671h266.256c4.365 0 6.549 5.271 3.462 8.358z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button 
+                    class="nav-tab active px-3 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
+                    data-tab="academic-years"
+                >
+                    Academic Years
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="professors"
+                >
+                    Professors
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="courses"
+                >
+                    Courses
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="assignments"
+                >
+                    Course Assignments
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="reports"
+                >
+                    Reports
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="file-explorer"
+                >
+                    File Explorer
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Context Bar (Academic Year & Semester Selector) -->
+    <div class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+            <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2">
+                    <label for="academicYearSelect" class="text-sm font-medium text-gray-700">Academic Year:</label>
+                    <select 
+                        id="academicYearSelect"
+                        class="px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                        <option value="">Loading...</option>
+                    </select>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <label class="text-sm font-medium text-gray-700">Semester:</label>
+                    <div class="flex space-x-1">
+                        <button 
+                            class="semester-tab active px-3 py-1.5 text-sm font-medium rounded-md bg-blue-600 text-white"
+                            data-semester="FIRST"
+                        >
+                            First
+                        </button>
+                        <button 
+                            class="semester-tab px-3 py-1.5 text-sm font-medium rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            data-semester="SECOND"
+                        >
+                            Second
+                        </button>
+                        <button 
+                            class="semester-tab px-3 py-1.5 text-sm font-medium rounded-md bg-gray-200 text-gray-700 hover:bg-gray-300"
+                            data-semester="SUMMER"
+                        >
+                            Summer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Academic Years Tab -->
+        <div id="academic-years-tab" class="tab-content">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Academic Years Management</h2>
+                    <button 
+                        id="addAcademicYearBtn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    >
+                        + Add Academic Year
+                    </button>
+                </div>
+                
+                <div id="academicYearsTable" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Year Code</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Start Year</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">End Year</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="academicYearsTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="animate-pulse">Loading academic years...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Professors Tab -->
+        <div id="professors-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Professors Management</h2>
+                    <button 
+                        id="addProfessorBtn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    >
+                        + Add Professor
+                    </button>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="mb-4 flex space-x-2">
+                    <input 
+                        type="text" 
+                        id="professorSearch"
+                        placeholder="Search professors..."
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                    <select 
+                        id="professorDepartmentFilter"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                        <option value="">All Departments</option>
+                    </select>
+                </div>
+                
+                <div id="professorsTable" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="professorsTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="animate-pulse">Loading professors...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Courses Tab -->
+        <div id="courses-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Courses Management</h2>
+                    <button 
+                        id="addCourseBtn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    >
+                        + Add Course
+                    </button>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="mb-4 flex space-x-2">
+                    <input 
+                        type="text" 
+                        id="courseSearch"
+                        placeholder="Search courses..."
+                        class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                    <select 
+                        id="courseDepartmentFilter"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                        <option value="">All Departments</option>
+                    </select>
+                </div>
+                
+                <div id="coursesTable" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Code</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Level</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="coursesTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="animate-pulse">Loading courses...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Course Assignments Tab -->
+        <div id="assignments-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Course Assignments</h2>
+                    <button 
+                        id="addAssignmentBtn"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    >
+                        + Assign Course
+                    </button>
+                </div>
+
+                <!-- Filter -->
+                <div class="mb-4 flex space-x-2">
+                    <select 
+                        id="assignmentProfessorFilter"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                        <option value="">All Professors</option>
+                    </select>
+                    <select 
+                        id="assignmentCourseFilter"
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                    >
+                        <option value="">All Courses</option>
+                    </select>
+                </div>
+                
+                <div id="assignmentsTable" class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assignmentsTableBody" class="bg-white divide-y divide-gray-200">
+                            <tr>
+                                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                                    <div class="animate-pulse">Loading assignments...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">System-Wide Reports</h2>
+                
+                <div class="space-y-4">
+                    <div class="border border-gray-200 rounded-lg p-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">Submission Status Report</h3>
+                        <p class="text-sm text-gray-600 mb-4">View submission status across all departments for the selected semester.</p>
+                        <button 
+                            id="viewSystemReportBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                        >
+                            View Report
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Report Display Area -->
+                <div id="reportDisplay" class="mt-6 hidden">
+                    <div class="border-t border-gray-200 pt-6">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Report Results</h3>
+                        <div id="reportContent"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Explorer Tab -->
+        <div id="file-explorer-tab" class="tab-content hidden">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">File Explorer</h2>
+                
+                <!-- Breadcrumbs -->
+                <div id="breadcrumbs" class="mb-4 flex items-center space-x-2 text-sm text-gray-600">
+                    <span>Home</span>
+                </div>
+
+                <!-- File Explorer Content -->
+                <div id="fileExplorerContent" class="space-y-4">
+                    <div class="text-center py-12 text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <p class="mt-2">Select an academic year and semester to browse files</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-gray-200 mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <p class="text-center text-sm text-gray-600">Al-Quds University — Archiving System</p>
+        </div>
+    </footer>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script type="module" src="/js/deanship.js"></script>
+</body>
+</html>

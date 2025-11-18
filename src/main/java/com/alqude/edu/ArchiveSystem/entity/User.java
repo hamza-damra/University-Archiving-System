@@ -1,5 +1,6 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,7 +17,11 @@ import java.util.Collection;
 import java.util.List;
 
 @Entity
-@Table(name = "users")
+@Table(name = "users",
+       indexes = {
+           @Index(name = "idx_users_department", columnList = "department_id"),
+           @Index(name = "idx_users_role", columnList = "role")
+       })
 @JsonIgnoreProperties({"documentRequests", "submittedDocuments", "notifications", "password", "hibernateLazyInitializer", "handler"})
 @Data
 @NoArgsConstructor
@@ -48,6 +53,7 @@ public class User implements UserDetails {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "department_id")
     @lombok.ToString.Exclude
+    @JsonIgnoreProperties({"users"})
     private Department department;
     
     @Column(name = "professor_id", unique = true)
@@ -59,25 +65,32 @@ public class User implements UserDetails {
     // New relationships for semester-based system
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<CourseAssignment> courseAssignments;
     
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<DocumentSubmission> documentSubmissions;
     
     // Deprecated: Old request-based relationships (kept for migration)
     @Deprecated
+    @SuppressWarnings("deprecation")
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<DocumentRequest> documentRequests;
     
     @Deprecated
+    @SuppressWarnings("deprecation")
     @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<SubmittedDocument> submittedDocuments;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
+    @JsonIgnore
     private List<Notification> notifications;
     
     @CreationTimestamp
@@ -87,6 +100,12 @@ public class User implements UserDetails {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    // Computed fields for JSON serialization
+    @Transient
+    public String getName() {
+        return firstName + " " + lastName;
+    }
     
     // UserDetails implementation
     @Override

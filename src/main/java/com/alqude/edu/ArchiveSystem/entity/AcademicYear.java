@@ -1,5 +1,6 @@
 package com.alqude.edu.ArchiveSystem.entity;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -43,6 +44,7 @@ public class AcademicYear implements Serializable {
     
     @OneToMany(mappedBy = "academicYear", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     @lombok.ToString.Exclude
+    @JsonManagedReference
     private List<Semester> semesters = new ArrayList<>();
     
     @CreationTimestamp

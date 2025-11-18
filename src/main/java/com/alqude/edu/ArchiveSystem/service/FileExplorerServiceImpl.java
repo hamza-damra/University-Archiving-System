@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional(readOnly = true)
+@SuppressWarnings("null")
 public class FileExplorerServiceImpl implements FileExplorerService {
     
     private final AcademicYearRepository academicYearRepository;

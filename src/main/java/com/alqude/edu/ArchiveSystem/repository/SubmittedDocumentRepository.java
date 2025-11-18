@@ -9,6 +9,25 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * LEGACY REPOSITORY - ARCHIVED
+ * 
+ * This repository is part of the old request-based document system.
+ * 
+ * Replacement repository:
+ * - DocumentSubmissionRepository: For document submissions in semester-based system
+ * 
+ * This repository is kept for:
+ * 1. Historical data access
+ * 2. Data migration operations
+ * 3. Rollback capability
+ * 
+ * DO NOT USE FOR NEW DEVELOPMENT
+ * 
+ * @deprecated Replaced by DocumentSubmissionRepository
+ * @see com.alqude.edu.ArchiveSystem.repository.DocumentSubmissionRepository
+ */
+@Deprecated(since = "2.0", forRemoval = false)
 @Repository
 public interface SubmittedDocumentRepository extends JpaRepository<SubmittedDocument, Long> {
     

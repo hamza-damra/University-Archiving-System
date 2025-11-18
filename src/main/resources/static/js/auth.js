@@ -59,9 +59,10 @@ loginForm.addEventListener('submit', async (e) => {
         // Call login API
         const response = await auth.login({ email, password });
         
-        // Check if response has data
-        if (response && response.data) {
-            const { token, role, firstName, lastName, email: userEmail, id, departmentId, departmentName } = response.data;
+        // Check if response has required fields
+        // Note: apiRequest now extracts data from ApiResponse wrapper automatically
+        if (response && response.token) {
+            const { token, role, firstName, lastName, email: userEmail, id, departmentId, departmentName } = response;
             
             // Save auth data
             saveAuthData(token, {
@@ -124,7 +125,9 @@ function clearErrors() {
 }
 
 function redirectToDashboard(role) {
-    if (role === 'ROLE_HOD') {
+    if (role === 'ROLE_DEANSHIP') {
+        window.location.href = '/deanship-dashboard.html';
+    } else if (role === 'ROLE_HOD') {
         window.location.href = '/hod-dashboard.html';
     } else if (role === 'ROLE_PROFESSOR') {
         window.location.href = '/prof-dashboard.html';

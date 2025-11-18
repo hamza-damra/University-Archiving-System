@@ -17,7 +17,10 @@
                     <p class="text-sm text-gray-600">Head of Department Dashboard</p>
                 </div>
                 <div class="flex items-center space-x-4">
-                    <span id="hodName" class="text-gray-700 font-medium"></span>
+                    <div class="flex items-center space-x-2">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">HOD</span>
+                        <span id="hodName" class="text-gray-700 font-medium"></span>
+                    </div>
                     <button 
                         id="logoutBtn"
                         class="group p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
@@ -39,49 +42,108 @@
         </div>
     </header>
 
+    <!-- Navigation Tabs -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex space-x-8">
+                <button 
+                    class="nav-tab active px-3 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
+                    data-tab="dashboard"
+                >
+                    Dashboard
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="submission-status"
+                >
+                    Submission Status
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="reports"
+                >
+                    Reports
+                </button>
+                <button 
+                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="file-explorer"
+                >
+                    File Explorer
+                </button>
+            </div>
+        </div>
+    </nav>
+
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Professors Management -->
-            <div class="lg:col-span-1">
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-800">Professors</h2>
-                        <button 
-                            id="addProfessorBtn"
-                            class="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition"
-                        >
-                            + Add
-                        </button>
-                    </div>
+        <!-- Semester Selector Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Select Academic Period</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="academicYearSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                        Academic Year
+                    </label>
+                    <select 
+                        id="academicYearSelect"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                    >
+                        <option value="">Loading academic years...</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="semesterSelect" class="block text-sm font-medium text-gray-700 mb-2">
+                        Semester
+                    </label>
+                    <select 
+                        id="semesterSelect"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                        disabled
+                    >
+                        <option value="">Select academic year first...</option>
+                    </select>
+                </div>
+            </div>
+        </div>
 
-                    <!-- Search Box -->
-                    <div class="mb-4">
-                        <input 
-                            type="text" 
-                            id="professorSearch"
-                            placeholder="Search professors..."
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                        >
-                    </div>
-
-                    <!-- Professors List -->
-                    <div id="professorsList" class="space-y-3 max-h-96 overflow-y-auto">
-                        <!-- Loading skeleton -->
-                        <div class="animate-pulse space-y-3">
-                            <div class="h-20 bg-gray-200 rounded"></div>
-                            <div class="h-20 bg-gray-200 rounded"></div>
-                            <div class="h-20 bg-gray-200 rounded"></div>
+        <!-- Dashboard Tab -->
+        <div id="dashboard-tab" class="tab-content">
+            <div class="space-y-6">
+                <!-- Dashboard Overview -->
+                <div id="dashboardOverview" class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Overview</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="text-center p-4 bg-blue-50 rounded-lg">
+                            <div class="text-3xl font-bold text-blue-600" id="totalProfessors">-</div>
+                            <div class="text-sm text-gray-600 mt-1">Professors</div>
+                        </div>
+                        <div class="text-center p-4 bg-green-50 rounded-lg">
+                            <div class="text-3xl font-bold text-green-600" id="totalCourses">-</div>
+                            <div class="text-sm text-gray-600 mt-1">Courses</div>
+                        </div>
+                        <div class="text-center p-4 bg-purple-50 rounded-lg">
+                            <div class="text-3xl font-bold text-purple-600" id="submittedCount">-</div>
+                            <div class="text-sm text-gray-600 mt-1">Submitted</div>
+                        </div>
+                        <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                            <div class="text-3xl font-bold text-yellow-600" id="missingCount">-</div>
+                            <div class="text-sm text-gray-600 mt-1">Missing</div>
+                        </div>
+                        <div class="text-center p-4 bg-red-50 rounded-lg">
+                            <div class="text-3xl font-bold text-red-600" id="overdueCount">-</div>
+                            <div class="text-sm text-gray-600 mt-1">Overdue</div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Right Column: Document Requests -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Submission Summary Report -->
-                <div class="bg-white rounded-lg shadow-md p-6">
+        <!-- Submission Status Tab -->
+        <div id="submission-status-tab" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- Submission Status Report -->
+                <div id="submissionStatusSection" class="bg-white rounded-lg shadow-md p-6">
                     <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-800">Professor Submission Report</h2>
+                        <h2 class="text-xl font-semibold text-gray-800">Professor Submission Status</h2>
                         <div class="flex space-x-2">
                             <button 
                                 id="viewReportBtn"
@@ -103,86 +165,128 @@
                             </button>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-600">View a comprehensive summary of professor document submissions and export as PDF.</p>
-                </div>
-
-                <!-- Create Request Form -->
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Create Document Request</h2>
-                    <form id="createRequestForm" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label for="courseName" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Course Name *
-                                </label>
-                                <input 
-                                    type="text" 
-                                    id="courseName" 
-                                    name="courseName"
-                                    required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                >
-                            </div>
-
-                            <div>
-                                <label for="documentType" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Document Type *
-                                </label>
-                                <select 
-                                    id="documentType" 
-                                    name="documentType"
-                                    required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                >
-                                    <option value="">Select type...</option>
-                                    <option value="SYLLABUS">Syllabus</option>
-                                    <option value="EXAM">Exam</option>
-                                    <option value="ASSIGNMENT">Assignment</option>
-                                    <option value="LECTURE_NOTES">Lecture Notes</option>
-                                    <option value="OTHER">Other</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label for="deadline" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Deadline *
-                                </label>
-                                <input 
-                                    type="datetime-local" 
-                                    id="deadline" 
-                                    name="deadline"
-                                    required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                >
-                            </div>
-
-                            <div class="md:col-span-2">
-                                <label for="professorId" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Assign to Professor *
-                                </label>
-                                <select 
-                                    id="professorId" 
-                                    name="professorId"
-                                    required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                                >
-                                    <option value="">Select professor...</option>
-                                </select>
-                            </div>
+                    
+                    <!-- Filters -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                        <div>
+                            <label for="filterCourse" class="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Course
+                            </label>
+                            <select 
+                                id="filterCourse"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                            >
+                                <option value="">All Courses</option>
+                            </select>
                         </div>
+                        <div>
+                            <label for="filterDocType" class="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Document Type
+                            </label>
+                            <select 
+                                id="filterDocType"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                            >
+                                <option value="">All Types</option>
+                                <option value="SYLLABUS">Syllabus</option>
+                                <option value="EXAM">Exam</option>
+                                <option value="ASSIGNMENT">Assignment</option>
+                                <option value="PROJECT_DOCS">Project Docs</option>
+                                <option value="LECTURE_NOTES">Lecture Notes</option>
+                                <option value="OTHER">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                                Filter by Status
+                            </label>
+                            <select 
+                                id="filterStatus"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+                            >
+                                <option value="">All Status</option>
+                                <option value="UPLOADED">Uploaded</option>
+                                <option value="NOT_UPLOADED">Not Uploaded</option>
+                                <option value="OVERDUE">Overdue</option>
+                            </select>
+                        </div>
+                    </div>
 
-                        <button 
-                            type="submit"
-                            class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition font-medium"
-                        >
-                            Create Request
-                        </button>
-                    </form>
+                    <!-- Submission Status Table -->
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
+                                </tr>
+                            </thead>
+                            <tbody id="submissionStatusTableBody" class="bg-white divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                        Select a semester to view submission status
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+            </div>
+        </div>
 
-                <!-- Recent Requests -->
+        <!-- Reports Tab -->
+        <div id="reports-tab" class="tab-content hidden">
+            <div class="space-y-6">
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Recent Requests</h2>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Reports</h2>
+                    <p class="text-gray-600 mb-4">Generate and download reports for the selected semester.</p>
+                    <div class="flex space-x-2">
+                        <button 
+                            id="viewReportBtnTab"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center"
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            View Report
+                        </button>
+                        <button 
+                            id="downloadReportBtnTab"
+                            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
+                        >
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download PDF
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- File Explorer Tab -->
+        <div id="file-explorer-tab" class="tab-content hidden">
+            <div class="space-y-6">
+                <!-- File Explorer Section -->
+                <div id="fileExplorerSection" class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-800">File Explorer</h2>
+                        <p class="text-sm text-gray-600">Browse department files (Read-only)</p>
+                    </div>
+                    <div id="hodFileExplorer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Legacy Content (hidden by default) -->
+        <div id="legacy-content" class="hidden">
+            <div class="space-y-6">
+                <!-- Legacy Requests Section (for backward compatibility) -->
+                <div id="legacyRequestsSection" class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Legacy Document Requests</h2>
                     
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">

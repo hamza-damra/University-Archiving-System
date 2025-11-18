@@ -22,6 +22,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class AcademicServiceImpl implements AcademicService {
     
     private final AcademicYearRepository academicYearRepository;
@@ -140,15 +141,21 @@ public class AcademicServiceImpl implements AcademicService {
     @Transactional(readOnly = true)
     public List<AcademicYear> getAllAcademicYears() {
         log.debug("Fetching all academic years");
-        return academicYearRepository.findAll();
+        List<AcademicYear> academicYears = academicYearRepository.findAll();
+        // Eagerly fetch semesters to avoid lazy loading issues
+        academicYears.forEach(year -> year.getSemesters().size());
+        return academicYears;
     }
     
     @Override
     @Transactional(readOnly = true)
     public AcademicYear getActiveAcademicYear() {
         log.debug("Fetching active academic year");
-        return academicYearRepository.findByIsActiveTrue()
+        AcademicYear activeYear = academicYearRepository.findByIsActiveTrue()
                 .orElseThrow(() -> new EntityNotFoundException("No active academic year found"));
+        // Eagerly fetch semesters to avoid lazy loading issues
+        activeYear.getSemesters().size();
+        return activeYear;
     }
     
     @Override

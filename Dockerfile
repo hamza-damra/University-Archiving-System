@@ -23,8 +23,10 @@ FROM eclipse-temurin:17-jre-alpine
 # Set working directory
 WORKDIR /app
 
-# Create directory for uploads
-RUN mkdir -p /app/uploads
+# Create directory structure for hierarchical file storage
+# Format: uploads/{year}/{semester}/{professorId}/{courseCode}/{documentType}/
+RUN mkdir -p /app/uploads && \
+    chmod -R 755 /app/uploads
 
 # Copy the built jar from build stage
 COPY --from=build /app/target/*.jar app.jar

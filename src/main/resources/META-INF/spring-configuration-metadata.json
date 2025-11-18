@@ -1,95 +1,129 @@
 {
-  "groups": [
+  "properties": [
     {
-      "name": "app.upload",
-      "type": "com.alqude.edu.ArchiveSystem.config.UploadProperties",
-      "sourceType": "com.alqude.edu.ArchiveSystem.config.UploadProperties",
-      "description": "Configuration properties for file upload settings."
+      "name": "mock.data.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable/disable mock data generation on application startup.",
+      "defaultValue": true
     },
     {
-      "name": "app.academic",
-      "type": "com.alqude.edu.ArchiveSystem.config.AcademicProperties",
-      "sourceType": "com.alqude.edu.ArchiveSystem.config.AcademicProperties",
-      "description": "Configuration properties for academic settings."
-    }
-  ],
-  "properties": [
+      "name": "mock.data.skip-if-exists",
+      "type": "java.lang.Boolean",
+      "description": "Skip data generation if existing data is detected.",
+      "defaultValue": true
+    },
+    {
+      "name": "mock.data.academic-years",
+      "type": "java.lang.Integer",
+      "description": "Number of academic years to generate.",
+      "defaultValue": 3
+    },
+    {
+      "name": "mock.data.departments",
+      "type": "java.lang.Integer",
+      "description": "Number of departments to create.",
+      "defaultValue": 5
+    },
+    {
+      "name": "mock.data.courses-per-department",
+      "type": "java.lang.Integer",
+      "description": "Number of courses per department.",
+      "defaultValue": 3
+    },
+    {
+      "name": "mock.data.professors-per-department",
+      "type": "java.lang.Integer",
+      "description": "Number of professors per department.",
+      "defaultValue": 5
+    },
+    {
+      "name": "mock.data.assignments-per-semester",
+      "type": "java.lang.Integer",
+      "description": "Number of course assignments per semester.",
+      "defaultValue": 20
+    },
+    {
+      "name": "mock.data.submissions-percentage",
+      "type": "java.lang.Integer",
+      "description": "Percentage of submissions to create (0-100).",
+      "defaultValue": 70
+    },
     {
       "name": "app.upload.base-path",
       "type": "java.lang.String",
-      "description": "Base path for file uploads (e.g., 'uploads/')",
+      "description": "Base path for file uploads.",
       "defaultValue": "uploads/"
     },
     {
       "name": "app.upload.allowed-extensions",
-      "type": "java.lang.String",
-      "description": "Comma-separated list of allowed file extensions (e.g., 'pdf,zip')",
-      "defaultValue": "pdf,zip"
+      "type": "java.util.List<java.lang.String>",
+      "description": "Allowed file extensions for uploads.",
+      "defaultValue": ["pdf", "zip"]
     },
     {
       "name": "app.upload.max-file-count",
       "type": "java.lang.Integer",
-      "description": "Maximum number of files per upload",
+      "description": "Maximum number of files per upload.",
       "defaultValue": 10
     },
     {
       "name": "app.upload.max-total-size-mb",
       "type": "java.lang.Integer",
-      "description": "Maximum total size in MB for all files in a single upload",
+      "description": "Maximum total size in MB for all files in an upload.",
       "defaultValue": 50
     },
     {
       "name": "app.upload.create-directories",
       "type": "java.lang.Boolean",
-      "description": "Whether to automatically create directories if they don't exist",
+      "description": "Whether to automatically create upload directories if they don't exist.",
       "defaultValue": true
     },
     {
       "name": "app.academic.default-year",
       "type": "java.lang.String",
-      "description": "Default academic year (e.g., '2024-2025')",
+      "description": "Default academic year (e.g., 2024-2025).",
       "defaultValue": "2024-2025"
     },
     {
       "name": "app.academic.auto-create-semesters",
       "type": "java.lang.Boolean",
-      "description": "Whether to automatically create three semesters when creating an academic year",
+      "description": "Whether to automatically create semesters for new academic years.",
       "defaultValue": true
     },
     {
       "name": "app.academic.semester-first-start-month",
       "type": "java.lang.Integer",
-      "description": "Start month for first semester (1-12)",
+      "description": "Start month for first semester (1-12).",
       "defaultValue": 9
     },
     {
       "name": "app.academic.semester-first-end-month",
       "type": "java.lang.Integer",
-      "description": "End month for first semester (1-12)",
+      "description": "End month for first semester (1-12).",
       "defaultValue": 12
     },
     {
       "name": "app.academic.semester-second-start-month",
       "type": "java.lang.Integer",
-      "description": "Start month for second semester (1-12)",
+      "description": "Start month for second semester (1-12).",
       "defaultValue": 1
     },
     {
       "name": "app.academic.semester-second-end-month",
       "type": "java.lang.Integer",
-      "description": "End month for second semester (1-12)",
+      "description": "End month for second semester (1-12).",
       "defaultValue": 5
     },
     {
       "name": "app.academic.semester-summer-start-month",
       "type": "java.lang.Integer",
-      "description": "Start month for summer semester (1-12)",
+      "description": "Start month for summer semester (1-12).",
       "defaultValue": 6
     },
     {
       "name": "app.academic.semester-summer-end-month",
       "type": "java.lang.Integer",
-      "description": "End month for summer semester (1-12)",
+      "description": "End month for summer semester (1-12).",
       "defaultValue": 8
     }
   ]

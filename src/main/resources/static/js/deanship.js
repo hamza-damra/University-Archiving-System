@@ -3,24 +3,31 @@
  * Manages academic years, professors, courses, assignments, reports, and file explorer
  */
 
-import { apiRequest, getUserInfo, redirectToLogin, clearAuthData } from './api.js';
+import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
 import { showToast, showModal, showConfirm, formatDate } from './ui.js';
+import { FileExplorer } from './file-explorer.js';
 
 // State
 let currentTab = 'academic-years';
 let selectedAcademicYear = null;
-let selectedSemester = 'FIRST';
+let selectedAcademicYearId = null;
+let selectedSemesterId = null;
+let semesters = [];
 let academicYears = [];
 let professors = [];
 let courses = [];
 let departments = [];
+let fileExplorerInstance = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();
+    // Restore tab BEFORE any other initialization to prevent flicker
     restoreActiveTab();
     initializeEventListeners();
-    loadInitialData();
+    initializeFileExplorer();
+    // Load initial data WITHOUT triggering tab-specific loads yet
+    loadInitialDataSilent();
 });
 
 /**
@@ -40,7 +47,9 @@ function checkAuth() {
     }
 
     // Display user name
-    document.getElementById('deanshipName').textContent = userInfo.fullName || userInfo.email;
+    const userName = userInfo.fullName || userInfo.email;
+    document.getElementById('deanshipName').textContent = userName;
+    localStorage.setItem('deanship_user_name', userName);
 }
 
 /**
@@ -55,14 +64,26 @@ function initializeEventListeners() {
         tab.addEventListener('click', () => switchTab(tab.dataset.tab));
     });
 
-    // Semester tabs
-    document.querySelectorAll('.semester-tab').forEach(tab => {
-        tab.addEventListener('click', () => switchSemester(tab.dataset.semester));
+    // Academic year selector
+    document.getElementById('academicYearSelect').addEventListener('change', async (e) => {
+        selectedAcademicYearId = e.target.value ? parseInt(e.target.value) : null;
+        localStorage.setItem('deanship_selected_academic_year', selectedAcademicYearId || '');
+        selectedSemesterId = null;
+
+        if (selectedAcademicYearId) {
+            selectedAcademicYear = academicYears.find(y => y.id === selectedAcademicYearId);
+            await loadSemesters(selectedAcademicYearId);
+        } else {
+            selectedAcademicYear = null;
+            document.getElementById('semesterSelect').innerHTML = '<option value="">Select academic year first</option>';
+        }
+        onContextChange();
     });
 
-    // Academic year selector
-    document.getElementById('academicYearSelect').addEventListener('change', (e) => {
-        selectedAcademicYear = e.target.value ? JSON.parse(e.target.value) : null;
+    // Semester selector
+    document.getElementById('semesterSelect').addEventListener('change', (e) => {
+        selectedSemesterId = e.target.value ? parseInt(e.target.value) : null;
+        localStorage.setItem('deanship_selected_semester', selectedSemesterId || '');
         onContextChange();
     });
 
@@ -89,14 +110,16 @@ function initializeEventListeners() {
 }
 
 /**
- * Load initial data
+ * Load initial data silently (without triggering tab-specific UI updates)
  */
-async function loadInitialData() {
+async function loadInitialDataSilent() {
     try {
         await Promise.all([
-            loadAcademicYears(),
+            loadAcademicYearsData(),
             loadDepartments()
         ]);
+        // After loading initial data, load the active tab's data
+        loadTabData(currentTab);
     } catch (error) {
         console.error('Error loading initial data:', error);
         showToast('Failed to load initial data', 'error');
@@ -104,32 +127,45 @@ async function loadInitialData() {
 }
 
 /**
+ * Load initial data (legacy method for backward compatibility)
+ */
+async function loadInitialData() {
+    await loadInitialDataSilent();
+}
+
+/**
  * Restore active tab from localStorage
+ * This runs FIRST to prevent any flicker or tab switching on page load
  */
 function restoreActiveTab() {
     const savedTab = localStorage.getItem('deanship-active-tab');
     if (savedTab) {
         currentTab = savedTab;
-        // Update UI to show the saved tab
-        document.querySelectorAll('.nav-tab').forEach(tab => {
-            if (tab.dataset.tab === savedTab) {
-                tab.classList.add('active', 'border-blue-600', 'text-blue-600');
-                tab.classList.remove('border-transparent', 'text-gray-500');
-            } else {
-                tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
-                tab.classList.add('border-transparent', 'text-gray-500');
-            }
-        });
-        
-        // Show the saved tab content
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.add('hidden');
-        });
-        const tabContent = document.getElementById(`${savedTab}-tab`);
-        if (tabContent) {
-            tabContent.classList.remove('hidden');
-        }
+    } else {
+        // Default to dashboard if no saved tab
+        currentTab = 'dashboard';
+        localStorage.setItem('deanship-active-tab', currentTab);
     }
+
+    // IMMEDIATELY update UI to prevent flicker
+    // Update tab navigation buttons
+    document.querySelectorAll('.nav-tab').forEach(tab => {
+        if (tab.dataset.tab === currentTab) {
+            tab.classList.add('active');
+        } else {
+            tab.classList.remove('active');
+        }
+    });
+
+    // Show ONLY the current tab content, hide all others
+    document.querySelectorAll('.tab-content').forEach(content => {
+        const tabId = content.id.replace('-tab', '');
+        if (tabId === currentTab) {
+            content.classList.remove('hidden');
+        } else {
+            content.classList.add('hidden');
+        }
+    });
 }
 
 /**
@@ -137,18 +173,16 @@ function restoreActiveTab() {
  */
 function switchTab(tabName) {
     currentTab = tabName;
-    
+
     // Save active tab to localStorage
     localStorage.setItem('deanship-active-tab', tabName);
 
     // Update tab buttons
     document.querySelectorAll('.nav-tab').forEach(tab => {
         if (tab.dataset.tab === tabName) {
-            tab.classList.add('active', 'border-blue-600', 'text-blue-600');
-            tab.classList.remove('border-transparent', 'text-gray-500');
+            tab.classList.add('active');
         } else {
-            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
-            tab.classList.add('border-transparent', 'text-gray-500');
+            tab.classList.remove('active');
         }
     });
 
@@ -162,25 +196,7 @@ function switchTab(tabName) {
     loadTabData(tabName);
 }
 
-/**
- * Switch semester
- */
-function switchSemester(semester) {
-    selectedSemester = semester;
 
-    // Update semester buttons
-    document.querySelectorAll('.semester-tab').forEach(tab => {
-        if (tab.dataset.semester === semester) {
-            tab.classList.add('active', 'bg-blue-600', 'text-white');
-            tab.classList.remove('bg-gray-200', 'text-gray-700');
-        } else {
-            tab.classList.remove('active', 'bg-blue-600', 'text-white');
-            tab.classList.add('bg-gray-200', 'text-gray-700');
-        }
-    });
-
-    onContextChange();
-}
 
 /**
  * Handle context change (academic year or semester)
@@ -196,6 +212,9 @@ function onContextChange() {
  */
 function loadTabData(tabName) {
     switch (tabName) {
+        case 'dashboard':
+            loadDashboardData();
+            break;
         case 'academic-years':
             loadAcademicYears();
             break;
@@ -237,12 +256,89 @@ async function handleLogout() {
     }
 }
 
+
+// ============================================================================
+// DASHBOARD
+// ============================================================================
+
+/**
+ * Load dashboard statistics
+ */
+async function loadDashboardData() {
+    try {
+        // Ensure professors and courses are loaded
+        await Promise.all([
+            professors.length === 0 ? loadProfessorsData() : Promise.resolve(),
+            courses.length === 0 ? loadCoursesData() : Promise.resolve()
+        ]);
+
+        // Update dashboard cards
+        updateDashboardStats();
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+
+/**
+ * Load professors data only (without UI update)
+ */
+async function loadProfessorsData() {
+    try {
+        professors = await apiRequest('/deanship/professors', { method: 'GET' });
+    } catch (error) {
+        console.error('Error loading professors data:', error);
+    }
+}
+
+/**
+ * Load courses data only (without UI update)
+ */
+async function loadCoursesData() {
+    try {
+        courses = await apiRequest('/deanship/courses', { method: 'GET' });
+    } catch (error) {
+        console.error('Error loading courses data:', error);
+    }
+}
+
+/**
+ * Update dashboard statistics cards
+ */
+function updateDashboardStats() {
+    // Get all stat card values
+    const statCards = document.querySelectorAll('#dashboard-tab .card span.text-2xl');
+
+    if (statCards.length >= 3) {
+        // Total Professors
+        statCards[0].textContent = professors.length;
+
+        // Active Courses  
+        statCards[1].textContent = courses.length;
+
+        // Pending Reports - placeholder for now
+        statCards[2].textContent = '0';
+    }
+}
+
 // ============================================================================
 // ACADEMIC YEARS MANAGEMENT
 // ============================================================================
 
 /**
- * Load academic years
+ * Load academic years data only (without UI update)
+ */
+async function loadAcademicYearsData() {
+    try {
+        academicYears = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        updateAcademicYearSelector();
+    } catch (error) {
+        console.error('Error loading academic years:', error);
+        showToast('Failed to load academic years', 'error');
+    }
+}
+
+/**
+ * Load academic years (full load with UI update)
  */
 async function loadAcademicYears() {
     try {
@@ -260,7 +356,7 @@ async function loadAcademicYears() {
  */
 function renderAcademicYearsTable() {
     const tbody = document.getElementById('academicYearsTableBody');
-    
+
     if (academicYears.length === 0) {
         tbody.innerHTML = `
             <tr>
@@ -307,21 +403,94 @@ function renderAcademicYearsTable() {
  */
 function updateAcademicYearSelector() {
     const select = document.getElementById('academicYearSelect');
-    
+
     if (academicYears.length === 0) {
-        select.innerHTML = '<option value="">No academic years available</option>';
+        const html = '<option value="">No academic years available</option>';
+        select.innerHTML = html;
+        localStorage.setItem('deanship_academic_years_options', html);
         return;
     }
 
-    select.innerHTML = academicYears.map(year => 
-        `<option value='${JSON.stringify(year)}'>${year.yearCode}</option>`
-    ).join('');
+    const html = '<option value="">Select academic year</option>' +
+        academicYears.map(year =>
+            `<option value="${year.id}">${year.yearCode}</option>`
+        ).join('');
+    select.innerHTML = html;
+    localStorage.setItem('deanship_academic_years_options', html);
 
-    // Select active year or first year
-    const activeYear = academicYears.find(y => y.isActive) || academicYears[0];
-    if (activeYear) {
-        select.value = JSON.stringify(activeYear);
-        selectedAcademicYear = activeYear;
+    // Try to restore selection from localStorage first
+    const storedYearId = localStorage.getItem('deanship_selected_academic_year');
+    let yearToSelect = null;
+
+    if (storedYearId) {
+        yearToSelect = academicYears.find(y => y.id.toString() === storedYearId);
+    }
+
+    // Fallback to active or first year
+    if (!yearToSelect) {
+        yearToSelect = academicYears.find(y => y.isActive) || academicYears[0];
+    }
+
+    if (yearToSelect) {
+        select.value = yearToSelect.id;
+        selectedAcademicYearId = yearToSelect.id;
+        selectedAcademicYear = yearToSelect;
+        localStorage.setItem('deanship_selected_academic_year', yearToSelect.id);
+        loadSemesters(yearToSelect.id);
+    }
+}
+
+/**
+ * Load semesters for selected academic year
+ */
+async function loadSemesters(academicYearId) {
+    try {
+        // Find the academic year and get its semesters
+        const year = academicYears.find(y => y.id === academicYearId);
+        if (!year || !year.semesters) {
+            document.getElementById('semesterSelect').innerHTML = '<option value="">No semesters available</option>';
+            return;
+        }
+
+        semesters = year.semesters;
+        const semesterSelect = document.getElementById('semesterSelect');
+
+        if (semesters.length === 0) {
+            const html = '<option value="">No semesters available for this year</option>';
+            semesterSelect.innerHTML = html;
+            localStorage.setItem('deanship_semesters_options', html);
+            return;
+        }
+
+        const html = '<option value="">Select semester</option>' +
+            semesters.map(semester =>
+                `<option value="${semester.id}">${semester.type} Semester</option>`
+            ).join('');
+        semesterSelect.innerHTML = html;
+        localStorage.setItem('deanship_semesters_options', html);
+
+        // Try to restore selection from localStorage first
+        const storedSemesterId = localStorage.getItem('deanship_selected_semester');
+        let semesterToSelect = null;
+
+        if (storedSemesterId) {
+            semesterToSelect = semesters.find(s => s.id.toString() === storedSemesterId);
+        }
+
+        // Fallback to first semester
+        if (!semesterToSelect && semesters.length > 0) {
+            semesterToSelect = semesters[0];
+        }
+
+        if (semesterToSelect) {
+            selectedSemesterId = semesterToSelect.id;
+            semesterSelect.value = selectedSemesterId;
+            localStorage.setItem('deanship_selected_semester', selectedSemesterId);
+            onContextChange();
+        }
+    } catch (error) {
+        console.error('Error loading semesters:', error);
+        showToast('Failed to load semesters', 'error');
     }
 }
 
@@ -400,9 +569,16 @@ async function handleCreateAcademicYear(closeModal) {
     }
 
     try {
+        // Generate yearCode in the format "YYYY-YYYY"
+        const yearCode = `${startYear}-${endYear}`;
+
         await apiRequest('/deanship/academic-years', {
             method: 'POST',
-            body: JSON.stringify({ startYear, endYear })
+            body: JSON.stringify({
+                yearCode,
+                startYear,
+                endYear
+            })
         });
 
         showToast('Academic year created successfully', 'success');
@@ -410,7 +586,7 @@ async function handleCreateAcademicYear(closeModal) {
         loadAcademicYears();
     } catch (error) {
         console.error('Error creating academic year:', error);
-        showToast(error.message || 'Failed to create academic year', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 }
 
@@ -418,7 +594,7 @@ async function handleCreateAcademicYear(closeModal) {
  * Edit academic year
  */
 window.deanship = window.deanship || {};
-window.deanship.editAcademicYear = function(yearId) {
+window.deanship.editAcademicYear = function (yearId) {
     const year = academicYears.find(y => y.id === yearId);
     if (!year) return;
 
@@ -490,9 +666,16 @@ async function handleUpdateAcademicYear(yearId, closeModal) {
     }
 
     try {
+        // Generate yearCode in the format "YYYY-YYYY"
+        const yearCode = `${startYear}-${endYear}`;
+
         await apiRequest(`/deanship/academic-years/${yearId}`, {
             method: 'PUT',
-            body: JSON.stringify({ startYear, endYear })
+            body: JSON.stringify({
+                yearCode,
+                startYear,
+                endYear
+            })
         });
 
         showToast('Academic year updated successfully', 'success');
@@ -500,14 +683,14 @@ async function handleUpdateAcademicYear(yearId, closeModal) {
         loadAcademicYears();
     } catch (error) {
         console.error('Error updating academic year:', error);
-        showToast(error.message || 'Failed to update academic year', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 }
 
 /**
  * Activate academic year
  */
-window.deanship.activateAcademicYear = async function(yearId) {
+window.deanship.activateAcademicYear = async function (yearId) {
     try {
         await apiRequest(`/deanship/academic-years/${yearId}/activate`, {
             method: 'PUT'
@@ -517,7 +700,7 @@ window.deanship.activateAcademicYear = async function(yearId) {
         loadAcademicYears();
     } catch (error) {
         console.error('Error activating academic year:', error);
-        showToast(error.message || 'Failed to activate academic year', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 };
 
@@ -561,7 +744,7 @@ function updateDepartmentFilters() {
         if (filter) {
             const currentValue = filter.value;
             filter.innerHTML = '<option value="">All Departments</option>' +
-                departments.map(dept => 
+                departments.map(dept =>
                     `<option value="${dept.id}">${dept.name}</option>`
                 ).join('');
             filter.value = currentValue;
@@ -576,7 +759,7 @@ async function loadProfessors() {
     try {
         const departmentId = document.getElementById('professorDepartmentFilter').value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
-        
+
         professors = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
         renderProfessorsTable();
     } catch (error) {
@@ -598,10 +781,10 @@ function filterProfessors() {
 function renderProfessorsTable() {
     const tbody = document.getElementById('professorsTableBody');
     const searchTerm = document.getElementById('professorSearch').value.toLowerCase();
-    
+
     let filteredProfessors = professors;
     if (searchTerm) {
-        filteredProfessors = professors.filter(prof => 
+        filteredProfessors = professors.filter(prof =>
             prof.name.toLowerCase().includes(searchTerm) ||
             prof.email.toLowerCase().includes(searchTerm) ||
             (prof.professorId && prof.professorId.toLowerCase().includes(searchTerm))
@@ -743,8 +926,21 @@ async function handleCreateProfessor(closeModal) {
         return;
     }
 
+    // Get the full name and split it
+    const fullName = document.getElementById('profName').value.trim();
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Validate name parts
+    if (!firstName || !lastName) {
+        showToast('Please enter both first name and last name separated by a space', 'error');
+        return;
+    }
+
     const data = {
-        name: document.getElementById('profName').value,
+        firstName: firstName,
+        lastName: lastName,
         email: document.getElementById('profEmail').value,
         password: document.getElementById('profPassword').value,
         departmentId: parseInt(document.getElementById('profDepartment').value)
@@ -761,14 +957,15 @@ async function handleCreateProfessor(closeModal) {
         loadProfessors();
     } catch (error) {
         console.error('Error creating professor:', error);
-        showToast(error.message || 'Failed to create professor', 'error');
+        const errorMessage = getErrorMessage(error);
+        showToast(errorMessage, 'error');
     }
 }
 
 /**
  * Edit professor
  */
-window.deanship.editProfessor = function(profId) {
+window.deanship.editProfessor = function (profId) {
     const prof = professors.find(p => p.id === profId);
     if (!prof) return;
 
@@ -804,9 +1001,9 @@ window.deanship.editProfessor = function(profId) {
                     required
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
-                    ${departments.map(dept => 
-                        `<option value="${dept.id}" ${prof.department?.id === dept.id ? 'selected' : ''}>${dept.name}</option>`
-                    ).join('')}
+                    ${departments.map(dept =>
+        `<option value="${dept.id}" ${prof.department?.id === dept.id ? 'selected' : ''}>${dept.name}</option>`
+    ).join('')}
                 </select>
             </div>
             <div>
@@ -851,8 +1048,21 @@ async function handleUpdateProfessor(profId, closeModal) {
         return;
     }
 
+    // Get the full name and split it
+    const fullName = document.getElementById('editProfName').value.trim();
+    const nameParts = fullName.split(' ');
+    const firstName = nameParts[0] || '';
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Validate name parts
+    if (!firstName || !lastName) {
+        showToast('Please enter both first name and last name separated by a space', 'error');
+        return;
+    }
+
     const data = {
-        name: document.getElementById('editProfName').value,
+        firstName: firstName,
+        lastName: lastName,
         email: document.getElementById('editProfEmail').value,
         departmentId: parseInt(document.getElementById('editProfDepartment').value)
     };
@@ -873,14 +1083,15 @@ async function handleUpdateProfessor(profId, closeModal) {
         loadProfessors();
     } catch (error) {
         console.error('Error updating professor:', error);
-        showToast(error.message || 'Failed to update professor', 'error');
+        const errorMessage = getErrorMessage(error);
+        showToast(errorMessage, 'error');
     }
 }
 
 /**
  * Deactivate professor
  */
-window.deanship.deactivateProfessor = function(profId) {
+window.deanship.deactivateProfessor = function (profId) {
     const prof = professors.find(p => p.id === profId);
     if (!prof) return;
 
@@ -897,7 +1108,7 @@ window.deanship.deactivateProfessor = function(profId) {
                 loadProfessors();
             } catch (error) {
                 console.error('Error deactivating professor:', error);
-                showToast(error.message || 'Failed to deactivate professor', 'error');
+                showToast(getErrorMessage(error), 'error');
             }
         },
         { danger: true }
@@ -907,7 +1118,7 @@ window.deanship.deactivateProfessor = function(profId) {
 /**
  * Activate professor
  */
-window.deanship.activateProfessor = async function(profId) {
+window.deanship.activateProfessor = async function (profId) {
     try {
         await apiRequest(`/deanship/professors/${profId}/activate`, {
             method: 'PUT'
@@ -917,7 +1128,7 @@ window.deanship.activateProfessor = async function(profId) {
         loadProfessors();
     } catch (error) {
         console.error('Error activating professor:', error);
-        showToast(error.message || 'Failed to activate professor', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 };
 
@@ -932,7 +1143,7 @@ async function loadCourses() {
     try {
         const departmentId = document.getElementById('courseDepartmentFilter').value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
-        
+
         courses = await apiRequest(`/deanship/courses${params}`, { method: 'GET' });
         renderCoursesTable();
     } catch (error) {
@@ -954,10 +1165,10 @@ function filterCourses() {
 function renderCoursesTable() {
     const tbody = document.getElementById('coursesTableBody');
     const searchTerm = document.getElementById('courseSearch').value.toLowerCase();
-    
+
     let filteredCourses = courses;
     if (searchTerm) {
-        filteredCourses = courses.filter(course => 
+        filteredCourses = courses.filter(course =>
             course.courseCode.toLowerCase().includes(searchTerm) ||
             course.courseName.toLowerCase().includes(searchTerm)
         );
@@ -1118,14 +1329,14 @@ async function handleCreateCourse(closeModal) {
         loadCourses();
     } catch (error) {
         console.error('Error creating course:', error);
-        showToast(error.message || 'Failed to create course', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 }
 
 /**
  * Edit course
  */
-window.deanship.editCourse = function(courseId) {
+window.deanship.editCourse = function (courseId) {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
 
@@ -1161,9 +1372,9 @@ window.deanship.editCourse = function(courseId) {
                     required
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
-                    ${departments.map(dept => 
-                        `<option value="${dept.id}" ${course.department?.id === dept.id ? 'selected' : ''}>${dept.name}</option>`
-                    ).join('')}
+                    ${departments.map(dept =>
+        `<option value="${dept.id}" ${course.department?.id === dept.id ? 'selected' : ''}>${dept.name}</option>`
+    ).join('')}
                 </select>
             </div>
             <div>
@@ -1238,14 +1449,14 @@ async function handleUpdateCourse(courseId, closeModal) {
         loadCourses();
     } catch (error) {
         console.error('Error updating course:', error);
-        showToast(error.message || 'Failed to update course', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 }
 
 /**
  * Deactivate course
  */
-window.deanship.deactivateCourse = function(courseId) {
+window.deanship.deactivateCourse = function (courseId) {
     const course = courses.find(c => c.id === courseId);
     if (!course) return;
 
@@ -1262,7 +1473,7 @@ window.deanship.deactivateCourse = function(courseId) {
                 loadCourses();
             } catch (error) {
                 console.error('Error deactivating course:', error);
-                showToast(error.message || 'Failed to deactivate course', 'error');
+                showToast(getErrorMessage(error), 'error');
             }
         },
         { danger: true }
@@ -1279,7 +1490,7 @@ let assignments = [];
  * Load assignments
  */
 async function loadAssignments() {
-    if (!selectedAcademicYear) {
+    if (!selectedSemesterId) {
         document.getElementById('assignmentsTableBody').innerHTML = `
             <tr>
                 <td colspan="6" class="px-6 py-8 text-center text-gray-500">
@@ -1291,23 +1502,10 @@ async function loadAssignments() {
     }
 
     try {
-        // Find the semester ID for the selected academic year and semester type
-        const semester = selectedAcademicYear.semesters?.find(s => s.type === selectedSemester);
-        if (!semester) {
-            document.getElementById('assignmentsTableBody').innerHTML = `
-                <tr>
-                    <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                        Semester not found
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
         const professorId = document.getElementById('assignmentProfessorFilter').value;
-        const params = new URLSearchParams({ semesterId: semester.id });
+        const params = new URLSearchParams({ semesterId: selectedSemesterId });
         if (professorId) params.append('professorId', professorId);
-        
+
         assignments = await apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' });
         renderAssignmentsTable();
         updateAssignmentFilters();
@@ -1342,7 +1540,7 @@ function updateAssignmentFilters() {
 function renderAssignmentsTable() {
     const tbody = document.getElementById('assignmentsTableBody');
     const courseFilter = document.getElementById('assignmentCourseFilter').value;
-    
+
     let filteredAssignments = assignments;
     if (courseFilter) {
         filteredAssignments = assignments.filter(a => a.course.id === parseInt(courseFilter));
@@ -1386,12 +1584,12 @@ function renderAssignmentsTable() {
  * Show add assignment modal
  */
 function showAddAssignmentModal() {
-    if (!selectedAcademicYear) {
-        showToast('Please select an academic year first', 'warning');
+    if (!selectedSemesterId) {
+        showToast('Please select an academic year and semester first', 'warning');
         return;
     }
 
-    const semester = selectedAcademicYear.semesters?.find(s => s.type === selectedSemester);
+    const semester = semesters.find(s => s.id === selectedSemesterId);
     if (!semester) {
         showToast('Semester not found', 'error');
         return;
@@ -1408,9 +1606,9 @@ function showAddAssignmentModal() {
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
                     <option value="">Select professor...</option>
-                    ${professors.filter(p => p.isActive).map(prof => 
-                        `<option value="${prof.id}">${prof.name} (${prof.department?.name || 'N/A'})</option>`
-                    ).join('')}
+                    ${professors.filter(p => p.isActive).map(prof =>
+        `<option value="${prof.id}">${prof.name} (${prof.department?.name || 'N/A'})</option>`
+    ).join('')}
                 </select>
             </div>
             <div>
@@ -1422,15 +1620,15 @@ function showAddAssignmentModal() {
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                 >
                     <option value="">Select course...</option>
-                    ${courses.filter(c => c.isActive).map(course => 
-                        `<option value="${course.id}">${course.courseCode} - ${course.courseName}</option>`
-                    ).join('')}
+                    ${courses.filter(c => c.isActive).map(course =>
+        `<option value="${course.id}">${course.courseCode} - ${course.courseName}</option>`
+    ).join('')}
                 </select>
             </div>
             <div class="bg-gray-50 p-3 rounded-md">
                 <p class="text-sm text-gray-700">
-                    <strong>Academic Year:</strong> ${selectedAcademicYear.yearCode}<br>
-                    <strong>Semester:</strong> ${selectedSemester}
+                    <strong>Academic Year:</strong> ${selectedAcademicYear?.yearCode || 'N/A'}<br>
+                    <strong>Semester:</strong> ${semester.type}
                 </p>
             </div>
         </form>
@@ -1448,7 +1646,7 @@ function showAddAssignmentModal() {
                 text: 'Assign',
                 className: 'bg-blue-600 text-white hover:bg-blue-700',
                 action: 'assign',
-                onClick: (close) => handleCreateAssignment(semester.id, close)
+                onClick: (close) => handleCreateAssignment(selectedSemesterId, close)
             }
         ]
     });
@@ -1481,14 +1679,14 @@ async function handleCreateAssignment(semesterId, closeModal) {
         loadAssignments();
     } catch (error) {
         console.error('Error creating assignment:', error);
-        showToast(error.message || 'Failed to assign course', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 }
 
 /**
  * Unassign course
  */
-window.deanship.unassignCourse = function(assignmentId) {
+window.deanship.unassignCourse = function (assignmentId) {
     const assignment = assignments.find(a => a.id === assignmentId);
     if (!assignment) return;
 
@@ -1505,7 +1703,7 @@ window.deanship.unassignCourse = function(assignmentId) {
                 loadAssignments();
             } catch (error) {
                 console.error('Error unassigning course:', error);
-                showToast(error.message || 'Failed to unassign course', 'error');
+                showToast(getErrorMessage(error), 'error');
             }
         },
         { danger: true }
@@ -1520,19 +1718,13 @@ window.deanship.unassignCourse = function(assignmentId) {
  * Load system report
  */
 async function loadSystemReport() {
-    if (!selectedAcademicYear) {
-        showToast('Please select an academic year first', 'warning');
-        return;
-    }
-
-    const semester = selectedAcademicYear.semesters?.find(s => s.type === selectedSemester);
-    if (!semester) {
-        showToast('Semester not found', 'error');
+    if (!selectedSemesterId) {
+        showToast('Please select an academic year and semester first', 'warning');
         return;
     }
 
     try {
-        const report = await apiRequest(`/deanship/reports/system-wide?semesterId=${semester.id}`, {
+        const report = await apiRequest(`/deanship/reports/system-wide?semesterId=${selectedSemesterId}`, {
             method: 'GET'
         });
 
@@ -1628,224 +1820,71 @@ function renderSystemReport(report) {
 // FILE EXPLORER
 // ============================================================================
 
-let currentPath = '';
-let fileExplorerData = null;
+/**
+ * Initialize file explorer component
+ * Uses the unified FileExplorer class with Deanship-specific configuration
+ */
+function initializeFileExplorer() {
+    try {
+        // Restore saved state to prevent flash
+        const savedHtml = localStorage.getItem('deanship_file_explorer_html');
+        const container = document.getElementById('fileExplorerContainer');
+        if (savedHtml && container) {
+            container.innerHTML = savedHtml;
+        }
+
+        fileExplorerInstance = new FileExplorer('fileExplorerContainer', {
+            role: 'DEANSHIP',
+            readOnly: true,
+            showAllDepartments: true,
+            showProfessorLabels: true
+        });
+
+        // Make it globally accessible for event handlers
+        window.fileExplorerInstance = fileExplorerInstance;
+    } catch (error) {
+        console.error('Error initializing file explorer:', error);
+        showToast('Failed to initialize file explorer', 'error');
+    }
+}
 
 /**
- * Load file explorer
+ * Load file explorer for selected semester
  */
 async function loadFileExplorer() {
-    if (!selectedAcademicYear) {
-        document.getElementById('fileExplorerContent').innerHTML = `
-            <div class="text-center py-12 text-gray-500">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                </svg>
-                <p class="mt-2">Please select an academic year and semester to browse files</p>
-            </div>
-        `;
-        return;
-    }
-
-    const semester = selectedAcademicYear.semesters?.find(s => s.type === selectedSemester);
-    if (!semester) {
-        showToast('Semester not found', 'error');
+    if (!selectedAcademicYearId || !selectedSemesterId || !fileExplorerInstance) {
+        const container = document.getElementById('fileExplorerContainer');
+        if (container) {
+            // Only show empty state if container is truly empty (no restored content)
+            if (!container.innerHTML.trim()) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-500">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                        </svg>
+                        <p class="mt-2">Select an academic year and semester to browse files</p>
+                    </div>
+                `;
+            }
+        }
         return;
     }
 
     try {
-        if (!currentPath) {
-            // Load root
-            fileExplorerData = await apiRequest(
-                `/file-explorer/root?academicYearId=${selectedAcademicYear.id}&semesterId=${semester.id}`,
-                { method: 'GET' }
-            );
-        } else {
-            // Load specific node
-            fileExplorerData = await apiRequest(
-                `/file-explorer/node?path=${encodeURIComponent(currentPath)}`,
-                { method: 'GET' }
-            );
-        }
+        // Check if we have existing content to decide on background update
+        const container = document.getElementById('fileExplorerContainer');
+        const hasContent = container && container.querySelector('#fileExplorerTree') &&
+            container.querySelector('#fileExplorerTree').children.length > 0;
 
-        renderFileExplorer();
-        updateBreadcrumbs();
+        // Use background update if we already have content (e.g. restored from storage)
+        await fileExplorerInstance.loadRoot(selectedAcademicYearId, selectedSemesterId, hasContent);
+
+        // Save state after successful load
+        if (container) {
+            localStorage.setItem('deanship_file_explorer_html', container.innerHTML);
+        }
     } catch (error) {
         console.error('Error loading file explorer:', error);
         showToast('Failed to load file explorer', 'error');
     }
-}
-
-/**
- * Render file explorer
- */
-function renderFileExplorer() {
-    const content = document.getElementById('fileExplorerContent');
-
-    if (!fileExplorerData || !fileExplorerData.children || fileExplorerData.children.length === 0) {
-        content.innerHTML = `
-            <div class="text-center py-12 text-gray-500">
-                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                </svg>
-                <p class="mt-2">No files or folders found</p>
-            </div>
-        `;
-        return;
-    }
-
-    // Separate folders and files
-    const folders = fileExplorerData.children.filter(item => item.type !== 'FILE');
-    const files = fileExplorerData.children.filter(item => item.type === 'FILE');
-
-    let html = '<div class="space-y-2">';
-
-    // Render folders
-    folders.forEach(folder => {
-        html += `
-            <div 
-                class="flex items-center p-3 border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer"
-                onclick="window.deanship.navigateToFolder('${folder.path}')"
-            >
-                <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                </svg>
-                <div class="flex-1">
-                    <p class="text-sm font-medium text-gray-900">${folder.name}</p>
-                    <p class="text-xs text-gray-500">${folder.type}</p>
-                </div>
-                <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                </svg>
-            </div>
-        `;
-    });
-
-    // Render files
-    if (files.length > 0) {
-        html += `
-            <div class="mt-6">
-                <h4 class="text-sm font-medium text-gray-700 mb-2">Files</h4>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
-        `;
-
-        files.forEach(file => {
-            const metadata = file.metadata || {};
-            html += `
-                <tr>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${file.name}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatFileSize(metadata.fileSize || 0)}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${metadata.uploadedAt ? formatDate(metadata.uploadedAt) : 'N/A'}</td>
-                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button 
-                            onclick="window.deanship.downloadFile(${file.entityId})"
-                            class="text-blue-600 hover:text-blue-900"
-                        >
-                            Download
-                        </button>
-                    </td>
-                </tr>
-            `;
-        });
-
-        html += `
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        `;
-    }
-
-    html += '</div>';
-    content.innerHTML = html;
-}
-
-/**
- * Update breadcrumbs
- */
-function updateBreadcrumbs() {
-    const breadcrumbs = document.getElementById('breadcrumbs');
-    
-    if (!currentPath) {
-        breadcrumbs.innerHTML = '<span class="text-gray-900 font-medium">Home</span>';
-        return;
-    }
-
-    const parts = currentPath.split('/').filter(p => p);
-    let html = `<button onclick="window.deanship.navigateToFolder('')" class="text-blue-600 hover:text-blue-900">Home</button>`;
-    
-    let accumulatedPath = '';
-    parts.forEach((part, index) => {
-        accumulatedPath += (accumulatedPath ? '/' : '') + part;
-        const isLast = index === parts.length - 1;
-        
-        html += ' <span class="text-gray-400">/</span> ';
-        
-        if (isLast) {
-            html += `<span class="text-gray-900 font-medium">${part}</span>`;
-        } else {
-            html += `<button onclick="window.deanship.navigateToFolder('${accumulatedPath}')" class="text-blue-600 hover:text-blue-900">${part}</button>`;
-        }
-    });
-
-    breadcrumbs.innerHTML = html;
-}
-
-/**
- * Navigate to folder
- */
-window.deanship.navigateToFolder = function(path) {
-    currentPath = path;
-    loadFileExplorer();
-};
-
-/**
- * Download file
- */
-window.deanship.downloadFile = async function(fileId) {
-    try {
-        const response = await fetch(`http://localhost:8080/api/file-explorer/files/${fileId}/download`, {
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
-            }
-        });
-
-        if (!response.ok) {
-            throw new Error('Download failed');
-        }
-
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = response.headers.get('Content-Disposition')?.split('filename=')[1] || 'download';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-    } catch (error) {
-        console.error('Error downloading file:', error);
-        showToast('Failed to download file', 'error');
-    }
-};
-
-/**
- * Format file size
- */
-function formatFileSize(bytes) {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
 }

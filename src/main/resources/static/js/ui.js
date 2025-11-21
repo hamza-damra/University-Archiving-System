@@ -5,7 +5,7 @@
 
 /**
  * Show a toast notification
- * @param {string} message - Toast message
+ * @param {string} message - Toast message (supports multiline with \n)
  * @param {string} type - Toast type (success, error, info, warning)
  * @param {number} duration - Duration in milliseconds (default: 5000)
  */
@@ -14,15 +14,18 @@ export function showToast(message, type = 'info', duration = 5000) {
     if (!toastContainer) return;
 
     const toast = document.createElement('div');
-    toast.className = `slide-in flex items-center p-4 rounded-lg shadow-lg max-w-sm ${getToastClasses(type)}`;
+    toast.className = `slide-in flex items-start p-4 rounded-lg shadow-lg max-w-md ${getToastClasses(type)}`;
     toast.setAttribute('role', 'alert');
 
     const icon = getToastIcon(type);
     
+    // Convert newlines to HTML breaks for multiline messages
+    const formattedMessage = message.replace(/\n/g, '<br>');
+    
     toast.innerHTML = `
-        ${icon}
-        <span class="flex-1">${message}</span>
-        <button class="ml-2 text-current opacity-70 hover:opacity-100" onclick="this.parentElement.remove()">
+        <div class="flex-shrink-0">${icon}</div>
+        <div class="flex-1 ml-2" style="white-space: pre-wrap; word-break: break-word;">${formattedMessage}</div>
+        <button class="ml-2 flex-shrink-0 text-current opacity-70 hover:opacity-100" onclick="this.parentElement.remove()">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
             </svg>
@@ -31,11 +34,12 @@ export function showToast(message, type = 'info', duration = 5000) {
 
     toastContainer.appendChild(toast);
 
-    // Auto remove after duration
+    // Auto remove after duration (longer for error messages with multiple lines)
+    const adjustedDuration = message.includes('\n') ? Math.max(duration, 8000) : duration;
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);
-    }, duration);
+    }, adjustedDuration);
 }
 
 function getToastClasses(type) {

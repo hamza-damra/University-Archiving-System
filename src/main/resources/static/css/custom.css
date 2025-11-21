@@ -1,17 +1,282 @@
 /* Custom styles to supplement Tailwind */
 
+/* ===================================
+   DARK THEME SYSTEM
+   =================================== */
+
+/* CSS Custom Properties for Theming */
+:root {
+    /* Light Theme (Default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --bg-elevated: #ffffff;
+
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-tertiary: #6b7280;
+    --text-inverse: #ffffff;
+
+    --border-primary: #e5e7eb;
+    --border-secondary: #d1d5db;
+    --border-focus: #3b82f6;
+
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    --accent-blue-light: #eff6ff;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+    /* Status colors - Light theme */
+    --status-success-bg: #d1fae5;
+    --status-success-text: #065f46;
+    --status-warning-bg: #fef3c7;
+    --status-warning-text: #92400e;
+    --status-danger-bg: #fee2e2;
+    --status-danger-text: #991b1b;
+    --status-info-bg: #dbeafe;
+    --status-info-text: #1e40af;
+
+    /* Scrollbar colors */
+    --scrollbar-track: #f1f1f1;
+    --scrollbar-thumb: #cbd5e0;
+    --scrollbar-thumb-hover: #a0aec0;
+}
+
+/* Dark Theme - Custom Analytics-Inspired Color Palette */
+.dark {
+    /* Primary backgrounds - Charcoal/dark gray for professional analytics look */
+    --bg-primary: #2d2d2d;
+    /* Card backgrounds */
+    --bg-secondary: #1e1e1e;
+    /* Page background */
+    --bg-tertiary: #3a3a3a;
+    /* Elevated elements */
+    --bg-elevated: #333333;
+    /* Modals and overlays */
+
+    /* Text colors - High contrast for readability */
+    --text-primary: #f5f5f5;
+    /* Primary text - very light gray */
+    --text-secondary: #b5b5b5;
+    /* Secondary text - medium gray */
+    --text-tertiary: #8a8a8a;
+    /* Tertiary text - darker gray */
+    --text-inverse: #1e1e1e;
+    /* For light backgrounds */
+
+    /* Border colors - Subtle contrast */
+    --border-primary: #404040;
+    --border-secondary: #4a4a4a;
+    --border-focus: #a855f7;
+    /* Purple focus state */
+
+    /* Accent colors - Purple primary, Cyan secondary (from analytics dashboard) */
+    --accent-blue: #a855f7;
+    /* Purple primary accent */
+    --accent-blue-hover: #9333ea;
+    /* Darker purple on hover */
+    --accent-blue-light: #4c1d95;
+    /* Dark purple background */
+
+    /* Secondary accent - Cyan for highlights and CTAs */
+    --accent-cyan: #14b8a6;
+    /* Cyan accent */
+    --accent-cyan-hover: #0d9488;
+    /* Darker cyan */
+    --accent-cyan-light: #134e4a;
+    /* Dark cyan background */
+
+    /* Shadows - More pronounced in dark mode */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.6);
+
+    /* Status colors - Dark theme variants with purple/cyan tones */
+    --status-success-bg: #134e4a;
+    /* Dark cyan for success */
+    --status-success-text: #5eead4;
+    /* Light cyan text */
+    --status-warning-bg: #713f12;
+    --status-warning-text: #fcd34d;
+    --status-danger-bg: #7f1d1d;
+    --status-danger-text: #fca5a5;
+    --status-info-bg: #4c1d95;
+    /* Dark purple for info */
+    --status-info-text: #c4b5fd;
+    /* Light purple text */
+
+    /* Scrollbar colors - Dark theme */
+    --scrollbar-track: #1e1e1e;
+    --scrollbar-thumb: #4a4a4a;
+    --scrollbar-thumb-hover: #5a5a5a;
+}
+
+/* Smooth theme transitions */
+.theme-transitioning,
+.theme-transitioning *,
+.theme-transitioning *:before,
+.theme-transitioning *:after {
+    transition: background-color 0.3s ease,
+        border-color 0.3s ease,
+        color 0.3s ease,
+        box-shadow 0.3s ease !important;
+}
+
+/* Apply theme colors to common elements */
+body {
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+.bg-white {
+    background-color: var(--bg-primary) !important;
+}
+
+.bg-gray-50 {
+    background-color: var(--bg-secondary) !important;
+}
+
+.bg-gray-100 {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+.text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+.text-gray-500,
+.text-gray-600 {
+    color: var(--text-tertiary) !important;
+}
+
+.border-gray-200 {
+    border-color: var(--border-primary) !important;
+}
+
+.border-gray-300 {
+    border-color: var(--border-secondary) !important;
+}
+
+/* Card styling for dark mode */
+.dark .card,
+.dark .bg-white {
+    background-color: var(--bg-primary);
+    border-color: var(--border-primary);
+}
+
+/* Input fields in dark mode */
+.dark input,
+.dark select,
+.dark textarea {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.dark input::placeholder,
+.dark select::placeholder,
+.dark textarea::placeholder {
+    color: var(--text-tertiary);
+}
+
+.dark input:focus,
+.dark select:focus,
+.dark textarea:focus {
+    border-color: var(--border-focus);
+    background-color: var(--bg-primary);
+}
+
+/* Table styles in dark mode */
+.dark table {
+    color: var(--text-primary);
+}
+
+.dark thead {
+    background-color: var(--bg-tertiary);
+}
+
+.dark tbody tr {
+    border-color: var(--border-primary);
+}
+
+.dark tbody tr:hover {
+    background-color: var(--bg-tertiary);
+}
+
+/* Modal backdrop in dark mode */
+.dark .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+/* Toast notifications in dark mode */
+.dark .toast {
+    background-color: var(--bg-elevated);
+    border-color: var(--border-primary);
+    box-shadow: var(--shadow-lg);
+}
+
+/* Theme Toggle Button Styles */
+.theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.5rem;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+}
+
+.theme-toggle:hover {
+    background-color: var(--accent-blue-light);
+    color: var(--accent-blue);
+    transform: scale(1.05);
+}
+
+.theme-toggle svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Hide/show theme icons based on current theme */
+.dark .theme-toggle .sun-icon {
+    display: block;
+}
+
+.dark .theme-toggle .moon-icon {
+    display: none;
+}
+
+.theme-toggle .sun-icon {
+    display: none;
+}
+
+.theme-toggle .moon-icon {
+    display: block;
+}
+
 /* Focus visible for better accessibility */
 *:focus-visible {
     outline: 2px solid #3b82f6;
     outline-offset: 2px;
 }
 
-/* Smooth transitions */
-* {
+/* Smooth transitions - Removed global rule for better performance */
+/* * {
     transition-property: color, background-color, border-color, transform, box-shadow;
     transition-duration: 150ms;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-}
+} */
 
 /* Loading spinner animation */
 @keyframes spin {
@@ -29,6 +294,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -44,6 +310,7 @@
         transform: translateX(100%);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -61,16 +328,16 @@
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--scrollbar-track);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e0;
+    background: var(--scrollbar-thumb);
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #a0aec0;
+    background: var(--scrollbar-thumb-hover);
 }
 
 /* Status badges */
@@ -177,16 +444,44 @@ tbody tr:hover {
 
 /* Progress bar */
 .progress-bar {
-    height: 4px;
+    height: 8px;
     background-color: #e5e7eb;
     border-radius: 9999px;
     overflow: hidden;
+    position: relative;
 }
 
 .progress-bar-fill {
     height: 100%;
-    background-color: #3b82f6;
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
     transition: width 0.3s ease;
+    border-radius: 9999px;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-bar-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(90deg,
+            transparent,
+            rgba(255, 255, 255, 0.3),
+            transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 /* Skeleton loading */
@@ -200,16 +495,100 @@ tbody tr:hover {
     0% {
         background-position: 200% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
 }
 
+/* Enhanced skeleton loaders */
+.skeleton-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.skeleton-line {
+    height: 1rem;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s ease-in-out infinite;
+    border-radius: 0.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.skeleton-line.w-full {
+    width: 100%;
+}
+
+.skeleton-line.w-3-4 {
+    width: 75%;
+}
+
+.skeleton-line.w-1-2 {
+    width: 50%;
+}
+
+.skeleton-line.w-1-4 {
+    width: 25%;
+}
+
+.skeleton-line.h-4 {
+    height: 1rem;
+}
+
+.skeleton-line.h-6 {
+    height: 1.5rem;
+}
+
+.skeleton-line.h-8 {
+    height: 2rem;
+}
+
+.skeleton-line.h-12 {
+    height: 3rem;
+}
+
+.skeleton-line.h-16 {
+    height: 4rem;
+}
+
+.skeleton-circle {
+    border-radius: 9999px;
+}
+
+/* Loading spinner */
+.spinner {
+    border: 3px solid #f3f4f6;
+    border-top: 3px solid #3b82f6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+.spinner-sm {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+}
+
+.spinner-lg {
+    width: 60px;
+    height: 60px;
+    border-width: 4px;
+}
+
 /* Notification badge pulse */
 @keyframes pulse {
-    0%, 100% {
+
+    0%,
+    100% {
         opacity: 1;
     }
+
     50% {
         opacity: 0.5;
     }
@@ -221,14 +600,18 @@ tbody tr:hover {
 
 /* Print styles */
 @media print {
-    header, footer, button, .no-print {
+
+    header,
+    footer,
+    button,
+    .no-print {
         display: none !important;
     }
-    
+
     body {
         background: white;
     }
-    
+
     .container {
         max-width: 100%;
         margin: 0;
@@ -316,4 +699,94 @@ tbody tr:hover {
 .tab-button:not(.active):hover {
     border-bottom-color: #d1d5db;
     color: #374151;
+}
+
+/* File Explorer Enhancements */
+.file-explorer-item {
+    transition: all 0.2s ease-in-out;
+}
+
+.file-explorer-item:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.file-explorer-folder {
+    transition: all 0.2s ease-in-out;
+}
+
+.file-explorer-folder:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.15);
+}
+
+.file-icon-container {
+    transition: all 0.2s ease-in-out;
+}
+
+.file-explorer-item:hover .file-icon-container {
+    transform: scale(1.1);
+    background-color: #e5e7eb;
+}
+
+.folder-icon {
+    transition: all 0.2s ease-in-out;
+}
+
+.file-explorer-folder:hover .folder-icon {
+    transform: scale(1.15) rotate(-5deg);
+}
+
+.download-button {
+    transition: all 0.2s ease-in-out;
+}
+
+.download-button:hover {
+    transform: scale(1.15);
+}
+
+.own-folder-indicator {
+    animation: subtle-pulse 3s ease-in-out infinite;
+}
+
+@keyframes subtle-pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.file-metadata-badge {
+    transition: all 0.2s ease-in-out;
+}
+
+.file-explorer-item:hover .file-metadata-badge {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+/* File type specific colors */
+.file-icon-pdf {
+    color: #dc2626;
+}
+
+.file-icon-zip {
+    color: #f59e0b;
+}
+
+.file-icon-doc {
+    color: #2563eb;
+}
+
+.file-icon-image {
+    color: #10b981;
+}
+
+.file-icon-default {
+    color: #6b7280;
 }

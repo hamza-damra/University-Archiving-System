@@ -38,6 +38,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/index.html", "/hod-dashboard.html", "/prof-dashboard.html", "/deanship-dashboard.html").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.ico").permitAll()
+                        .requestMatchers("/deanship/**", "/hod/**", "/professor/**").permitAll() // Allow HTML pages
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/session/**").permitAll()

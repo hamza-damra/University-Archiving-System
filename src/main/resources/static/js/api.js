@@ -97,11 +97,26 @@ export async function apiRequest(endpoint, options = {}) {
         }
 
         // Parse JSON response
-        const responseData = await response.json();
+        let responseData;
+        try {
+            responseData = await response.json();
+        } catch (parseError) {
+            // If JSON parsing fails, it might be HTML error page
+            throw new Error(`Server error (${response.status}) - Unable to parse response`);
+        }
 
         // Check if response is successful
         if (!response.ok) {
-            // Extract error message from response
+            // Handle validation errors (400 with errors object)
+            if (response.status === 400 && responseData.errors) {
+                const validationErrors = formatValidationErrors(responseData.errors);
+                const error = new Error('Validation failed');
+                error.validationErrors = responseData.errors;
+                error.formattedMessage = validationErrors;
+                throw error;
+            }
+
+            // Handle general errors
             const errorMessage = responseData.message || responseData.error || `Request failed with status ${response.status}`;
             throw new Error(errorMessage);
         }
@@ -123,13 +138,67 @@ export async function apiRequest(endpoint, options = {}) {
 }
 
 /**
+ * Format validation errors into a readable message
+ * @param {object} errors - Validation errors object
+ * @returns {string} Formatted error message
+ */
+function formatValidationErrors(errors) {
+    if (!errors || typeof errors !== 'object') {
+        return 'Validation failed';
+    }
+
+    const errorMessages = Object.entries(errors)
+        .map(([field, message]) => `${formatFieldName(field)}: ${message}`)
+        .join('\n');
+
+    return errorMessages || 'Validation failed';
+}
+
+/**
+ * Format field name for display
+ * @param {string} field - Field name
+ * @returns {string} Formatted field name
+ */
+function formatFieldName(field) {
+    // Convert camelCase to Title Case with spaces
+    return field
+        .replace(/([A-Z])/g, ' $1')
+        .replace(/^./, str => str.toUpperCase())
+        .trim();
+}
+
+/**
+ * Extract readable error message from error object
+ * @param {Error} error - Error object
+ * @returns {string} Readable error message
+ */
+export function getErrorMessage(error) {
+    if (!error) {
+        return 'An unknown error occurred';
+    }
+
+    // Handle validation errors with formatted message
+    if (error.formattedMessage) {
+        return error.formattedMessage;
+    }
+
+    // Handle standard error message
+    if (error.message) {
+        return error.message;
+    }
+
+    // Fallback
+    return 'An unexpected error occurred';
+}
+
+/**
  * Upload file with progress tracking
  * @param {string} endpoint - API endpoint
  * @param {FormData} formData - Form data with file
  * @param {function} onProgress - Progress callback (optional)
  * @returns {Promise} Response data
  */
-export async function uploadFile(endpoint, formData, onProgress = null) {
+export async function uploadFile(endpoint, formData, onProgress = null, method = 'POST') {
     const url = `${API_BASE_URL}${endpoint}`;
     
     return new Promise((resolve, reject) => {
@@ -193,7 +262,7 @@ export async function uploadFile(endpoint, formData, onProgress = null) {
         });
 
         // Open connection and set headers
-        xhr.open('POST', url);
+        xhr.open(method, url);
         
         const token = getToken();
         if (token) {
@@ -335,6 +404,15 @@ export const hod = {
 
 // Professor endpoints
 export const professor = {
+    // Academic Years & Semesters
+    getAcademicYears: () => apiRequest('/professor/academic-years', {
+        method: 'GET',
+    }),
+    
+    getSemesters: (academicYearId) => apiRequest(`/professor/academic-years/${academicYearId}/semesters`, {
+        method: 'GET',
+    }),
+    
     getRequests: (page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc') => 
         apiRequest(`/professor/document-requests?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`, {
             method: 'GET',
@@ -395,7 +473,7 @@ export const professor = {
         uploadFile(`/professor/submissions/upload?courseAssignmentId=${courseAssignmentId}&documentType=${documentType}`, formData, onProgress),
     
     replaceFiles: (submissionId, formData, onProgress) =>
-        uploadFile(`/professor/submissions/${submissionId}/replace`, formData, onProgress),
+        uploadFile(`/professor/submissions/${submissionId}/replace`, formData, onProgress, 'PUT'),
     
     // Submissions
     getMySubmissions: (semesterId) => apiRequest(`/professor/submissions?semesterId=${semesterId}`, {
@@ -406,9 +484,7 @@ export const professor = {
         method: 'GET',
     }),
     
-    getSubmissionFiles: (submissionId) => apiRequest(`/professor/submissions/${submissionId}/files`, {
-        method: 'GET',
-    }),
+    // Note: Use getSubmission() to get submission with files included
     
     downloadSubmissionFile: (fileId) =>
         fetch(`${API_BASE_URL}/professor/files/${fileId}/download`, {

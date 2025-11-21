@@ -17,7 +17,10 @@ import java.util.List;
 @Table(name = "document_submissions",
        indexes = {
            @Index(name = "idx_document_submissions_course_assignment", columnList = "course_assignment_id"),
-           @Index(name = "idx_document_submissions_professor", columnList = "professor_id")
+           @Index(name = "idx_document_submissions_professor", columnList = "professor_id"),
+           @Index(name = "idx_document_submissions_doc_type", columnList = "document_type"),
+           @Index(name = "idx_document_submissions_status", columnList = "status"),
+           @Index(name = "idx_document_submissions_ca_doctype", columnList = "course_assignment_id, document_type")
        })
 @Data
 @NoArgsConstructor

@@ -2,7 +2,7 @@
  * HOD Dashboard
  */
 
-import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
+import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 
@@ -33,7 +33,6 @@ const semesterSelect = document.getElementById('semesterSelect');
 const dashboardOverview = document.getElementById('dashboardOverview');
 const submissionStatusSection = document.getElementById('submissionStatusSection');
 const submissionStatusTableBody = document.getElementById('submissionStatusTableBody');
-const fileExplorerSection = document.getElementById('fileExplorerSection');
 const requestsTableBody = document.getElementById('requestsTableBody');
 const viewReportBtn = document.getElementById('viewReportBtn');
 const downloadReportBtn = document.getElementById('downloadReportBtn');
@@ -48,6 +47,36 @@ loadLegacyRequests();
 initializeFileExplorer();
 initializeTabSwitching();
 initializeReportButtons();
+initializeSidebar();
+
+// Sidebar Toggle
+function initializeSidebar() {
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    
+    if (sidebarToggle && sidebar) {
+        sidebarToggle.addEventListener('click', () => {
+            sidebar.classList.toggle('hidden');
+            // Add classes for mobile positioning
+            if (!sidebar.classList.contains('hidden')) {
+                sidebar.classList.add('fixed', 'inset-y-0', 'left-0', 'shadow-xl');
+            } else {
+                sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-xl');
+            }
+        });
+        
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+            if (window.innerWidth < 768 && 
+                !sidebar.classList.contains('hidden') && 
+                !sidebar.contains(e.target) && 
+                !sidebarToggle.contains(e.target)) {
+                sidebar.classList.add('hidden');
+                sidebar.classList.remove('fixed', 'inset-y-0', 'left-0', 'shadow-xl');
+            }
+        });
+    }
+}
 
 // Tab Switching
 function initializeTabSwitching() {
@@ -59,6 +88,9 @@ function initializeTabSwitching() {
         });
     });
 }
+
+// Initialize file explorer on page load
+initializeFileExplorer();
 
 // Report Buttons
 function initializeReportButtons() {
@@ -88,8 +120,7 @@ async function viewReport() {
     }
     
     try {
-        const response = await hod.getProfessorSubmissionReport(selectedSemester);
-        const report = response.data;
+        const report = await hod.getProfessorSubmissionReport(selectedSemester);
         
         // Display report in a modal or new section
         displayReportModal(report);
@@ -130,11 +161,9 @@ function switchTab(tabName) {
     // Update nav tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
         if (tab.getAttribute('data-tab') === tabName) {
-            tab.classList.add('active', 'border-blue-600', 'text-blue-600');
-            tab.classList.remove('border-transparent', 'text-gray-500');
+            tab.classList.add('active');
         } else {
-            tab.classList.remove('active', 'border-blue-600', 'text-blue-600');
-            tab.classList.add('border-transparent', 'text-gray-500');
+            tab.classList.remove('active');
         }
     });
     
@@ -148,11 +177,24 @@ function switchTab(tabName) {
         activeTab.classList.remove('hidden');
     }
     
+    // Update page title
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle) {
+        pageTitle.textContent = tabName.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    }
+    
     // Load data for specific tabs
     if (tabName === 'submission-status' && selectedSemester) {
         loadSubmissionStatus();
-    } else if (tabName === 'file-explorer' && selectedSemester) {
-        loadFileExplorerData();
+    } else if (tabName === 'file-explorer') {
+        // Initialize file explorer if not already initialized
+        if (!fileExplorerInstance) {
+            initializeFileExplorer();
+        }
+        // Load data if semester is selected
+        if (selectedSemester) {
+            loadFileExplorerData();
+        }
     }
 }
 
@@ -167,7 +209,8 @@ logoutBtn.addEventListener('click', () => {
 async function loadAcademicYears() {
     try {
         const response = await hod.getAcademicYears();
-        academicYears = response.data || [];
+        // apiRequest already extracts the data, so response IS the data
+        academicYears = Array.isArray(response) ? response : [];
         
         if (academicYears.length === 0) {
             academicYearSelect.innerHTML = '<option value="">No academic years available</option>';
@@ -270,9 +313,8 @@ async function loadDashboardData() {
     
     try {
         // Show loading state
-        dashboardOverview.classList.remove('hidden');
-        submissionStatusSection.classList.remove('hidden');
-        fileExplorerSection.classList.remove('hidden');
+        if (dashboardOverview) dashboardOverview.classList.remove('hidden');
+        if (submissionStatusSection) submissionStatusSection.classList.remove('hidden');
         
         // Load dashboard overview
         await loadDashboardOverview();
@@ -291,8 +333,7 @@ async function loadDashboardData() {
 // Load dashboard overview
 async function loadDashboardOverview() {
     try {
-        const response = await hod.getDashboardOverview(selectedSemester);
-        const overview = response.data;
+        const overview = await hod.getDashboardOverview(selectedSemester);
         
         // Update overview cards with data from API
         document.getElementById('totalProfessors').textContent = overview.totalProfessors || 0;
@@ -326,8 +367,7 @@ async function loadSubmissionStatus() {
         // Remove undefined values
         Object.keys(filters).forEach(key => filters[key] === undefined && delete filters[key]);
         
-        const response = await hod.getSubmissionStatus(selectedSemester, filters);
-        const report = response.data;
+        const report = await hod.getSubmissionStatus(selectedSemester, filters);
         
         renderSubmissionStatus(report);
         populateCourseFilter(report);
@@ -432,16 +472,34 @@ if (filterStatus) {
 }
 
 // ============================================================================
-// FILE EXPLORER
+// FILE EXPLORER - UNIFIED COMPONENT IMPLEMENTATION
 // ============================================================================
 
 /**
- * Initialize file explorer component
+ * Initialize file explorer component with HOD-specific configuration
+ * 
+ * This implementation uses the unified FileExplorer component from file-explorer.js
+ * with HOD role configuration. The component maintains visual consistency with the
+ * Professor Dashboard (master design reference) while providing HOD-specific features:
+ * 
+ * - Read-only access to department files
+ * - Department context filtering
+ * - Header message indicating read-only mode
+ * - Same folder card design and file table layout as Professor Dashboard
+ * 
+ * Configuration Options:
+ * - role: 'HOD' - Identifies the user role for role-specific rendering
+ * - readOnly: true - Disables upload and write operations
+ * - showDepartmentContext: true - Shows department-specific context
+ * - headerMessage: 'Browse department files (Read-only)' - Displays at top of explorer
  */
 function initializeFileExplorer() {
     try {
         fileExplorerInstance = new FileExplorer('hodFileExplorer', {
-            readOnly: true
+            role: 'HOD',
+            readOnly: true,
+            showDepartmentContext: true,
+            headerMessage: 'Browse department files (Read-only)'
         });
         
         // Make it globally accessible for event handlers
@@ -454,6 +512,9 @@ function initializeFileExplorer() {
 
 /**
  * Load file explorer data for selected semester
+ * 
+ * Loads the root node of the file explorer for the selected academic year and semester.
+ * The FileExplorer component handles all rendering and navigation internally.
  */
 async function loadFileExplorerData() {
     if (!selectedAcademicYear || !selectedSemester || !fileExplorerInstance) {
@@ -471,8 +532,7 @@ async function loadFileExplorerData() {
 // Load legacy requests (kept for backward compatibility)
 async function loadLegacyRequests() {
     try {
-        const response = await hod.getRequests();
-        const pageData = response.data || {};
+        const pageData = await hod.getRequests();
         requests = Array.isArray(pageData) ? pageData : (pageData.content || []);
         renderLegacyRequests();
     } catch (error) {
@@ -532,8 +592,7 @@ function getStatusBadge(submittedDoc, isOverdue) {
 // View legacy report
 window.viewLegacyReport = async (requestId) => {
     try {
-        const response = await hod.getRequestDetails(requestId);
-        const report = response.data;
+        const report = await hod.getRequestDetails(requestId);
 
         const content = `
             <div class="space-y-4">
@@ -553,7 +612,7 @@ window.viewLegacyReport = async (requestId) => {
                             <p class="text-sm text-green-800">
                                 <strong>Submitted at:</strong> ${formatDate(report.submittedDocument.submittedAt)}
                             </p>
-                            <p class="text-sm text-green-800">
+                            <p class="text-sm text-green-8 00">
                                 <strong>File:</strong> ${report.submittedDocument.fileName}
                             </p>
                         </div>
@@ -569,7 +628,7 @@ window.viewLegacyReport = async (requestId) => {
         showModal('Legacy Request Report', content, { size: 'lg' });
     } catch (error) {
         console.error('Error loading report:', error);
-        showToast(error.message || 'Failed to load report', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 };
 
@@ -582,13 +641,12 @@ viewReportBtn.addEventListener('click', async () => {
     
     try {
         showToast('Loading report...', 'info');
-        const response = await hod.getProfessorSubmissionReport(selectedSemester);
-        const report = response.data;
+        const report = await hod.getProfessorSubmissionReport(selectedSemester);
         
         displaySubmissionReport(report);
     } catch (error) {
         console.error('Error loading submission report:', error);
-        showToast(error.message || 'Failed to load submission report', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 });
 
@@ -624,7 +682,7 @@ downloadReportBtn.addEventListener('click', async () => {
         showToast('PDF downloaded successfully', 'success');
     } catch (error) {
         console.error('Error downloading PDF:', error);
-        showToast(error.message || 'Failed to download PDF', 'error');
+        showToast(getErrorMessage(error), 'error');
     }
 });
 

@@ -14,7 +14,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "required_document_types")
+@Table(name = "required_document_types",
+       indexes = {
+           @Index(name = "idx_required_doc_types_course", columnList = "course_id"),
+           @Index(name = "idx_required_doc_types_semester", columnList = "semester_id"),
+           @Index(name = "idx_required_doc_types_course_sem", columnList = "course_id, semester_id"),
+           @Index(name = "idx_required_doc_types_doc_type", columnList = "document_type")
+       })
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

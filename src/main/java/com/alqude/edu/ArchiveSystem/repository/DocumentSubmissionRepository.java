@@ -33,4 +33,16 @@ public interface DocumentSubmissionRepository extends JpaRepository<DocumentSubm
     List<DocumentSubmission> findAllByCourseAssignmentIdAndDocumentType(
             Long courseAssignmentId, 
             DocumentTypeEnum documentType);
+    
+    /**
+     * Batch fetch document submissions for multiple course assignments in a single query.
+     * This optimizes performance by avoiding N+1 query problems.
+     * 
+     * @param courseAssignmentIds List of course assignment IDs
+     * @return List of document submissions for all specified assignments
+     */
+    @Query("SELECT ds FROM DocumentSubmission ds " +
+           "LEFT JOIN FETCH ds.uploadedFiles " +
+           "WHERE ds.courseAssignment.id IN :courseAssignmentIds")
+    List<DocumentSubmission> findByCourseAssignmentIdIn(@Param("courseAssignmentIds") List<Long> courseAssignmentIds);
 }

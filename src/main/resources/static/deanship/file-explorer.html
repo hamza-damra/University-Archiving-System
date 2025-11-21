@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer - Deanship Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="stylesheet" href="/css/deanship-layout.css">
+    <style>
+        /* File Explorer specific styles */
+        .file-explorer-container {
+            background-color: var(--color-bg-primary);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+        
+        .context-message {
+            background-color: #FEF3C7;
+            border: 1px solid #FCD34D;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+        
+        .context-message svg {
+            flex-shrink: 0;
+            width: 24px;
+            height: 24px;
+            color: #F59E0B;
+        }
+        
+        .context-message-text {
+            font-size: var(--font-size-md);
+            color: #92400E;
+        }
+    </style>
+</head>
+<body>
+    <div id="deanship-layout">
+        <!-- Header -->
+        <header class="deanship-header">
+            <div class="header-title">Al-Quds University / Deanship Dashboard</div>
+            <div class="header-user">
+                <span class="header-user-name" id="deanshipName">Loading...</span>
+                <button class="header-logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </header>
+        
+        <!-- Navigation -->
+        <nav class="deanship-nav">
+            <a href="/deanship/dashboard" class="nav-link">Dashboard</a>
+            <a href="/deanship/academic-years" class="nav-link">Academic Years</a>
+            <a href="/deanship/professors" class="nav-link">Professors</a>
+            <a href="/deanship/courses" class="nav-link">Courses</a>
+            <a href="/deanship/course-assignments" class="nav-link">Assignments</a>
+            <a href="/deanship/reports" class="nav-link">Reports</a>
+            <a href="/deanship/file-explorer" class="nav-link">File Explorer</a>
+        </nav>
+        
+        <!-- Global Filters -->
+        <div class="deanship-filters">
+            <label class="filter-label" for="academicYearSelect">Academic Year:</label>
+            <select id="academicYearSelect" class="filter-select">
+                <option value="">Select Academic Year</option>
+            </select>
+            
+            <label class="filter-label" for="semesterSelect">Semester:</label>
+            <select id="semesterSelect" class="filter-select">
+                <option value="">Select Semester</option>
+            </select>
+        </div>
+        
+        <!-- Main Content -->
+        <main id="page-content">
+            <div class="page-header">
+                <h1 class="page-title">File Explorer</h1>
+                <p class="page-description">Browse and access archived documents across all departments</p>
+            </div>
+            
+            <!-- Context Message (shown when no academic year/semester selected) -->
+            <div id="contextMessage" class="context-message" style="display: none;">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="context-message-text">
+                    Please select an academic year and semester from the filters above to browse files.
+                </div>
+            </div>
+            
+            <!-- File Explorer Container -->
+            <div id="fileExplorerContainer" class="file-explorer-container">
+                <!-- File Explorer will be rendered here -->
+            </div>
+        </main>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+    
+    <script type="module" src="/js/file-explorer-page.js"></script>
+</body>
+</html>

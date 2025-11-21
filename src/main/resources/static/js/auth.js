@@ -11,6 +11,10 @@ if (isAuthenticated()) {
     redirectToDashboard(userInfo.role);
 }
 
+// Check for error parameters in URL
+const urlParams = new URLSearchParams(window.location.search);
+const errorParam = urlParams.get('error');
+
 // DOM Elements
 const loginForm = document.getElementById('loginForm');
 const emailInput = document.getElementById('email');
@@ -20,6 +24,17 @@ const passwordError = document.getElementById('passwordError');
 const generalError = document.getElementById('generalError');
 const submitBtn = document.getElementById('submitBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
+
+// Display error message if present in URL
+if (errorParam) {
+    if (errorParam === 'access_denied') {
+        showGeneralError('Access denied. You do not have permission to access that page. Please log in with appropriate credentials.');
+    } else if (errorParam === 'session_expired') {
+        showGeneralError('Your session has expired. Please log in again.');
+    } else if (errorParam === 'unauthorized') {
+        showGeneralError('Unauthorized access. Please log in to continue.');
+    }
+}
 
 // Form submission
 loginForm.addEventListener('submit', async (e) => {
@@ -126,7 +141,7 @@ function clearErrors() {
 
 function redirectToDashboard(role) {
     if (role === 'ROLE_DEANSHIP') {
-        window.location.href = '/deanship-dashboard.html';
+        window.location.href = '/deanship/dashboard';
     } else if (role === 'ROLE_HOD') {
         window.location.href = '/hod-dashboard.html';
     } else if (role === 'ROLE_PROFESSOR') {

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer Loading States Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="src/main/resources/static/css/custom.css">
+    <style>
+        body {
+            padding: 2rem;
+            background-color: #f9fafb;
+        }
+        .test-section {
+            background: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        .test-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #1f2937;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6 text-gray-900">File Explorer Loading States Test</h1>
+        
+        <div class="test-section">
+            <h2 class="test-title">1. Default Loading State</h2>
+            <div id="test-default"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">2. Folders Loading State</h2>
+            <div id="test-folders"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">3. Files Loading State (Table)</h2>
+            <div id="test-files"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">4. Tree Loading State</h2>
+            <div id="test-tree"></div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="test-title">5. Mixed Loading State (Folders + Files)</h2>
+            <div id="test-mixed"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { FileExplorer } from './src/main/resources/static/js/file-explorer.js';
+
+        // Create a test instance
+        const testExplorer = new FileExplorer('test-default', {
+            role: 'PROFESSOR',
+            readOnly: false
+        });
+
+        // Test 1: Default loading state
+        document.getElementById('test-default').innerHTML = testExplorer.renderLoadingState('default', 3);
+
+        // Test 2: Folders loading state
+        document.getElementById('test-folders').innerHTML = testExplorer.renderLoadingState('folders', 4);
+
+        // Test 3: Files loading state
+        document.getElementById('test-files').innerHTML = testExplorer.renderLoadingState('files', 3);
+
+        // Test 4: Tree loading state
+        document.getElementById('test-tree').innerHTML = testExplorer.renderLoadingState('tree', 6);
+
+        // Test 5: Mixed loading state
+        document.getElementById('test-mixed').innerHTML = testExplorer.renderLoadingState('mixed', 3);
+
+        console.log('✅ All loading states rendered successfully');
+        console.log('✅ Skeleton animations should be visible');
+        console.log('✅ Check that all states match the design specification');
+    </script>
+</body>
+</html>

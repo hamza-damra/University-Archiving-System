@@ -5,6 +5,7 @@ A clean, accessible, and responsive frontend for the Al-Quds University Document
 ## 📋 Overview
 
 This frontend integrates with the existing Spring Boot backend and provides separate interfaces for:
+- **Deanship**: Multi-page dashboard for managing academic structure (academic years, professors, courses, assignments, reports, file explorer)
 - **HOD (Head of Department)**: Manage professors and document requests
 - **Professors**: View assigned requests and submit documents
 
@@ -19,17 +20,37 @@ This frontend integrates with the existing Spring Boot backend and provides sepa
 
 ```
 src/main/resources/static/
-├── index.html              # Login page
-├── hod-dashboard.html      # HOD dashboard
-├── prof-dashboard.html     # Professor dashboard
+├── index.html                      # Login page
+├── hod-dashboard.html              # HOD dashboard (single-page)
+├── prof-dashboard.html             # Professor dashboard (single-page)
+├── deanship-dashboard.html         # DEPRECATED: Old single-page deanship dashboard (kept for rollback)
+├── deanship/                       # NEW: Multi-page deanship dashboard
+│   ├── dashboard.html              # Main landing page with overview cards
+│   ├── academic-years.html         # Academic years management
+│   ├── professors.html             # Professors management
+│   ├── courses.html                # Courses management
+│   ├── course-assignments.html     # Course assignments
+│   ├── reports.html                # Reports and analytics
+│   └── file-explorer.html          # File system browser
 ├── css/
-│   └── custom.css         # Supplementary styles
+│   ├── custom.css                  # Global supplementary styles
+│   └── deanship-layout.css         # NEW: Shared deanship layout styles
 └── js/
-    ├── api.js             # Centralized API service
-    ├── ui.js              # UI helper functions (modals, toasts)
-    ├── auth.js            # Login page logic
-    ├── hod.js             # HOD dashboard logic
-    └── prof.js            # Professor dashboard logic
+    ├── api.js                      # Centralized API service
+    ├── ui.js                       # UI helper functions (modals, toasts)
+    ├── auth.js                     # Login page logic
+    ├── file-explorer.js            # Unified File Explorer component
+    ├── hod.js                      # HOD dashboard logic
+    ├── prof.js                     # Professor dashboard logic
+    ├── deanship.js                 # DEPRECATED: Old deanship logic (kept for rollback)
+    ├── deanship-common.js          # NEW: Shared deanship layout and context management
+    ├── dashboard.js                # NEW: Dashboard page logic
+    ├── academic-years.js           # NEW: Academic years page logic
+    ├── professors.js               # NEW: Professors page logic
+    ├── courses.js                  # NEW: Courses page logic
+    ├── course-assignments.js       # NEW: Course assignments page logic
+    ├── reports.js                  # NEW: Reports page logic
+    └── file-explorer-page.js       # NEW: File explorer page wrapper
 ```
 
 ## 🚀 Getting Started
@@ -73,10 +94,65 @@ const API_BASE_URL = 'http://localhost:8080/api';
 
 ## 🎯 Features
 
+### File Explorer Component (`file-explorer.js`)
+
+The File Explorer is a **unified, reusable component** used across all dashboards (Professor, HOD, Deanship) for hierarchical file navigation. It provides a consistent user experience while supporting role-specific behaviors.
+
+#### Key Features
+- **Hierarchical Navigation**: Browse academic years → semesters → professors → courses → document types → files
+- **Tree View**: Collapsible folder structure in left panel
+- **File List**: Detailed file table with metadata in right panel
+- **Breadcrumb Navigation**: Click to navigate back through hierarchy
+- **Role-Specific Labels**: Visual indicators based on user role and permissions
+- **Lazy Loading**: Folder contents loaded on-demand for performance
+- **Empty/Loading/Error States**: Consistent feedback across all dashboards
+
+#### Role-Specific Behavior
+
+**Professor Dashboard**:
+- "Your Folder" badge (blue) on owned course folders
+- "Read Only" badge (gray) on shared folders
+- Upload and file management actions enabled
+
+**HOD Dashboard**:
+- Header message: "Browse department files (Read-only)"
+- "Read Only" badges on all folders
+- Department-scoped view (only own department)
+- No upload or edit actions
+
+**Deanship Dashboard**:
+- Professor name labels (purple) on professor folders
+- Access to all departments
+- No upload or edit actions
+
+#### Usage Example
+
+```javascript
+import FileExplorer from './file-explorer.js';
+
+// Initialize with role-specific configuration
+const fileExplorer = new FileExplorer('fileExplorerContainer', {
+    role: 'PROFESSOR',           // 'PROFESSOR', 'HOD', or 'DEANSHIP'
+    showOwnershipLabels: true,   // Show "Your Folder" labels
+    readOnly: false              // Enable upload actions
+});
+
+// Store globally for event handlers
+window.fileExplorerInstance = fileExplorer;
+
+// Load data for a semester
+await fileExplorer.loadRoot(academicYearId, semesterId);
+```
+
+#### Documentation
+- **Comprehensive Guide**: `FILE_EXPLORER_DEVELOPER_GUIDE.md`
+- **Quick Reference**: `FILE_EXPLORER_QUICK_REFERENCE.md`
+- **Master Design**: Professor Dashboard (`prof-dashboard.html`)
+
 ### Login Page (`index.html`)
 - Email and password authentication
 - Client-side validation
-- Role-based redirection (HOD/Professor)
+- Role-based redirection (HOD/Professor/Deanship)
 - JWT token storage in localStorage
 - Loading states and error handling
 
@@ -102,10 +178,130 @@ const API_BASE_URL = 'http://localhost:8080/api';
   - Upload documents with progress tracking
   - Replace previously submitted documents
   - Client-side file validation (extension, size)
+- **File Explorer**:
+  - Browse own courses and folders hierarchically
+  - "Your Folder" labels on owned folders
+  - "Read Only" labels on shared folders
+  - Upload files to owned folders
+  - Download and view files
+  - Tree view with lazy loading
 - **Notifications**:
   - Real-time notification badge
   - View unseen notifications
   - Mark notifications as read
+
+### Deanship Dashboard (Multi-Page Application)
+
+The Deanship Dashboard has been refactored from a single-page tabbed interface into a **multi-page application** with dedicated routes for each functional area. This improves navigation, maintainability, and user experience.
+
+#### Architecture
+
+**Routes**: Each functional area has its own dedicated route:
+- `/deanship/dashboard` - Main landing page with overview cards
+- `/deanship/academic-years` - Academic years management
+- `/deanship/professors` - Professors management
+- `/deanship/courses` - Courses management
+- `/deanship/course-assignments` - Course assignments
+- `/deanship/reports` - Reports and analytics
+- `/deanship/file-explorer` - File system browser
+
+**Shared Layout**: All pages share common elements:
+- Header with application title and user info
+- Navigation bar with links to all sections
+- Academic year and semester filters (global context)
+- Logout button
+
+**Academic Context**: The selected academic year and semester persist across pages using localStorage, allowing users to navigate between sections without losing their filter selections.
+
+#### Features by Page
+
+**Dashboard** (`/deanship/dashboard`):
+- Overview cards for quick access to all sections
+- Summary statistics (active academic years, professors, courses, assignments)
+- Submission completion percentage
+- Click cards to navigate to specific sections
+
+**Academic Years** (`/deanship/academic-years`):
+- View all academic years in a table
+- Add new academic years
+- Edit existing academic years
+- Activate/deactivate academic years
+- Empty state when no academic years exist
+
+**Professors** (`/deanship/professors`):
+- View all professors in a table
+- Search by name, email, or professor ID
+- Filter by department
+- Add new professors
+- Edit existing professors
+- Activate/deactivate professors
+
+**Courses** (`/deanship/courses`):
+- View all courses in a table
+- Search by course code or name
+- Filter by department
+- Add new courses
+- Edit existing courses
+- Deactivate courses
+
+**Course Assignments** (`/deanship/course-assignments`):
+- View assignments for selected semester
+- Filter by professor or course
+- Assign professors to courses
+- Unassign courses (with confirmation)
+- Context-aware: requires academic year/semester selection
+
+**Reports** (`/deanship/reports`):
+- View submission status reports
+- System-wide submission statistics
+- Completion percentages
+- Context-aware: requires academic year/semester selection
+
+**File Explorer** (`/deanship/file-explorer`):
+- Browse all departments, professors, and courses
+- Professor name labels on professor folders
+- Read-only access (no upload/edit)
+- Download and view files
+- Full system visibility
+- Context-aware: requires academic year/semester selection
+
+#### Technical Implementation
+
+**Backend**: New `DeanshipViewController` handles route mappings:
+```java
+@Controller
+@RequestMapping("/deanship")
+@PreAuthorize("hasRole('DEANSHIP')")
+public class DeanshipViewController {
+    @GetMapping("/dashboard")
+    public String dashboard() { return "deanship/dashboard"; }
+    // ... other routes
+}
+```
+
+**Frontend**: Shared layout managed by `DeanshipLayout` class:
+```javascript
+import { DeanshipLayout } from './deanship-common.js';
+
+const layout = new DeanshipLayout();
+await layout.initialize();
+
+// Register callback for context changes
+layout.onContextChange(() => loadData());
+```
+
+**State Persistence**: Academic context stored in localStorage:
+- `deanship_selected_academic_year` - Selected academic year ID
+- `deanship_selected_semester` - Selected semester ID
+- `deanship_last_page` - Last visited page
+
+#### Documentation
+
+For detailed information about the deanship multi-page refactor:
+- **Deployment Guide**: `DEANSHIP_DEPLOYMENT_GUIDE.md` - Comprehensive deployment, rollback, and troubleshooting guide
+- **Developer Reference**: `DEANSHIP_DEVELOPER_REFERENCE.md` - Quick reference for developers
+- **Design Document**: `.kiro/specs/deanship-multi-page-refactor/design.md` - Detailed architecture and design decisions
+- **Requirements**: `.kiro/specs/deanship-multi-page-refactor/requirements.md` - Complete requirements specification
 
 ## 🔌 API Integration
 
@@ -137,6 +333,13 @@ const API_BASE_URL = 'http://localhost:8080/api';
 - `POST /api/prof/requests/{id}/submit` - Upload document (multipart)
 - `GET /api/prof/notifications` - Get notifications
 - `PUT /api/prof/notifications/{id}/seen` - Mark notification as seen
+
+#### File Explorer
+- `GET /api/file-explorer/root?academicYearId={id}&semesterId={id}` - Get root node
+- `GET /api/file-explorer/node?path={path}` - Get node by path
+- `GET /api/file-explorer/breadcrumbs?path={path}` - Get breadcrumb trail
+- `GET /api/file-explorer/file/{fileId}/metadata` - Get file metadata
+- `GET /api/file-explorer/file/{fileId}/download` - Download file
 
 ### Customizing API Endpoints
 

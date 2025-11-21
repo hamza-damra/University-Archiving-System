@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Years - Deanship Dashboard</title>
+    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="stylesheet" href="/css/deanship-layout.css">
+    <style>
+        /* Page-specific styles */
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+        
+        .actions-cell {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-semibold);
+        }
+        
+        .status-active {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-inactive {
+            background-color: #f3f4f6;
+            color: #4b5563;
+        }
+        
+        .action-link {
+            color: var(--color-primary);
+            text-decoration: none;
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+        }
+        
+        .action-link:hover {
+            text-decoration: underline;
+        }
+        
+        .action-link.success {
+            color: var(--color-success);
+        }
+    </style>
+</head>
+<body>
+    <div id="deanship-layout">
+        <!-- Header -->
+        <header class="deanship-header">
+            <div class="header-title">Al-Quds University / Deanship Dashboard</div>
+            <div class="header-user">
+                <span class="header-user-name" id="deanshipName">Loading...</span>
+                <button class="header-logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </header>
+        
+        <!-- Navigation -->
+        <nav class="deanship-nav">
+            <a href="/deanship/dashboard" class="nav-link">Dashboard</a>
+            <a href="/deanship/academic-years" class="nav-link">Academic Years</a>
+            <a href="/deanship/professors" class="nav-link">Professors</a>
+            <a href="/deanship/courses" class="nav-link">Courses</a>
+            <a href="/deanship/course-assignments" class="nav-link">Assignments</a>
+            <a href="/deanship/reports" class="nav-link">Reports</a>
+            <a href="/deanship/file-explorer" class="nav-link">File Explorer</a>
+        </nav>
+        
+        <!-- Global Filters -->
+        <div class="deanship-filters">
+            <label class="filter-label" for="academicYearSelect">Academic Year:</label>
+            <select id="academicYearSelect" class="filter-select">
+                <option value="">Select Academic Year</option>
+            </select>
+            
+            <label class="filter-label" for="semesterSelect">Semester:</label>
+            <select id="semesterSelect" class="filter-select">
+                <option value="">Select Semester</option>
+            </select>
+        </div>
+        
+        <!-- Main Content -->
+        <main id="page-content">
+            <div class="page-header">
+                <div>
+                    <h1 class="page-title">Academic Years Management</h1>
+                    <p class="page-subtitle">Manage academic years and their semesters</p>
+                </div>
+                <button id="addAcademicYearBtn" class="btn btn-primary">
+                    Add Academic Year
+                </button>
+            </div>
+            
+            <!-- Loading State -->
+            <div id="loadingState" class="loading-container" style="display: none;">
+                <div class="loading-spinner"></div>
+            </div>
+            
+            <!-- Academic Years Table -->
+            <div id="tableContainer" class="table-wrapper">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Year Code</th>
+                            <th>Start Year</th>
+                            <th>End Year</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="academicYearsTableBody">
+                        <!-- Table rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Empty State -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📅</div>
+                <h3 class="empty-state-title">No Academic Years Found</h3>
+                <p class="empty-state-message">Click "Add Academic Year" to create your first academic year.</p>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+    
+    <script type="module" src="/js/academic-years.js"></script>
+</body>
+</html>

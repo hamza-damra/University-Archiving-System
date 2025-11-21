@@ -134,6 +134,27 @@ public class DeanshipController {
         }
     }
     
+    /**
+     * Get semesters for a specific academic year.
+     * 
+     * @param id Academic year ID
+     * @return List of semesters for the academic year
+     */
+    @GetMapping("/academic-years/{id}/semesters")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Semester>>> getSemestersByAcademicYear(@PathVariable Long id) {
+        log.info("Deanship retrieving semesters for academic year: {}", id);
+        
+        try {
+            List<com.alqude.edu.ArchiveSystem.entity.Semester> semesters = academicService.getSemestersByYear(id);
+            return ResponseEntity.ok(ApiResponse.success("Semesters retrieved successfully", semesters));
+        } catch (Exception e) {
+            log.error("Error retrieving semesters for academic year: {}", id, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve semesters: " + e.getMessage()));
+        }
+    }
+    
     // ==================== Professor Management ====================
     
     /**

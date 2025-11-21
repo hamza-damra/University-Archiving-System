@@ -300,21 +300,49 @@ public class ProfessorServiceImpl implements ProfessorService {
             throw new BusinessException("INVALID_ROLE", "User with ID " + professorId + " is not a professor");
         }
         
-        // Fetch course assignments
+        // Fetch course assignments with JOIN FETCH (already optimized in repository)
         List<CourseAssignment> assignments = courseAssignmentRepository.findByProfessorIdAndSemesterId(professorId, semesterId);
+        
+        if (assignments.isEmpty()) {
+            log.debug("No course assignments found for professor ID: {} in semester ID: {}", professorId, semesterId);
+            return List.of();
+        }
+        
+        // Batch fetch all required document types for all courses in one query
+        List<Long> courseIds = assignments.stream()
+                .map(a -> a.getCourse().getId())
+                .distinct()
+                .collect(Collectors.toList());
+        
+        List<RequiredDocumentType> allRequiredDocs = requiredDocumentTypeRepository
+                .findByCourseIdInAndSemesterId(courseIds, semesterId);
+        
+        // Group required docs by course ID for efficient lookup
+        Map<Long, List<RequiredDocumentType>> requiredDocsByCourse = allRequiredDocs.stream()
+                .collect(Collectors.groupingBy(rd -> rd.getCourse().getId()));
+        
+        // Batch fetch all submissions for all assignments in one query
+        List<Long> assignmentIds = assignments.stream()
+                .map(CourseAssignment::getId)
+                .collect(Collectors.toList());
+        
+        List<DocumentSubmission> allSubmissions = documentSubmissionRepository
+                .findByCourseAssignmentIdIn(assignmentIds);
+        
+        // Group submissions by assignment ID for efficient lookup
+        Map<Long, List<DocumentSubmission>> submissionsByAssignment = allSubmissions.stream()
+                .collect(Collectors.groupingBy(s -> s.getCourseAssignment().getId()));
         
         return assignments.stream().map(assignment -> {
             Course course = assignment.getCourse();
             Semester semester = assignment.getSemester();
             AcademicYear academicYear = semester.getAcademicYear();
             
-            // Get required document types for this course
-            List<RequiredDocumentType> requiredDocs = requiredDocumentTypeRepository
-                    .findByCourseIdAndSemesterId(course.getId(), semesterId);
+            // Get required document types for this course from pre-fetched map
+            List<RequiredDocumentType> requiredDocs = requiredDocsByCourse.getOrDefault(course.getId(), List.of());
             
-            // Get submissions for this assignment
-            List<DocumentSubmission> submissions = documentSubmissionRepository
-                    .findByCourseAssignmentId(assignment.getId());
+            // Get submissions for this assignment from pre-fetched map
+            List<DocumentSubmission> submissions = submissionsByAssignment.getOrDefault(assignment.getId(), List.of());
             
             // Build document status map
             Map<DocumentTypeEnum, CourseAssignmentWithStatus.DocumentTypeStatus> documentStatuses = new HashMap<>();
@@ -337,10 +365,26 @@ public class ProfessorServiceImpl implements ProfessorService {
                         .build();
                 
                 if (submission != null) {
-                    status.setStatus(submission.getStatus());
+                    // Submission exists - determine current status
+                    // Check if deadline has passed and submission is late
+                    if (requiredDoc.getDeadline() != null && 
+                        submission.getSubmittedAt() != null &&
+                        submission.getSubmittedAt().isAfter(requiredDoc.getDeadline())) {
+                        // Submitted after deadline - mark as late
+                        status.setStatus(SubmissionStatus.UPLOADED);
+                        status.setIsLateSubmission(true);
+                    } else if (submission.getStatus() == SubmissionStatus.UPLOADED) {
+                        // Submitted on time or no deadline
+                        status.setStatus(SubmissionStatus.UPLOADED);
+                        status.setIsLateSubmission(submission.getIsLateSubmission());
+                    } else {
+                        // Use submission's current status
+                        status.setStatus(submission.getStatus());
+                        status.setIsLateSubmission(submission.getIsLateSubmission());
+                    }
+                    
                     status.setSubmissionId(submission.getId());
                     status.setSubmittedAt(submission.getSubmittedAt());
-                    status.setIsLateSubmission(submission.getIsLateSubmission());
                     status.setFileCount(submission.getFileCount());
                     status.setTotalFileSize(submission.getTotalFileSize());
                     status.setNotes(submission.getNotes());
@@ -348,8 +392,10 @@ public class ProfessorServiceImpl implements ProfessorService {
                     // No submission yet - determine status based on deadline
                     if (requiredDoc.getDeadline() != null && LocalDateTime.now().isAfter(requiredDoc.getDeadline())) {
                         status.setStatus(SubmissionStatus.OVERDUE);
+                        status.setIsLateSubmission(false);
                     } else {
                         status.setStatus(SubmissionStatus.NOT_UPLOADED);
+                        status.setIsLateSubmission(false);
                     }
                 }
                 

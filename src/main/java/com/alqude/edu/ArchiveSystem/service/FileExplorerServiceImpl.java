@@ -204,6 +204,9 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         FileExplorerNode node;
         
         switch (pathInfo.getType()) {
+            case YEAR:
+                node = buildYearNode(pathInfo, currentUser);
+                break;
             case SEMESTER:
                 node = buildSemesterNode(pathInfo, currentUser);
                 break;
@@ -238,6 +241,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         PathInfo pathInfo = parsePath(parentPath);
         
         switch (pathInfo.getType()) {
+            case YEAR:
+                return getSemesterChildren(pathInfo, currentUser);
             case SEMESTER:
                 return getProfessorChildren(pathInfo, currentUser);
             case PROFESSOR:
@@ -270,6 +275,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         
         if (parts.length >= 1) {
             info.setYearCode(parts[0]);
+            info.setType(NodeType.YEAR);
         }
         
         if (parts.length >= 2) {
@@ -850,6 +856,73 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             log.error("Error checking delete permission: {}", e.getMessage());
             return false;
         }
+    }
+    
+    /**
+     * Build year node from path info
+     */
+    private FileExplorerNode buildYearNode(PathInfo pathInfo, User currentUser) {
+        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
+                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+        
+        String nodePath = "/" + pathInfo.getYearCode();
+        
+        FileExplorerNode node = FileExplorerNode.builder()
+                .path(nodePath)
+                .name(academicYear.getYearCode())
+                .type(NodeType.YEAR)
+                .entityId(academicYear.getId())
+                .canRead(true)
+                .canWrite(false)
+                .canDelete(false)
+                .build();
+        
+        node.getMetadata().put("academicYearId", academicYear.getId());
+        node.getMetadata().put("yearCode", academicYear.getYearCode());
+        
+        return node;
+    }
+
+    /**
+     * Get semester children for a year node
+     */
+    private List<FileExplorerNode> getSemesterChildren(PathInfo pathInfo, User currentUser) {
+        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
+                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+        
+        List<Semester> semesters = semesterRepository.findByAcademicYearId(academicYear.getId());
+        
+        String parentPath = "/" + pathInfo.getYearCode();
+        
+        return semesters.stream()
+                .map(semester -> {
+                    String semesterPath = parentPath + "/" + semester.getType().name().toLowerCase();
+                    
+                    FileExplorerNode node = FileExplorerNode.builder()
+                            .path(semesterPath)
+                            .name(formatSemesterType(semester.getType()))
+                            .type(NodeType.SEMESTER)
+                            .entityId(semester.getId())
+                            .canRead(true)
+                            .canWrite(false)
+                            .canDelete(false)
+                            .build();
+                    
+                    node.getMetadata().put("academicYearId", academicYear.getId());
+                    node.getMetadata().put("semesterId", semester.getId());
+                    node.getMetadata().put("semesterType", semester.getType().name());
+                    
+                    return node;
+                })
+                .sorted(Comparator.comparing(node -> {
+                    // Sort order: FIRST, SECOND, SUMMER
+                    String type = (String) node.getMetadata().get("semesterType");
+                    if ("FIRST".equals(type)) return 1;
+                    if ("SECOND".equals(type)) return 2;
+                    if ("SUMMER".equals(type)) return 3;
+                    return 4;
+                }))
+                .collect(Collectors.toList());
     }
     
     /**

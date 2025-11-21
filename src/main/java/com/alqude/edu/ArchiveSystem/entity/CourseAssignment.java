@@ -20,7 +20,9 @@ import java.util.List;
        uniqueConstraints = @UniqueConstraint(columnNames = {"semester_id", "course_id", "professor_id"}),
        indexes = {
            @Index(name = "idx_course_assignments_semester", columnList = "semester_id"),
-           @Index(name = "idx_course_assignments_professor", columnList = "professor_id")
+           @Index(name = "idx_course_assignments_professor", columnList = "professor_id"),
+           @Index(name = "idx_course_assignments_prof_sem", columnList = "professor_id, semester_id"),
+           @Index(name = "idx_course_assignments_course", columnList = "course_id")
        })
 @Data
 @NoArgsConstructor

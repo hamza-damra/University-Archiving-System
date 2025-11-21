@@ -1,337 +1,460 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HOD Dashboard - Al-Quds University Archiving System</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/css/custom.css">
+    <script src="/js/theme.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg-soft: #f3f4f6;
+            --border-subtle: #e5e7eb;
+            --sidebar-width: 260px;
+        }
+
+        body {
+            font-family: "Inter", "Cairo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            font-size: 15px;
+            color: #1f2933;
+            background-color: var(--bg-soft);
+        }
+
+        /* Sidebar Navigation */
+        .nav-tab {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.25rem;
+            border-radius: 0.5rem;
+            color: #4b5563;
+            font-weight: 500;
+            transition: all 0.15s ease-in-out;
+            cursor: pointer;
+            border: none;
+            /* Reset default button border */
+            width: 100%;
+            text-align: left;
+        }
+
+        .nav-tab:hover {
+            background-color: #f3f4f6;
+            color: #111827;
+        }
+
+        .nav-tab.active {
+            background-color: #eff6ff;
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .nav-tab svg {
+            margin-right: 0.75rem;
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        /* Cards */
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+            border: 1px solid var(--border-subtle);
+        }
+
+        /* Prevent flash of wrong tab on page load */
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content:not(.hidden) {
+            display: block;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <div class="flex justify-between items-center">
+
+<body class="bg-gray-50 min-h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="w-[260px] bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto hidden md:flex flex-col z-20">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    H</div>
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Al-Quds University</h1>
-                    <p class="text-sm text-gray-600">Head of Department Dashboard</p>
+                    <h1 class="font-bold text-gray-900 text-lg leading-tight">HOD System</h1>
+                    <p class="text-xs text-gray-500">Al-Quds University</p>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <div class="flex items-center space-x-2">
-                        <span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">HOD</span>
-                        <span id="hodName" class="text-gray-700 font-medium"></span>
-                    </div>
-                    <button 
-                        id="logoutBtn"
-                        class="group p-2.5 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-                        title="Logout"
-                        aria-label="Logout"
-                    >
-                        <svg class="w-6 h-6 transition-transform group-hover:scale-110" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-                            <defs>
-                                <linearGradient id="logout-gradient-hod" x1="17.503" x2="345.973" y1="420.235" y2="91.765" gradientUnits="userSpaceOnUse">
-                                    <stop offset="0" stop-color="#f8ae1f"></stop>
-                                    <stop offset="1" stop-color="#ca2157"></stop>
-                                </linearGradient>
-                            </defs>
-                            <path fill="url(#logout-gradient-hod)" fill-rule="evenodd" d="M85.476 466.805c-28.539 0-51.763-23.224-51.763-51.764V96.959c0-28.539 23.224-51.763 51.763-51.763h174.845c28.539 0 51.763 23.224 51.763 51.763v80.702c0 10.787-8.798 19.585-19.585 19.585h-6.172c-10.787 0-19.585-8.798-19.585-19.585V96.959c0-3.509-2.914-6.422-6.422-6.422H85.475c-3.509 0-6.422 2.913-6.422 6.422v318.082c0 3.509 2.914 6.422 6.422 6.422H260.32c3.508 0 6.422-2.914 6.422-6.422v-80.702c0-10.787 8.798-19.585 19.585-19.585h6.172c10.787 0 19.585 8.798 19.585 19.585v80.702c0 28.539-23.224 51.764-51.763 51.764H85.476zm273.123-123.312c-8.852 8.852-8.852 23.205 0 32.058 8.853 8.853 23.205 8.853 32.058 0l65.129-65.129c30.001-30.002 30.001-78.843 0-108.844l-65.129-65.129c-8.852-8.852-23.205-8.852-32.058 0-8.852 8.853-8.852 23.205 0 32.058l56.465 56.465c3.087 3.087.903 8.358-3.462 8.358H145.346c-12.52 0-22.67 10.15-22.67 22.671s10.15 22.671 22.67 22.671h266.256c4.365 0 6.549 5.271 3.462 8.358z" clip-rule="evenodd"/>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <div class="nav-tab active" data-tab="dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+            </div>
+            <div class="nav-tab" data-tab="submission-status">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Submission Status
+            </div>
+            <div class="nav-tab" data-tab="reports">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Reports
+            </div>
+            <div class="nav-tab" data-tab="file-explorer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                File Explorer
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-200">
+            <button id="logoutBtn"
+                class="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center md:hidden">
+                    <button id="sidebarToggle" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
                     </button>
+                    <span class="ml-3 font-bold text-gray-900">HOD</span>
                 </div>
-            </div>
-        </div>
-    </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="bg-white border-b border-gray-200">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex space-x-8">
-                <button 
-                    class="nav-tab active px-3 py-4 text-sm font-medium border-b-2 border-blue-600 text-blue-600"
-                    data-tab="dashboard"
-                >
-                    Dashboard
-                </button>
-                <button 
-                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    data-tab="submission-status"
-                >
-                    Submission Status
-                </button>
-                <button 
-                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    data-tab="reports"
-                >
-                    Reports
-                </button>
-                <button 
-                    class="nav-tab px-3 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                    data-tab="file-explorer"
-                >
-                    File Explorer
-                </button>
-            </div>
-        </div>
-    </nav>
-
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <!-- Semester Selector Section -->
-        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
-            <h2 class="text-xl font-semibold text-gray-800 mb-4">Select Academic Period</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label for="academicYearSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                        Academic Year
-                    </label>
-                    <select 
-                        id="academicYearSelect"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                    >
-                        <option value="">Loading academic years...</option>
-                    </select>
+                <div class="hidden md:block">
+                    <h2 class="text-xl font-semibold text-gray-800" id="pageTitle">Dashboard</h2>
                 </div>
-                <div>
-                    <label for="semesterSelect" class="block text-sm font-medium text-gray-700 mb-2">
-                        Semester
-                    </label>
-                    <select 
-                        id="semesterSelect"
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                        disabled
-                    >
-                        <option value="">Select academic year first...</option>
-                    </select>
-                </div>
-            </div>
-        </div>
 
-        <!-- Dashboard Tab -->
-        <div id="dashboard-tab" class="tab-content">
-            <div class="space-y-6">
-                <!-- Dashboard Overview -->
-                <div id="dashboardOverview" class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Overview</h2>
-                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                        <div class="text-center p-4 bg-blue-50 rounded-lg">
-                            <div class="text-3xl font-bold text-blue-600" id="totalProfessors">-</div>
-                            <div class="text-sm text-gray-600 mt-1">Professors</div>
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode"
+                        title="Toggle dark mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon icon (shown in light mode) -->
+                        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-medium text-gray-900" id="hodName">Loading...</p>
+                            <p class="text-xs text-gray-500">Head of Department</p>
                         </div>
-                        <div class="text-center p-4 bg-green-50 rounded-lg">
-                            <div class="text-3xl font-bold text-green-600" id="totalCourses">-</div>
-                            <div class="text-sm text-gray-600 mt-1">Courses</div>
-                        </div>
-                        <div class="text-center p-4 bg-purple-50 rounded-lg">
-                            <div class="text-3xl font-bold text-purple-600" id="submittedCount">-</div>
-                            <div class="text-sm text-gray-600 mt-1">Submitted</div>
-                        </div>
-                        <div class="text-center p-4 bg-yellow-50 rounded-lg">
-                            <div class="text-3xl font-bold text-yellow-600" id="missingCount">-</div>
-                            <div class="text-sm text-gray-600 mt-1">Missing</div>
-                        </div>
-                        <div class="text-center p-4 bg-red-50 rounded-lg">
-                            <div class="text-3xl font-bold text-red-600" id="overdueCount">-</div>
-                            <div class="text-sm text-gray-600 mt-1">Overdue</div>
+                        <div
+                            class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            H
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </header>
 
-        <!-- Submission Status Tab -->
-        <div id="submission-status-tab" class="tab-content hidden">
-            <div class="space-y-6">
-                <!-- Submission Status Report -->
-                <div id="submissionStatusSection" class="bg-white rounded-lg shadow-md p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-800">Professor Submission Status</h2>
+        <!-- Main Scrollable Area -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+
+            <!-- Context Bar (Academic Year & Semester Selector) -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="academicYearSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Academic Year
+                        </label>
+                        <select id="academicYearSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="semesterSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Semester
+                        </label>
+                        <select id="semesterSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Select academic year first</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content">
+                <div class="space-y-6">
+                    <!-- Dashboard Overview -->
+                    <div id="dashboardOverview" class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Overview</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                <div class="text-3xl font-bold text-blue-600" id="totalProfessors">-</div>
+                                <div class="text-sm text-gray-600 mt-1">Professors</div>
+                            </div>
+                            <div class="text-center p-4 bg-green-50 rounded-lg">
+                                <div class="text-3xl font-bold text-green-600" id="totalCourses">-</div>
+                                <div class="text-sm text-gray-600 mt-1">Courses</div>
+                            </div>
+                            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                                <div class="text-3xl font-bold text-purple-600" id="submittedCount">-</div>
+                                <div class="text-sm text-gray-600 mt-1">Submitted</div>
+                            </div>
+                            <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                                <div class="text-3xl font-bold text-yellow-600" id="missingCount">-</div>
+                                <div class="text-sm text-gray-600 mt-1">Missing</div>
+                            </div>
+                            <div class="text-center p-4 bg-red-50 rounded-lg">
+                                <div class="text-3xl font-bold text-red-600" id="overdueCount">-</div>
+                                <div class="text-sm text-gray-600 mt-1">Overdue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submission Status Tab -->
+            <div id="submission-status-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Submission Status Report -->
+                    <div id="submissionStatusSection" class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-gray-800">Professor Submission Status</h2>
+                            <div class="flex space-x-2">
+                                <button id="viewReportBtn"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    View Report
+                                </button>
+                                <button id="downloadReportBtn"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label for="filterCourse" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Filter by Course
+                                </label>
+                                <select id="filterCourse"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Courses</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterDocType" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Filter by Document Type
+                                </label>
+                                <select id="filterDocType"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Types</option>
+                                    <option value="SYLLABUS">Syllabus</option>
+                                    <option value="EXAM">Exam</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="PROJECT_DOCS">Project Docs</option>
+                                    <option value="LECTURE_NOTES">Lecture Notes</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Filter by Status
+                                </label>
+                                <select id="filterStatus"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Status</option>
+                                    <option value="UPLOADED">Uploaded</option>
+                                    <option value="NOT_UPLOADED">Not Uploaded</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submission Status Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Document Type</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="submissionStatusTableBody" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                            Select a semester to view submission status
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Reports</h2>
+                        <p class="text-gray-600 mb-4">Generate and download reports for the selected semester.</p>
                         <div class="flex space-x-2">
-                            <button 
-                                id="viewReportBtn"
-                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center"
-                            >
+                            <button id="viewReportBtnTab"
+                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                                 View Report
                             </button>
-                            <button 
-                                id="downloadReportBtn"
-                                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
-                            >
+                            <button id="downloadReportBtnTab"
+                                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
                                 </svg>
                                 Download PDF
                             </button>
                         </div>
                     </div>
-                    
-                    <!-- Filters -->
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div>
-                            <label for="filterCourse" class="block text-sm font-medium text-gray-700 mb-1">
-                                Filter by Course
-                            </label>
-                            <select 
-                                id="filterCourse"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                            >
-                                <option value="">All Courses</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="filterDocType" class="block text-sm font-medium text-gray-700 mb-1">
-                                Filter by Document Type
-                            </label>
-                            <select 
-                                id="filterDocType"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                            >
-                                <option value="">All Types</option>
-                                <option value="SYLLABUS">Syllabus</option>
-                                <option value="EXAM">Exam</option>
-                                <option value="ASSIGNMENT">Assignment</option>
-                                <option value="PROJECT_DOCS">Project Docs</option>
-                                <option value="LECTURE_NOTES">Lecture Notes</option>
-                                <option value="OTHER">Other</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">
-                                Filter by Status
-                            </label>
-                            <select 
-                                id="filterStatus"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
-                            >
-                                <option value="">All Status</option>
-                                <option value="UPLOADED">Uploaded</option>
-                                <option value="NOT_UPLOADED">Not Uploaded</option>
-                                <option value="OVERDUE">Overdue</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <!-- Submission Status Table -->
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document Type</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
-                                </tr>
-                            </thead>
-                            <tbody id="submissionStatusTableBody" class="bg-white divide-y divide-gray-200">
-                                <tr>
-                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                        Select a semester to view submission status
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Reports Tab -->
-        <div id="reports-tab" class="tab-content hidden">
-            <div class="space-y-6">
+            <!-- File Explorer Tab -->
+            <div id="file-explorer-tab" class="tab-content hidden">
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Reports</h2>
-                    <p class="text-gray-600 mb-4">Generate and download reports for the selected semester.</p>
-                    <div class="flex space-x-2">
-                        <button 
-                            id="viewReportBtnTab"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            View Report
-                        </button>
-                        <button 
-                            id="downloadReportBtnTab"
-                            class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
-                        >
-                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            Download PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- File Explorer Tab -->
-        <div id="file-explorer-tab" class="tab-content hidden">
-            <div class="space-y-6">
-                <!-- File Explorer Section -->
-                <div id="fileExplorerSection" class="bg-white rounded-lg shadow-md p-6">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 class="text-xl font-semibold text-gray-800">File Explorer</h2>
-                        <p class="text-sm text-gray-600">Browse department files (Read-only)</p>
-                    </div>
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">File Explorer</h2>
                     <div id="hodFileExplorer"></div>
                 </div>
             </div>
-        </div>
 
-        <!-- Legacy Content (hidden by default) -->
-        <div id="legacy-content" class="hidden">
-            <div class="space-y-6">
-                <!-- Legacy Requests Section (for backward compatibility) -->
-                <div id="legacyRequestsSection" class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Legacy Document Requests</h2>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deadline</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="requestsTableBody" class="bg-white divide-y divide-gray-200">
-                                <!-- Loading skeleton -->
-                                <tr>
-                                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">
-                                        <div class="animate-pulse">Loading requests...</div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+            <!-- Legacy Content (hidden by default) -->
+            <div id="legacy-content" class="hidden">
+                <div class="space-y-6">
+                    <!-- Legacy Requests Section (for backward compatibility) -->
+                    <div id="legacyRequestsSection" class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Legacy Document Requests</h2>
 
-                    <!-- Pagination -->
-                    <div id="pagination" class="mt-4 flex justify-center items-center space-x-2 hidden">
-                        <button id="prevPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Previous
-                        </button>
-                        <span id="pageInfo" class="text-sm text-gray-600"></span>
-                        <button id="nextPage" class="px-3 py-1 border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">
-                            Next
-                        </button>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Type</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="requestsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Loading skeleton -->
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                            <div class="animate-pulse">Loading requests...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-gray-200 mt-12">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <p class="text-center text-sm text-gray-600">Al-Quds University — Archiving System</p>
-        </div>
-    </footer>
+        </main>
+    </div>
 
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
@@ -341,4 +464,5 @@
 
     <script type="module" src="/js/hod.js"></script>
 </body>
+
 </html>

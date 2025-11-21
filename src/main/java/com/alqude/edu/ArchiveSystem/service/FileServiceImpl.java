@@ -5,6 +5,7 @@ import com.alqude.edu.ArchiveSystem.exception.EntityNotFoundException;
 import com.alqude.edu.ArchiveSystem.exception.FileUploadException;
 import com.alqude.edu.ArchiveSystem.repository.CourseAssignmentRepository;
 import com.alqude.edu.ArchiveSystem.repository.DocumentSubmissionRepository;
+import com.alqude.edu.ArchiveSystem.repository.RequiredDocumentTypeRepository;
 import com.alqude.edu.ArchiveSystem.repository.UploadedFileRepository;
 import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class FileServiceImpl implements FileService {
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UploadedFileRepository uploadedFileRepository;
     private final UserRepository userRepository;
+    private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
     
     @Value("${file.upload.directory:uploads/}")
     private String uploadDirectory;
@@ -68,8 +70,27 @@ public class FileServiceImpl implements FileService {
             throw new IllegalArgumentException("No files provided for upload");
         }
         
+        // Get required document type configuration for validation limits
+        List<RequiredDocumentType> requiredDocs = requiredDocumentTypeRepository
+                .findByCourseIdAndDocumentType(courseAssignment.getCourse().getId(), documentType);
+        
+        RequiredDocumentType requiredDoc = requiredDocs.isEmpty() ? null : requiredDocs.get(0);
+        
+        // Determine validation limits
+        Integer maxFileCount = requiredDoc != null && requiredDoc.getMaxFileCount() != null 
+                ? requiredDoc.getMaxFileCount() : 10; // Default 10 files
+        Integer maxTotalSizeMb = requiredDoc != null && requiredDoc.getMaxTotalSizeMb() != null 
+                ? requiredDoc.getMaxTotalSizeMb() : 50; // Default 50MB
+        
+        // Validate file count
+        if (files.size() > maxFileCount) {
+            throw new IllegalArgumentException(
+                    String.format("File count (%d) exceeds maximum allowed (%d)", 
+                            files.size(), maxFileCount));
+        }
+        
         // Validate file types and sizes
-        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, 50); // Default 50MB total
+        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, maxTotalSizeMb);
         
         // Find or create document submission
         DocumentSubmission submission = documentSubmissionRepository
@@ -136,7 +157,27 @@ public class FileServiceImpl implements FileService {
             throw new IllegalArgumentException("No files provided for replacement");
         }
         
-        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, 50);
+        // Get required document type configuration for validation limits
+        CourseAssignment courseAssignment = submission.getCourseAssignment();
+        List<RequiredDocumentType> requiredDocs = requiredDocumentTypeRepository
+                .findByCourseIdAndDocumentType(courseAssignment.getCourse().getId(), submission.getDocumentType());
+        
+        RequiredDocumentType requiredDoc = requiredDocs.isEmpty() ? null : requiredDocs.get(0);
+        
+        // Determine validation limits
+        Integer maxFileCount = requiredDoc != null && requiredDoc.getMaxFileCount() != null 
+                ? requiredDoc.getMaxFileCount() : 10; // Default 10 files
+        Integer maxTotalSizeMb = requiredDoc != null && requiredDoc.getMaxTotalSizeMb() != null 
+                ? requiredDoc.getMaxTotalSizeMb() : 50; // Default 50MB
+        
+        // Validate file count
+        if (files.size() > maxFileCount) {
+            throw new IllegalArgumentException(
+                    String.format("File count (%d) exceeds maximum allowed (%d)", 
+                            files.size(), maxFileCount));
+        }
+        
+        validateFiles(files, DEFAULT_ALLOWED_EXTENSIONS, maxTotalSizeMb);
         
         // Delete old files
         List<UploadedFile> oldFiles = uploadedFileRepository.findByDocumentSubmissionId(submissionId);
@@ -148,7 +189,6 @@ public class FileServiceImpl implements FileService {
         
         // Upload new files
         List<UploadedFile> newFiles = new ArrayList<>();
-        CourseAssignment courseAssignment = submission.getCourseAssignment();
         
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
@@ -357,19 +397,27 @@ public class FileServiceImpl implements FileService {
         for (MultipartFile file : files) {
             // Validate file is not empty
             if (file.isEmpty()) {
-                throw new IllegalArgumentException("File is empty: " + file.getOriginalFilename());
+                throw new IllegalArgumentException(
+                        String.format("File '%s' is empty. Please select a valid file.", 
+                                file.getOriginalFilename()));
             }
             
             // Validate single file size
             if (file.getSize() > MAX_SINGLE_FILE_SIZE) {
-                throw FileUploadException.fileTooLarge(MAX_SINGLE_FILE_SIZE);
+                throw new IllegalArgumentException(
+                        String.format("File '%s' size (%.2f MB) exceeds maximum allowed per file (%.2f MB)",
+                                file.getOriginalFilename(),
+                                file.getSize() / (1024.0 * 1024.0),
+                                MAX_SINGLE_FILE_SIZE / (1024.0 * 1024.0)));
             }
             
             // Validate file type
             if (!validateFileType(file, allowedExtensions)) {
-                throw FileUploadException.invalidFileType(
-                        file.getOriginalFilename(), 
-                        allowedExtensions != null ? allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS);
+                List<String> exts = allowedExtensions != null ? allowedExtensions : DEFAULT_ALLOWED_EXTENSIONS;
+                throw new IllegalArgumentException(
+                        String.format("File '%s' has invalid type. Only %s files are allowed.",
+                                file.getOriginalFilename(),
+                                String.join(", ", exts).toUpperCase()));
             }
         }
         

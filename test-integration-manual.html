@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deanship Integration Test Suite</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 32px;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #7f8c8d;
+            margin-bottom: 32px;
+            font-size: 16px;
+        }
+        
+        .test-section {
+            margin-bottom: 32px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 24px;
+        }
+        
+        .test-section h2 {
+            color: #34495e;
+            margin-bottom: 16px;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .test-category {
+            margin-bottom: 24px;
+        }
+        
+        .test-category h3 {
+            color: #2980b9;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+        
+        .test-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .test-item:hover {
+            background: #e9ecef;
+        }
+        
+        .test-item input[type="checkbox"] {
+            margin-top: 4px;
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .test-item label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 15px;
+            line-height: 1.5;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 32px;
+            background: #e0e0e0;
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 16px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .stat {
+            flex: 1;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 4px;
+        }
+        
+        .stat-label {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        
+        .quick-link {
+            padding: 12px 16px;
+            background: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+        
+        .quick-link:hover {
+            background: #2980b9;
+        }
+        
+        .icon {
+            font-size: 20px;
+            margin-right: 4px;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 16px;
+            margin-bottom: 24px;
+            border-radius: 4px;
+        }
+        
+        .note-title {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 8px;
+        }
+        
+        .note-text {
+            color: #856404;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Deanship Integration Test Suite</h1>
+        <p class="subtitle">Manual testing checklist for multi-page refactor verification</p>
+        
+        <div class="note">
+            <div class="note-title">📋 Testing Instructions</div>
+            <div class="note-text">
+                1. Login to the system as a deanship user<br>
+                2. Work through each test category systematically<br>
+                3. Check off items as you complete them<br>
+                4. Progress is saved automatically in your browser<br>
+                5. Report any failures or issues found
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value" id="totalTests">0</div>
+                <div class="stat-label">Total Tests</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="completedTests">0</div>
+                <div class="stat-label">Completed</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value" id="remainingTests">0</div>
+                <div class="stat-label">Remaining</div>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill">0%</div>
+        </div>
+        
+        <div class="quick-links">
+            <a href="/deanship/dashboard" class="quick-link" target="_blank">
+                <span class="icon">🏠</span> Dashboard
+            </a>
+            <a href="/deanship/academic-years" class="quick-link" target="_blank">
+                <span class="icon">📅</span> Academic Years
+            </a>
+            <a href="/deanship/professors" class="quick-link" target="_blank">
+                <span class="icon">👨‍🏫</span> Professors
+            </a>
+            <a href="/deanship/courses" class="quick-link" target="_blank">
+                <span class="icon">📚</span> Courses
+            </a>
+            <a href="/deanship/course-assignments" class="quick-link" target="_blank">
+                <span class="icon">📝</span> Assignments
+            </a>
+            <a href="/deanship/reports" class="quick-link" target="_blank">
+                <span class="icon">📊</span> Reports
+            </a>
+            <a href="/deanship/file-explorer" class="quick-link" target="_blank">
+                <span class="icon">📁</span> File Explorer
+            </a>
+        </div>
+        
+        <!-- Test Section 1: Navigation -->
+        <div class="test-section">
+            <h2><span class="icon">🧭</span> Navigation Tests</h2>
+            
+            <div class="test-category">
+                <h3>Page Navigation</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-1" data-test="navigation">
+                    <label for="nav-1">Click Dashboard link in navigation - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-2" data-test="navigation">
+                    <label for="nav-2">Click Academic Years link - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-3" data-test="navigation">
+                    <label for="nav-3">Click Professors link - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-4" data-test="navigation">
+                    <label for="nav-4">Click Courses link - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-5" data-test="navigation">
+                    <label for="nav-5">Click Assignments link - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-6" data-test="navigation">
+                    <label for="nav-6">Click Reports link - verify page loads correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-7" data-test="navigation">
+                    <label for="nav-7">Click File Explorer link - verify page loads correctly</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Active Link Highlighting</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-8" data-test="navigation">
+                    <label for="nav-8">On Dashboard page - verify Dashboard link is highlighted</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-9" data-test="navigation">
+                    <label for="nav-9">On Academic Years page - verify Academic Years link is highlighted</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-10" data-test="navigation">
+                    <label for="nav-10">On Professors page - verify Professors link is highlighted</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-11" data-test="navigation">
+                    <label for="nav-11">On Courses page - verify Courses link is highlighted</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Browser Navigation</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-12" data-test="navigation">
+                    <label for="nav-12">Navigate Dashboard → Professors → Courses, then click browser back button twice - verify returns to Dashboard</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="nav-13" data-test="navigation">
+                    <label for="nav-13">After using back button, click forward button - verify correct page loads</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 2: State Preservation -->
+        <div class="test-section">
+            <h2><span class="icon">💾</span> State Preservation Tests</h2>
+            
+            <div class="test-category">
+                <h3>Academic Context Persistence</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="state-1" data-test="state">
+                    <label for="state-1">On Dashboard, select an academic year from dropdown</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-2" data-test="state">
+                    <label for="state-2">Navigate to Professors page - verify academic year selection is preserved</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-3" data-test="state">
+                    <label for="state-3">Navigate to Courses page - verify academic year selection is still preserved</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-4" data-test="state">
+                    <label for="state-4">Select a semester from dropdown</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-5" data-test="state">
+                    <label for="state-5">Navigate to Assignments page - verify both academic year and semester are preserved</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-6" data-test="state">
+                    <label for="state-6">Navigate to Reports page - verify context is preserved</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Page Refresh</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="state-7" data-test="state">
+                    <label for="state-7">On Dashboard with academic year selected, refresh page - verify selection persists</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-8" data-test="state">
+                    <label for="state-8">On Professors page, refresh - verify academic year persists</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="state-9" data-test="state">
+                    <label for="state-9">On Assignments page with semester selected, refresh - verify both year and semester persist</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 3: CRUD Operations -->
+        <div class="test-section">
+            <h2><span class="icon">✏️</span> CRUD Operations Tests</h2>
+            
+            <div class="test-category">
+                <h3>Academic Years Management</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-1" data-test="crud">
+                    <label for="crud-1">Click "Add Academic Year" button - verify modal opens</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-2" data-test="crud">
+                    <label for="crud-2">Fill form and submit - verify new academic year appears in table</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-3" data-test="crud">
+                    <label for="crud-3">Click "Edit" on an academic year - verify modal opens with data</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-4" data-test="crud">
+                    <label for="crud-4">Update data and submit - verify changes appear in table</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-5" data-test="crud">
+                    <label for="crud-5">Click "Activate" on an inactive year - verify status changes to active</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Professors Management</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-6" data-test="crud">
+                    <label for="crud-6">Click "Add Professor" button - verify modal opens</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-7" data-test="crud">
+                    <label for="crud-7">Fill form and submit - verify new professor appears in table</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-8" data-test="crud">
+                    <label for="crud-8">Click "Edit" on a professor - verify modal opens with data</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-9" data-test="crud">
+                    <label for="crud-9">Update data and submit - verify changes appear in table</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-10" data-test="crud">
+                    <label for="crud-10">Click "Deactivate" on an active professor - verify status changes</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Courses Management</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-11" data-test="crud">
+                    <label for="crud-11">Click "Add Course" button - verify modal opens</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-12" data-test="crud">
+                    <label for="crud-12">Fill form and submit - verify new course appears in table</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-13" data-test="crud">
+                    <label for="crud-13">Click "Edit" on a course - verify modal opens with data</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-14" data-test="crud">
+                    <label for="crud-14">Update data and submit - verify changes appear in table</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Course Assignments</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-15" data-test="crud">
+                    <label for="crud-15">Select academic year and semester</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-16" data-test="crud">
+                    <label for="crud-16">Click "Assign Course" button - verify modal opens</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-17" data-test="crud">
+                    <label for="crud-17">Select professor, course, and semester, then submit - verify assignment appears</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-18" data-test="crud">
+                    <label for="crud-18">Click "Unassign" on an assignment - verify confirmation dialog appears</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="crud-19" data-test="crud">
+                    <label for="crud-19">Confirm unassignment - verify assignment is removed from list</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 4: Search and Filters -->
+        <div class="test-section">
+            <h2><span class="icon">🔍</span> Search and Filter Tests</h2>
+            
+            <div class="test-category">
+                <h3>Professors Page</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-1" data-test="filter">
+                    <label for="filter-1">Type a professor name in search box - verify table filters in real-time</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-2" data-test="filter">
+                    <label for="filter-2">Type an email in search box - verify table filters correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-3" data-test="filter">
+                    <label for="filter-3">Clear search box - verify all professors reappear</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-4" data-test="filter">
+                    <label for="filter-4">Select a department from filter dropdown - verify only professors from that department show</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-5" data-test="filter">
+                    <label for="filter-5">Select "All Departments" - verify all professors show again</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Courses Page</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-6" data-test="filter">
+                    <label for="filter-6">Type a course code in search box - verify table filters correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-7" data-test="filter">
+                    <label for="filter-7">Type a course name in search box - verify table filters correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-8" data-test="filter">
+                    <label for="filter-8">Clear search box - verify all courses reappear</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-9" data-test="filter">
+                    <label for="filter-9">Select a department from filter dropdown - verify only courses from that department show</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="filter-10" data-test="filter">
+                    <label for="filter-10">Select "All Departments" - verify all courses show again</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 5: File Explorer -->
+        <div class="test-section">
+            <h2><span class="icon">📁</span> File Explorer Tests</h2>
+            
+            <div class="test-category">
+                <h3>Basic Functionality</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="file-1" data-test="file">
+                    <label for="file-1">Select academic year and semester - verify file explorer loads</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="file-2" data-test="file">
+                    <label for="file-2">Click on a folder in the tree - verify folder expands/collapses</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="file-3" data-test="file">
+                    <label for="file-3">Navigate into a folder - verify breadcrumb updates</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="file-4" data-test="file">
+                    <label for="file-4">Click on breadcrumb segment - verify navigates to that level</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="file-5" data-test="file">
+                    <label for="file-5">Click on a file - verify file preview/download works</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Context Awareness</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="file-6" data-test="file">
+                    <label for="file-6">Change academic year - verify file explorer reloads with new context</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="file-7" data-test="file">
+                    <label for="file-7">Change semester - verify file explorer reloads with new context</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 6: Dashboard -->
+        <div class="test-section">
+            <h2><span class="icon">🏠</span> Dashboard Tests</h2>
+            
+            <div class="test-category">
+                <h3>Card Display and Navigation</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-1" data-test="dashboard">
+                    <label for="dash-1">Verify all 6 cards are displayed (Academic Years, Professors, Courses, Assignments, Reports, File Explorer)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-2" data-test="dashboard">
+                    <label for="dash-2">Click Academic Years card - verify navigates to academic years page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-3" data-test="dashboard">
+                    <label for="dash-3">Return to dashboard, click Professors card - verify navigates to professors page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-4" data-test="dashboard">
+                    <label for="dash-4">Return to dashboard, click Courses card - verify navigates to courses page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-5" data-test="dashboard">
+                    <label for="dash-5">Return to dashboard, click Assignments card - verify navigates to assignments page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-6" data-test="dashboard">
+                    <label for="dash-6">Return to dashboard, click Reports card - verify navigates to reports page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-7" data-test="dashboard">
+                    <label for="dash-7">Return to dashboard, click File Explorer card - verify navigates to file explorer page</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Statistics Display</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-8" data-test="dashboard">
+                    <label for="dash-8">Verify statistics are displayed on cards (if implemented)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="dash-9" data-test="dashboard">
+                    <label for="dash-9">Verify statistics are accurate and up-to-date</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 7: Logout -->
+        <div class="test-section">
+            <h2><span class="icon">🚪</span> Logout Tests</h2>
+            
+            <div class="test-category">
+                <h3>Logout from Each Page</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-1" data-test="logout">
+                    <label for="logout-1">On Dashboard, click logout - verify redirects to login page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-2" data-test="logout">
+                    <label for="logout-2">Login again, go to Academic Years, logout - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-3" data-test="logout">
+                    <label for="logout-3">Login again, go to Professors, logout - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-4" data-test="logout">
+                    <label for="logout-4">Login again, go to Courses, logout - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-5" data-test="logout">
+                    <label for="logout-5">Login again, go to Assignments, logout - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-6" data-test="logout">
+                    <label for="logout-6">Login again, go to Reports, logout - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-7" data-test="logout">
+                    <label for="logout-7">Login again, go to File Explorer, logout - verify redirects to login</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Post-Logout Verification</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-8" data-test="logout">
+                    <label for="logout-8">After logout, try to access /deanship/dashboard directly - verify redirects to login</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="logout-9" data-test="logout">
+                    <label for="logout-9">Verify localStorage is cleared after logout</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 8: Responsive Design -->
+        <div class="test-section">
+            <h2><span class="icon">📱</span> Responsive Design Tests</h2>
+            
+            <div class="test-category">
+                <h3>1366x768 Resolution</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-1" data-test="responsive">
+                    <label for="resp-1">Set browser to 1366x768 - verify Dashboard displays correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-2" data-test="responsive">
+                    <label for="resp-2">Verify no horizontal scrolling on any page</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-3" data-test="responsive">
+                    <label for="resp-3">Verify all text is readable (minimum 16px)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-4" data-test="responsive">
+                    <label for="resp-4">Verify all buttons are easily clickable</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-5" data-test="responsive">
+                    <label for="resp-5">Verify tables display properly without overflow</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>1920x1080 Resolution</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-6" data-test="responsive">
+                    <label for="resp-6">Set browser to 1920x1080 - verify Dashboard displays correctly</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-7" data-test="responsive">
+                    <label for="resp-7">Verify layout uses available space effectively</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="resp-8" data-test="responsive">
+                    <label for="resp-8">Verify all pages look good at this resolution</label>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Test Section 9: Typography -->
+        <div class="test-section">
+            <h2><span class="icon">🔤</span> Typography Tests</h2>
+            
+            <div class="test-category">
+                <h3>Font Sizes</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-1" data-test="typography">
+                    <label for="typo-1">Verify base font size is 16px (inspect body text)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-2" data-test="typography">
+                    <label for="typo-2">Verify table headers are 18px and bold</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-3" data-test="typography">
+                    <label for="typo-3">Verify section titles are 24px and bold</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-4" data-test="typography">
+                    <label for="typo-4">Verify card titles are 20px and semibold</label>
+                </div>
+            </div>
+            
+            <div class="test-category">
+                <h3>Spacing and Readability</h3>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-5" data-test="typography">
+                    <label for="typo-5">Verify adequate spacing between sections (24px margin)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-6" data-test="typography">
+                    <label for="typo-6">Verify table rows have good height (minimum 56px)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-7" data-test="typography">
+                    <label for="typo-7">Verify cards have adequate padding (24px)</label>
+                </div>
+                <div class="test-item">
+                    <input type="checkbox" id="typo-8" data-test="typography">
+                    <label for="typo-8">Verify text contrast meets WCAG AA standards (use browser dev tools)</label>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Load saved progress from localStorage
+        function loadProgress() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                const saved = localStorage.getItem(checkbox.id);
+                if (saved === 'true') {
+                    checkbox.checked = true;
+                }
+            });
+            updateStats();
+        }
+        
+        // Save progress to localStorage
+        function saveProgress(checkboxId, checked) {
+            localStorage.setItem(checkboxId, checked);
+            updateStats();
+        }
+        
+        // Update statistics
+        function updateStats() {
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            const total = checkboxes.length;
+            const completed = Array.from(checkboxes).filter(cb => cb.checked).length;
+            const remaining = total - completed;
+            const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+            
+            document.getElementById('totalTests').textContent = total;
+            document.getElementById('completedTests').textContent = completed;
+            document.getElementById('remainingTests').textContent = remaining;
+            
+            const progressFill = document.getElementById('progressFill');
+            progressFill.style.width = percentage + '%';
+            progressFill.textContent = percentage + '%';
+        }
+        
+        // Add event listeners to all checkboxes
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProgress();
+            
+            const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    saveProgress(e.target.id, e.target.checked);
+                });
+            });
+        });
+        
+        // Reset progress function (for testing)
+        function resetProgress() {
+            if (confirm('Are you sure you want to reset all test progress?')) {
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                    localStorage.removeItem(checkbox.id);
+                });
+                updateStats();
+            }
+        }
+    </script>
+</body>
+</html>

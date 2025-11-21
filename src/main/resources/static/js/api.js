@@ -60,7 +60,7 @@ export function redirectToLogin() {
  */
 export async function apiRequest(endpoint, options = {}) {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     const headers = {
         'Content-Type': 'application/json',
         ...options.headers,
@@ -200,7 +200,7 @@ export function getErrorMessage(error) {
  */
 export async function uploadFile(endpoint, formData, onProgress = null, method = 'POST') {
     const url = `${API_BASE_URL}${endpoint}`;
-    
+
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
 
@@ -263,7 +263,7 @@ export async function uploadFile(endpoint, formData, onProgress = null, method =
 
         // Open connection and set headers
         xhr.open(method, url);
-        
+
         const token = getToken();
         if (token) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`);
@@ -282,11 +282,11 @@ export const auth = {
         method: 'POST',
         body: JSON.stringify(credentials),
     }),
-    
+
     logout: () => apiRequest('/auth/logout', {
         method: 'POST',
     }),
-    
+
     getCurrentUser: () => apiRequest('/auth/me', {
         method: 'GET',
     }),
@@ -298,26 +298,26 @@ export const hod = {
     getAcademicYears: () => apiRequest('/hod/academic-years', {
         method: 'GET',
     }),
-    
+
     // Professors (legacy - kept for backward compatibility)
     getProfessors: () => apiRequest('/hod/professors', {
         method: 'GET',
     }),
-    
+
     createProfessor: (professorData) => apiRequest('/hod/professors', {
         method: 'POST',
         body: JSON.stringify(professorData),
     }),
-    
+
     updateProfessor: (id, professorData) => apiRequest(`/hod/professors/${id}`, {
         method: 'PUT',
         body: JSON.stringify(professorData),
     }),
-    
+
     deleteProfessor: (id) => apiRequest(`/hod/professors/${id}`, {
         method: 'DELETE',
     }),
-    
+
     // Requests (legacy - kept for backward compatibility)
     getRequests: (params = {}) => {
         const queryString = new URLSearchParams(params).toString();
@@ -326,25 +326,25 @@ export const hod = {
             method: 'GET',
         });
     },
-    
+
     createRequest: (requestData) => apiRequest('/hod/document-requests', {
         method: 'POST',
         body: JSON.stringify(requestData),
     }),
-    
+
     getRequestDetails: (requestId) => apiRequest(`/hod/document-requests/${requestId}`, {
         method: 'GET',
     }),
-    
+
     deleteRequest: (requestId) => apiRequest(`/hod/document-requests/${requestId}`, {
         method: 'DELETE',
     }),
-    
+
     // Semester-based Dashboard
     getDashboardOverview: (semesterId) => apiRequest(`/hod/dashboard/overview?semesterId=${semesterId}`, {
         method: 'GET',
     }),
-    
+
     // Semester-based Submission Status
     getSubmissionStatus: (semesterId, filters = {}) => {
         const params = new URLSearchParams({ semesterId, ...filters });
@@ -352,12 +352,12 @@ export const hod = {
             method: 'GET',
         });
     },
-    
+
     // Semester-based Reports
     getProfessorSubmissionReport: (semesterId) => apiRequest(`/hod/reports/professor-submissions?semesterId=${semesterId}`, {
         method: 'GET',
     }),
-    
+
     exportReportToPdf: (semesterId) => {
         const token = getToken();
         return fetch(`${API_BASE_URL}/hod/reports/professor-submissions/pdf?semesterId=${semesterId}`, {
@@ -367,30 +367,30 @@ export const hod = {
             },
         });
     },
-    
+
     // File Explorer
-    getFileExplorerRoot: (academicYearId, semesterId) => 
+    getFileExplorerRoot: (academicYearId, semesterId) =>
         apiRequest(`/hod/file-explorer/root?academicYearId=${academicYearId}&semesterId=${semesterId}`, {
             method: 'GET',
         }),
-    
-    getFileExplorerNode: (path) => 
+
+    getFileExplorerNode: (path) =>
         apiRequest(`/hod/file-explorer/node?path=${encodeURIComponent(path)}`, {
             method: 'GET',
         }),
-    
-    downloadFile: (fileId) => 
+
+    downloadFile: (fileId) =>
         fetch(`${API_BASE_URL}/hod/files/${fileId}/download`, {
             headers: {
                 'Authorization': `Bearer ${getToken()}`,
             },
         }),
-    
+
     // Legacy Reports (kept for backward compatibility)
     getSubmissionSummaryReport: () => apiRequest('/hod/reports/submission-summary', {
         method: 'GET',
     }),
-    
+
     downloadSubmissionSummaryPdf: () => {
         const token = getToken();
         return fetch(`${API_BASE_URL}/hod/reports/submission-summary/pdf`, {
@@ -408,111 +408,111 @@ export const professor = {
     getAcademicYears: () => apiRequest('/professor/academic-years', {
         method: 'GET',
     }),
-    
+
     getSemesters: (academicYearId) => apiRequest(`/professor/academic-years/${academicYearId}/semesters`, {
         method: 'GET',
     }),
-    
-    getRequests: (page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc') => 
+
+    getRequests: (page = 0, size = 10, sortBy = 'createdAt', sortDir = 'desc') =>
         apiRequest(`/professor/document-requests?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`, {
             method: 'GET',
         }),
-    
-    submitDocument: (requestId, formData, onProgress) => 
+
+    submitDocument: (requestId, formData, onProgress) =>
         uploadFile(`/professor/document-requests/${requestId}/submit`, formData, onProgress),
-    
+
     // Multi-file upload endpoints
     uploadMultipleDocuments: (requestId, formData, onProgress) =>
         uploadFile(`/professor/document-requests/${requestId}/upload-multiple`, formData, onProgress),
-    
+
     addFilesToSubmission: (requestId, formData, onProgress) =>
         uploadFile(`/professor/document-requests/${requestId}/add-files`, formData, onProgress),
-    
-    getFileAttachments: (requestId) => 
+
+    getFileAttachments: (requestId) =>
         apiRequest(`/professor/document-requests/${requestId}/file-attachments`, {
             method: 'GET',
         }),
-    
+
     deleteFileAttachment: (attachmentId) =>
         apiRequest(`/professor/file-attachments/${attachmentId}`, {
             method: 'DELETE',
         }),
-    
+
     downloadFileAttachment: (attachmentId) =>
         fetch(`${API_BASE_URL}/professor/file-attachments/${attachmentId}/download`, {
             headers: {
                 'Authorization': `Bearer ${getToken()}`,
             },
         }),
-    
+
     reorderFileAttachments: (submittedDocumentId, attachmentIds) =>
         apiRequest(`/professor/submitted-documents/${submittedDocumentId}/reorder-files`, {
             method: 'PUT',
             body: JSON.stringify(attachmentIds),
         }),
-    
+
     getNotifications: () => apiRequest('/professor/notifications', {
         method: 'GET',
     }),
-    
+
     markNotificationSeen: (notificationId) => apiRequest(`/professor/notifications/${notificationId}/seen`, {
         method: 'PUT',
     }),
-    
+
     // Semester-based Dashboard
     getMyCourses: (semesterId) => apiRequest(`/professor/dashboard/courses?semesterId=${semesterId}`, {
         method: 'GET',
     }),
-    
+
     getDashboardOverview: (semesterId) => apiRequest(`/professor/dashboard/overview?semesterId=${semesterId}`, {
         method: 'GET',
     }),
-    
+
     // Semester-based File Upload
     uploadFiles: (courseAssignmentId, documentType, formData, onProgress) =>
         uploadFile(`/professor/submissions/upload?courseAssignmentId=${courseAssignmentId}&documentType=${documentType}`, formData, onProgress),
-    
+
     replaceFiles: (submissionId, formData, onProgress) =>
         uploadFile(`/professor/submissions/${submissionId}/replace`, formData, onProgress, 'PUT'),
-    
+
     // Submissions
     getMySubmissions: (semesterId) => apiRequest(`/professor/submissions?semesterId=${semesterId}`, {
         method: 'GET',
     }),
-    
+
     getSubmission: (submissionId) => apiRequest(`/professor/submissions/${submissionId}`, {
         method: 'GET',
     }),
-    
+
     // Note: Use getSubmission() to get submission with files included
-    
+
     downloadSubmissionFile: (fileId) =>
         fetch(`${API_BASE_URL}/professor/files/${fileId}/download`, {
             headers: {
                 'Authorization': `Bearer ${getToken()}`,
             },
         }),
-    
+
     // File Explorer
-    getFileExplorerRoot: (academicYearId, semesterId) => 
+    getFileExplorerRoot: (academicYearId, semesterId) =>
         apiRequest(`/professor/file-explorer/root?academicYearId=${academicYearId}&semesterId=${semesterId}`, {
             method: 'GET',
         }),
-    
-    getFileExplorerNode: (path) => 
+
+    getFileExplorerNode: (path) =>
         apiRequest(`/professor/file-explorer/node?path=${encodeURIComponent(path)}`, {
             method: 'GET',
         }),
 };
 
 // Export multi-file functions for easy import
-export const uploadMultipleFiles = (requestId, formData, onProgress) => 
+export const uploadMultipleFiles = (requestId, formData, onProgress) =>
     professor.uploadMultipleDocuments(requestId, formData, onProgress);
 
 export const addFilesToSubmission = (requestId, formData, onProgress) =>
     professor.addFilesToSubmission(requestId, formData, onProgress);
 
-export const getFileAttachments = (requestId) => 
+export const getFileAttachments = (requestId) =>
     professor.getFileAttachments(requestId);
 
 export const deleteFileAttachment = (attachmentId) =>
@@ -528,31 +528,31 @@ export const deanship = {
     getAcademicYears: () => apiRequest('/deanship/academic-years', {
         method: 'GET',
     }),
-    
+
     createAcademicYear: (data) => apiRequest('/deanship/academic-years', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
-    
+
     updateAcademicYear: (id, data) => apiRequest(`/deanship/academic-years/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
-    
+
     activateAcademicYear: (id) => apiRequest(`/deanship/academic-years/${id}/activate`, {
         method: 'PUT',
     }),
-    
+
     // Semesters
     getSemesters: (academicYearId) => apiRequest(`/deanship/academic-years/${academicYearId}/semesters`, {
         method: 'GET',
     }),
-    
+
     updateSemester: (id, data) => apiRequest(`/deanship/semesters/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
-    
+
     // Professors
     getProfessors: (departmentId = null) => {
         const params = departmentId ? `?departmentId=${departmentId}` : '';
@@ -560,25 +560,25 @@ export const deanship = {
             method: 'GET',
         });
     },
-    
+
     createProfessor: (data) => apiRequest('/deanship/professors', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
-    
+
     updateProfessor: (id, data) => apiRequest(`/deanship/professors/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
-    
+
     deactivateProfessor: (id) => apiRequest(`/deanship/professors/${id}/deactivate`, {
         method: 'PUT',
     }),
-    
+
     activateProfessor: (id) => apiRequest(`/deanship/professors/${id}/activate`, {
         method: 'PUT',
     }),
-    
+
     // Courses
     getCourses: (departmentId = null) => {
         const params = departmentId ? `?departmentId=${departmentId}` : '';
@@ -586,21 +586,21 @@ export const deanship = {
             method: 'GET',
         });
     },
-    
+
     createCourse: (data) => apiRequest('/deanship/courses', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
-    
+
     updateCourse: (id, data) => apiRequest(`/deanship/courses/${id}`, {
         method: 'PUT',
         body: JSON.stringify(data),
     }),
-    
+
     deactivateCourse: (id) => apiRequest(`/deanship/courses/${id}/deactivate`, {
         method: 'PUT',
     }),
-    
+
     // Course Assignments
     getCourseAssignments: (semesterId, professorId = null) => {
         const params = new URLSearchParams({ semesterId });
@@ -609,21 +609,21 @@ export const deanship = {
             method: 'GET',
         });
     },
-    
+
     createCourseAssignment: (data) => apiRequest('/deanship/course-assignments', {
         method: 'POST',
         body: JSON.stringify(data),
     }),
-    
+
     deleteCourseAssignment: (id) => apiRequest(`/deanship/course-assignments/${id}`, {
         method: 'DELETE',
     }),
-    
+
     // Departments
     getDepartments: () => apiRequest('/deanship/departments', {
         method: 'GET',
     }),
-    
+
     // Reports
     getSystemWideReport: (semesterId) => apiRequest(`/deanship/reports/system-wide?semesterId=${semesterId}`, {
         method: 'GET',
@@ -632,27 +632,30 @@ export const deanship = {
 
 // File Explorer endpoints (shared)
 export const fileExplorer = {
-    getRoot: (academicYearId, semesterId) => 
+    getRoot: (academicYearId, semesterId) =>
         apiRequest(`/file-explorer/root?academicYearId=${academicYearId}&semesterId=${semesterId}`, {
             method: 'GET',
         }),
-    
-    getNode: (path) => 
+
+    getNode: (path) =>
         apiRequest(`/file-explorer/node?path=${encodeURIComponent(path)}`, {
             method: 'GET',
         }),
-    
-    getBreadcrumbs: (path) => 
+
+    getBreadcrumbs: (path) =>
         apiRequest(`/file-explorer/breadcrumbs?path=${encodeURIComponent(path)}`, {
             method: 'GET',
         }),
-    
-    getFileMetadata: (fileId) => 
+
+    getFileMetadata: (fileId) =>
         apiRequest(`/file-explorer/files/${fileId}`, {
             method: 'GET',
         }),
-    
-    downloadFile: (fileId) => 
+
+    uploadFiles: (path, formData, onProgress) =>
+        uploadFile(`/file-explorer/upload?path=${encodeURIComponent(path)}`, formData, onProgress),
+
+    downloadFile: (fileId) =>
         fetch(`${API_BASE_URL}/file-explorer/files/${fileId}/download`, {
             headers: {
                 'Authorization': `Bearer ${getToken()}`,

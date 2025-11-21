@@ -12,87 +12,10 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
         rel="stylesheet">
-    <link rel="stylesheet" href="/css/custom.css">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/prof-dashboard.css">
     <script src="/js/theme.js"></script>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-hover: #1d4ed8;
-            --bg-soft: #f3f4f6;
-            --border-subtle: #e5e7eb;
-            --sidebar-width: 260px;
-        }
 
-        body {
-            font-family: "Inter", "Cairo", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            font-size: 15px;
-            color: #1f2933;
-            background-color: var(--bg-soft);
-        }
-
-        /* Sidebar Navigation */
-        .nav-tab {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            margin-bottom: 0.25rem;
-            border-radius: 0.5rem;
-            color: #4b5563;
-            font-weight: 500;
-            transition: all 0.15s ease-in-out;
-            cursor: pointer;
-            border: none;
-            width: 100%;
-            text-align: left;
-        }
-
-        .nav-tab:hover {
-            background-color: #f3f4f6;
-            color: #111827;
-        }
-
-        .nav-tab.active {
-            background-color: #eff6ff;
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        .nav-tab svg {
-            margin-right: 0.75rem;
-            width: 1.25rem;
-            height: 1.25rem;
-        }
-
-        /* Cards */
-        .card {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-            border: 1px solid var(--border-subtle);
-        }
-
-        /* Prevent flash of wrong tab on page load */
-        .tab-content {
-            display: none;
-        }
-
-        .tab-content:not(.hidden) {
-            display: block;
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-    </style>
 </head>
 
 <body class="bg-gray-50 min-h-screen flex overflow-hidden">
@@ -376,6 +299,81 @@
 
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 id="uploadModalTitle" class="text-lg font-semibold text-gray-900">Upload Files</h3>
+                <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <!-- File Input -->
+                <div>
+                    <label for="uploadFiles" class="block text-sm font-medium text-gray-700 mb-2">
+                        Select Files
+                    </label>
+                    <input 
+                        type="file" 
+                        id="uploadFiles" 
+                        multiple 
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p class="mt-1 text-xs text-gray-500">
+                        Maximum file size: 50MB. Allowed types: PDF, Word, PowerPoint, Excel, Images, Text, Archives
+                    </p>
+                </div>
+
+                <!-- Notes Textarea -->
+                <div>
+                    <label for="uploadNotes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Notes (Optional)
+                    </label>
+                    <textarea 
+                        id="uploadNotes" 
+                        rows="3" 
+                        placeholder="Add any notes about these files..."
+                        class="block w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- Error Message -->
+                <div id="uploadError" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p id="uploadErrorMessage" class="text-sm text-red-800"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+                <button 
+                    onclick="closeUploadModal()" 
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    id="uploadBtn" 
+                    onclick="console.log('Upload button clicked!'); if(typeof handleUpload === 'function') { handleUpload(); } else { console.error('handleUpload is not a function!', typeof handleUpload); }" 
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Upload Files
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>

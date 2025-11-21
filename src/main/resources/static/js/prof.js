@@ -46,10 +46,11 @@
  * role-specific configurations while maintaining visual consistency.
  */
 
-import { professor, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
+import { professor, fileExplorer, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
 // FIX 1: Removed 'isOverdue' from imports to avoid conflict with local definition
 import { showToast, showModal, formatDate, getTimeUntil, formatFileSize } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
+import { fileExplorerState } from './file-explorer-state.js';
 
 // Check authentication
 if (!isAuthenticated()) {
@@ -108,39 +109,51 @@ loadNotifications();
 setInterval(loadNotifications, 30000);
 
 // Tab Switching
-window.switchTab = function(tabName) {
+window.switchTab = function (tabName) {
     // Update sidebar tabs
     document.querySelectorAll('.nav-tab').forEach(tab => {
         tab.classList.remove('active');
     });
-    
+
     const activeTab = document.querySelector(`.nav-tab[data-tab="${tabName}"]`);
     if (activeTab) {
         activeTab.classList.add('active');
     }
-    
+
     // Update tab content
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.add('hidden');
     });
-    
+
     const activeContent = document.getElementById(`${tabName}TabContent`);
     if (activeContent) {
         activeContent.classList.remove('hidden');
     }
-    
+
     // Load data for specific tabs
     if (tabName === 'dashboard' && selectedSemesterId) {
         loadDashboardOverview();
     } else if (tabName === 'fileExplorer') {
         if (selectedAcademicYearId && selectedSemesterId) {
-             if (!fileExplorerInstance) {
+            if (!fileExplorerInstance) {
                 initializeFileExplorer();
+            }
+            // Update breadcrumbs to show current semester
+            const selectedYear = academicYears.find(y => y.id === selectedAcademicYearId);
+            const selectedSemester = semesters.find(s => s.id === selectedSemesterId);
+            if (selectedYear && selectedSemester && breadcrumbs) {
+                const semesterText = `${selectedYear.yearCode} - ${selectedSemester.type} Semester`;
+                breadcrumbs.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-gray-700 font-medium">${semesterText}</span>
+                `;
             }
             loadFileExplorer();
         } else {
-             const container = document.getElementById('fileExplorerContainer');
-             if(container) container.innerHTML = '<p class="text-gray-500 text-center py-8">Please select an academic year and semester first</p>';
+            const container = document.getElementById('fileExplorerContainer');
+            if (container) container.innerHTML = '<p class="text-gray-500 text-center py-8">Please select a semester to view your files</p>';
         }
     }
 };
@@ -167,8 +180,8 @@ closeNotificationsDropdown.addEventListener('click', () => {
 
 // Close dropdown when clicking outside
 document.addEventListener('click', (e) => {
-    if (!notificationsDropdown.classList.contains('hidden') && 
-        !notificationsDropdown.contains(e.target) && 
+    if (!notificationsDropdown.classList.contains('hidden') &&
+        !notificationsDropdown.contains(e.target) &&
         !notificationsBtn.contains(e.target)) {
         notificationsDropdown.classList.add('hidden');
     }
@@ -178,7 +191,7 @@ document.addEventListener('click', (e) => {
 academicYearSelect.addEventListener('change', async (e) => {
     selectedAcademicYearId = e.target.value ? parseInt(e.target.value) : null;
     selectedSemesterId = null;
-    
+
     if (selectedAcademicYearId) {
         await loadSemesters(selectedAcademicYearId);
     } else {
@@ -191,9 +204,28 @@ academicYearSelect.addEventListener('change', async (e) => {
 // Semester selection
 semesterSelect.addEventListener('change', async (e) => {
     selectedSemesterId = e.target.value ? parseInt(e.target.value) : null;
-    
+
     if (selectedSemesterId) {
+        // Update FileExplorerState with new context
+        const selectedYear = academicYears.find(y => y.id === selectedAcademicYearId);
+        const selectedSemester = semesters.find(s => s.id === selectedSemesterId);
+        
+        if (selectedYear && selectedSemester) {
+            fileExplorerState.setContext(
+                selectedAcademicYearId,
+                selectedSemesterId,
+                selectedYear.yearCode,
+                selectedSemester.type
+            );
+        }
+        
         await loadCourses(selectedSemesterId);
+        
+        // Trigger File Explorer reload if on file-explorer tab
+        const fileExplorerTab = document.getElementById('fileExplorerTabContent');
+        if (fileExplorerTab && !fileExplorerTab.classList.contains('hidden')) {
+            loadFileExplorer();
+        }
     } else {
         courses = [];
         renderCourses();
@@ -204,13 +236,13 @@ semesterSelect.addEventListener('change', async (e) => {
 async function loadAcademicYears() {
     try {
         academicYears = await professor.getAcademicYears();
-        
+
         if (academicYears.length === 0) {
             academicYearSelect.innerHTML = '<option value="">No academic years available</option>';
             showToast('No academic years found. Please contact the administrator.', 'warning');
             return;
         }
-        
+
         academicYearSelect.innerHTML = '<option value="">Select academic year</option>';
         academicYears.forEach(year => {
             const option = document.createElement('option');
@@ -222,7 +254,7 @@ async function loadAcademicYears() {
             }
             academicYearSelect.appendChild(option);
         });
-        
+
         // Load semesters for active year
         if (selectedAcademicYearId) {
             await loadSemesters(selectedAcademicYearId);
@@ -243,7 +275,7 @@ async function loadAcademicYears() {
 async function loadSemesters(academicYearId) {
     try {
         semesters = await professor.getSemesters(academicYearId);
-        
+
         if (semesters.length === 0) {
             semesterSelect.innerHTML = '<option value="">No semesters available for this year</option>';
             showToast('No semesters found for the selected academic year.', 'warning');
@@ -251,7 +283,7 @@ async function loadSemesters(academicYearId) {
             renderCourses();
             return;
         }
-        
+
         semesterSelect.innerHTML = '<option value="">Select semester</option>';
         semesters.forEach(semester => {
             const option = document.createElement('option');
@@ -259,7 +291,7 @@ async function loadSemesters(academicYearId) {
             option.textContent = `${semester.type} Semester`;
             semesterSelect.appendChild(option);
         });
-        
+
         // Auto-select first semester if available
         if (semesters.length > 0) {
             selectedSemesterId = semesters[0].id;
@@ -284,9 +316,15 @@ async function loadCourses(semesterId) {
                 ${createCourseSkeletonLoader()}
             </div>
         `;
-        
+
         courses = await professor.getMyCourses(semesterId);
         renderCourses();
+
+        // Also load dashboard overview if the dashboard tab is currently active
+        const dashboardTab = document.getElementById('dashboardTabContent');
+        if (dashboardTab && !dashboardTab.classList.contains('hidden')) {
+            await loadDashboardOverview();
+        }
     } catch (error) {
         console.error('Error loading courses:', error);
         const errorMessage = error.message || 'An unexpected error occurred';
@@ -332,7 +370,7 @@ async function loadDashboardOverview() {
     if (!selectedSemesterId) {
         return;
     }
-    
+
     try {
         // Show loading spinners
         document.getElementById('totalCoursesCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
@@ -340,15 +378,15 @@ async function loadDashboardOverview() {
         document.getElementById('pendingDocsCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
         document.getElementById('overdueDocsCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
         document.getElementById('dashboardSummary').textContent = 'Loading dashboard data...';
-        
+
         const overview = await professor.getDashboardOverview(selectedSemesterId);
-        
+
         // Update overview cards
         document.getElementById('totalCoursesCount').textContent = overview.totalCourses || 0;
         document.getElementById('submittedDocsCount').textContent = overview.submittedDocuments || 0;
         document.getElementById('pendingDocsCount').textContent = overview.pendingDocuments || 0;
         document.getElementById('overdueDocsCount').textContent = overview.overdueDocuments || 0;
-        
+
         // Update summary text
         const summaryEl = document.getElementById('dashboardSummary');
         if (overview.totalCourses === 0) {
@@ -384,7 +422,7 @@ function renderCourses() {
 // Create course card
 function createCourseCard(course) {
     const documentTypes = Object.entries(course.documentStatuses || {});
-    
+
     return `
         <div class="border border-gray-200 rounded-lg p-6 mb-4">
             <div class="flex justify-between items-start mb-4">
@@ -410,12 +448,12 @@ function createDocumentTypeRow(course, docType, status) {
     const isSubmitted = status.status === 'UPLOADED';
     const isStatusOverdue = status.status === 'OVERDUE';
     const isNotUploaded = status.status === 'NOT_UPLOADED';
-    
+
     let statusBadge = '';
     let statusClass = '';
     let rowBorderClass = 'border-gray-200';
     let rowBgClass = 'bg-gray-50';
-    
+
     if (isSubmitted) {
         statusClass = status.isLateSubmission ? 'badge-warning' : 'badge-success';
         statusBadge = status.isLateSubmission ? 'Submitted (Late)' : 'Submitted';
@@ -430,19 +468,19 @@ function createDocumentTypeRow(course, docType, status) {
         statusClass = 'badge-gray';
         statusBadge = 'Not Uploaded';
     }
-    
+
     const deadline = status.deadline ? new Date(status.deadline) : null;
     const timeUntil = deadline ? getTimeUntil(deadline) : 'No deadline';
-    
+
     // FIX 2: Now using the local function defined at bottom of file
     const isPastDue = deadline ? isOverdue(deadline) : false;
-    
+
     // Calculate urgency for upcoming deadlines
     let urgencyIndicator = '';
     if (deadline && !isSubmitted && !isPastDue) {
         const now = new Date();
         const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
-        
+
         if (hoursUntilDeadline <= 24) {
             urgencyIndicator = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 ml-2 animate-pulse"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>Due in ${Math.round(hoursUntilDeadline)} hours!</span>';
             rowBgClass = 'bg-red-50';
@@ -453,7 +491,7 @@ function createDocumentTypeRow(course, docType, status) {
             rowBorderClass = 'border-orange-200';
         }
     }
-    
+
     return `
         <div class="flex items-center justify-between p-4 ${rowBgClass} rounded-lg border ${rowBorderClass} transition-all">
             <div class="flex-1">
@@ -539,13 +577,430 @@ function isOverdue(dateStringOrDate) {
     return new Date(dateStringOrDate) < new Date();
 }
 
+// ==================== File Upload Modal Functions ====================
+
+/**
+ * Open upload modal for file explorer
+ * Opens the upload modal for uploading files to a folder in the file explorer
+ */
+window.openFileExplorerUploadModal = function() {
+    console.log('=== OPEN FILE EXPLORER UPLOAD MODAL CALLED ===');
+    console.log('Timestamp:', new Date().toISOString());
+    
+    // Get current node from FileExplorerState
+    console.log('Getting current node from FileExplorerState...');
+    const currentNode = fileExplorerState.getCurrentNode();
+    console.log('Current node:', currentNode);
+    
+    // Validate current node exists
+    if (!currentNode) {
+        console.error('Validation failed: No current node');
+        showToast('Please select a folder first', 'error');
+        return;
+    }
+    console.log('✓ Current node exists');
+    
+    // Validate current node has an id or entityId
+    const folderId = currentNode.id || currentNode.entityId;
+    if (!folderId) {
+        console.error('Validation failed: Current node has no ID or entityId');
+        console.error('Current node:', currentNode);
+        showToast('Invalid folder selected', 'error');
+        return;
+    }
+    console.log('✓ Current node has ID:', folderId);
+    
+    // Validate current node type is 'DOCUMENT_TYPE' or 'SUBFOLDER' (category folder)
+    const validTypes = ['DOCUMENT_TYPE', 'SUBFOLDER'];
+    if (!validTypes.includes(currentNode.type)) {
+        console.warn('Validation failed: Current node type is not valid for upload:', currentNode.type);
+        showToast('You can only upload files to category folders (Course Notes, Exams, Syllabus, Assignments)', 'warning');
+        return;
+    }
+    console.log('✓ Current node type is valid for upload:', currentNode.type);
+    
+    // Get modal elements
+    console.log('Getting modal elements...');
+    const modal = document.getElementById('uploadModal');
+    const modalTitle = document.getElementById('uploadModalTitle');
+    const filesInput = document.getElementById('uploadFiles');
+    const notesInput = document.getElementById('uploadNotes');
+    const errorDiv = document.getElementById('uploadError');
+    
+    console.log('Modal elements found:', {
+        modal: !!modal,
+        modalTitle: !!modalTitle,
+        filesInput: !!filesInput,
+        notesInput: !!notesInput,
+        errorDiv: !!errorDiv
+    });
+    
+    if (!modal) {
+        console.error('Upload modal not found in DOM');
+        return;
+    }
+    
+    // Set modal title based on folder name
+    if (modalTitle) {
+        const title = `Upload Files to ${currentNode.name || 'Folder'}`;
+        console.log('Setting modal title:', title);
+        modalTitle.textContent = title;
+    }
+    
+    // Clear previous file input
+    if (filesInput) {
+        console.log('Clearing previous file input');
+        filesInput.value = '';
+    }
+    
+    // Clear notes textarea
+    if (notesInput) {
+        console.log('Clearing notes textarea');
+        notesInput.value = '';
+    }
+    
+    // Hide error message div
+    if (errorDiv) {
+        console.log('Hiding error div');
+        errorDiv.classList.add('hidden');
+    }
+    
+    // Show modal by removing 'hidden' class
+    console.log('Showing modal...');
+    modal.classList.remove('hidden');
+    console.log('✓ Modal opened successfully');
+};
+
+/**
+ * Close upload modal
+ */
+window.closeUploadModal = function() {
+    console.log('=== CLOSE UPLOAD MODAL CALLED ===');
+    
+    const modal = document.getElementById('uploadModal');
+    const filesInput = document.getElementById('uploadFiles');
+    const notesInput = document.getElementById('uploadNotes');
+    const errorDiv = document.getElementById('uploadError');
+    
+    if (!modal) {
+        console.error('Modal not found');
+        return;
+    }
+    
+    // Hide modal by adding 'hidden' class
+    console.log('Hiding modal...');
+    modal.classList.add('hidden');
+    
+    // Clear file input
+    if (filesInput) {
+        console.log('Clearing file input');
+        filesInput.value = '';
+    }
+    
+    // Clear notes textarea
+    if (notesInput) {
+        console.log('Clearing notes textarea');
+        notesInput.value = '';
+    }
+    
+    // Hide error message div
+    if (errorDiv) {
+        console.log('Hiding error div');
+        errorDiv.classList.add('hidden');
+    }
+    
+    console.log('✓ Modal closed successfully');
+};
+
+/**
+ * Handle file upload - Validation
+ * Validates files and prepares for upload
+ */
+window.handleUpload = async function() {
+    console.log('=== UPLOAD BUTTON CLICKED ===');
+    console.log('Timestamp:', new Date().toISOString());
+    
+    // Get references to DOM elements
+    const uploadBtn = document.getElementById('uploadBtn');
+    const errorDiv = document.getElementById('uploadError');
+    const errorMessage = document.getElementById('uploadErrorMessage');
+    const filesInput = document.getElementById('uploadFiles');
+    const notesInput = document.getElementById('uploadNotes');
+    
+    console.log('DOM Elements found:', {
+        uploadBtn: !!uploadBtn,
+        errorDiv: !!errorDiv,
+        errorMessage: !!errorMessage,
+        filesInput: !!filesInput,
+        notesInput: !!notesInput
+    });
+    
+    // Helper function to show error in modal
+    const showError = (message) => {
+        console.error('Upload Error:', message);
+        if (errorDiv && errorMessage) {
+            errorMessage.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+    };
+    
+    // Helper function to hide error in modal
+    const hideError = () => {
+        if (errorDiv) {
+            errorDiv.classList.add('hidden');
+        }
+    };
+    
+    // Get current node from FileExplorerState
+    console.log('Getting current node from FileExplorerState...');
+    const currentNode = fileExplorerState.getCurrentNode();
+    console.log('Current node:', currentNode);
+    
+    // Validate current node exists
+    if (!currentNode) {
+        console.error('Validation failed: No current node');
+        showError('No folder selected. Please select a folder first.');
+        return;
+    }
+    console.log('✓ Current node exists');
+    
+    // Get folder ID or path from current node
+    const folderId = currentNode.id || currentNode.entityId;
+    const folderPath = currentNode.path;
+    
+    // Validate we have either folderId or folderPath
+    if (!folderId && !folderPath) {
+        console.error('Validation failed: Current node has no ID, entityId, or path');
+        showError('Invalid folder selected. Please try again.');
+        return;
+    }
+    
+    if (folderId) {
+        console.log('✓ Current node has ID:', folderId);
+    } else {
+        console.log('✓ Current node has path (will auto-create folder):', folderPath);
+    }
+    
+    // Get selected files from file input
+    const files = filesInput ? filesInput.files : null;
+    console.log('Files from input:', files ? files.length : 0, 'file(s)');
+    
+    // Validate at least one file selected
+    if (!files || files.length === 0) {
+        console.error('Validation failed: No files selected');
+        showError('Please select at least one file to upload.');
+        return;
+    }
+    console.log('✓ Files selected:', files.length);
+    
+    // Validate each file size doesn't exceed 50MB
+    const maxFileSize = 50 * 1024 * 1024; // 50MB in bytes
+    const invalidFiles = [];
+    
+    console.log('Validating file sizes (max 50MB)...');
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        console.log(`  File ${i + 1}: ${file.name} - ${fileSizeMB}MB`);
+        if (file.size > maxFileSize) {
+            invalidFiles.push(file.name);
+        }
+    }
+    
+    // Show error if any files exceed size limit
+    if (invalidFiles.length > 0) {
+        console.error('Validation failed: Files exceed size limit:', invalidFiles);
+        const fileList = invalidFiles.length > 3 
+            ? `${invalidFiles.slice(0, 3).join(', ')} and ${invalidFiles.length - 3} more` 
+            : invalidFiles.join(', ');
+        showError(`The following file(s) exceed the 50MB size limit: ${fileList}`);
+        return;
+    }
+    console.log('✓ All files within size limit');
+    
+    // If all validations pass, hide any previous errors
+    hideError();
+    console.log('✓ All validations passed');
+    
+    // Task 19: Implement upload logic
+    console.log('--- Starting upload process ---');
+    
+    // Construct FormData object
+    const formData = new FormData();
+    console.log('Creating FormData...');
+    
+    // Append each file with key 'files[]'
+    for (let i = 0; i < files.length; i++) {
+        console.log(`Appending file ${i + 1}: ${files[i].name}`);
+        formData.append('files[]', files[i]);
+    }
+    
+    // Append folderId or folderPath (backend supports both)
+    if (folderId) {
+        console.log('Appending folderId:', folderId);
+        formData.append('folderId', folderId);
+    } else {
+        console.log('Appending folderPath:', folderPath);
+        formData.append('folderPath', folderPath);
+    }
+    
+    // Append notes if provided
+    const notes = notesInput ? notesInput.value.trim() : '';
+    if (notes) {
+        console.log('Appending notes:', notes.substring(0, 50) + (notes.length > 50 ? '...' : ''));
+        formData.append('notes', notes);
+    } else {
+        console.log('No notes provided');
+    }
+    
+    // Set loading state: disable button, change text to "Uploading...", hide error
+    console.log('Setting button to loading state...');
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.textContent = 'Uploading...';
+    }
+    
+    try {
+        // Send POST request to /api/professor/files/upload with FormData
+        console.log('Sending POST request to /api/professor/files/upload...');
+        const response = await fetch('/api/professor/files/upload', {
+            method: 'POST',
+            body: formData
+            // Note: Don't set Content-Type header - browser will set it automatically with boundary
+        });
+        
+        console.log('Response received:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+        });
+        
+        // Parse JSON response
+        console.log('Parsing JSON response...');
+        const result = await response.json();
+        console.log('Response data:', result);
+        
+        // Task 20: Handle response
+        // Check if response is ok and result.success is true
+        if (response.ok && result.success) {
+            console.log('✓ Upload successful!');
+            // On success:
+            // Show success toast with file count
+            const fileCount = files.length;
+            const fileWord = fileCount === 1 ? 'file' : 'files';
+            console.log(`Showing success toast for ${fileCount} ${fileWord}`);
+            showToast(`Successfully uploaded ${fileCount} ${fileWord}!`, 'success');
+            
+            // Close modal
+            console.log('Closing upload modal...');
+            closeUploadModal();
+            
+            // Call refreshCurrentFolderFiles() to update file list
+            console.log('Refreshing current folder files...');
+            await refreshCurrentFolderFiles();
+            console.log('✓ Upload process complete');
+        } else {
+            // On error:
+            console.error('Upload failed:', result);
+            // Show error message in modal error div
+            const errorMsg = result.message || 'Upload failed. Please try again.';
+            showError(errorMsg);
+            // Keep modal open (don't call closeUploadModal)
+        }
+        
+    } catch (error) {
+        // On network error (catch block):
+        console.error('Upload error (exception):', error);
+        console.error('Error stack:', error.stack);
+        // Show network error message
+        showError('Network error occurred. Please check your connection and try again.');
+        // Keep modal open (don't call closeUploadModal)
+    } finally {
+        // Always reset button state in finally block
+        console.log('Resetting button state...');
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.textContent = 'Upload';
+        }
+        console.log('=== UPLOAD FUNCTION COMPLETE ===');
+    }
+};
+
+// Confirm handleUpload is registered
+console.log('✓ window.handleUpload registered:', typeof window.handleUpload);
+
+/**
+ * Refresh current folder files
+ * Task 21: Refreshes the file list for the current folder after upload
+ */
+async function refreshCurrentFolderFiles() {
+    console.log('=== REFRESH CURRENT FOLDER FILES ===');
+    
+    // Get current node from FileExplorerState
+    const currentNode = fileExplorerState.getCurrentNode();
+    console.log('Current node:', currentNode);
+    
+    // Return early if no current node
+    if (!currentNode) {
+        console.warn('No current node, skipping refresh');
+        return;
+    }
+    
+    try {
+        // Set file list loading state to true (if needed)
+        // This could be handled by the FileExplorer component
+        
+        // Fetch updated node data from /api/file-explorer/node?path={path}
+        const path = currentNode.path || '';
+        console.log('Fetching updated node data for path:', path);
+        const response = await fetch(`/api/file-explorer/node?path=${encodeURIComponent(path)}`);
+        
+        console.log('Refresh response:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch updated node data');
+        }
+        
+        // Parse JSON response
+        console.log('Parsing updated node data...');
+        const updatedNodeData = await response.json();
+        console.log('Updated node data:', updatedNodeData);
+        
+        // Update FileExplorerState with new current node data
+        console.log('Updating FileExplorerState...');
+        fileExplorerState.setCurrentNode(updatedNodeData);
+        
+        // Reload the file explorer to show updated files
+        if (fileExplorerInstance) {
+            console.log('Reloading file explorer...');
+            await fileExplorerInstance.loadNode(path);
+            console.log('✓ File explorer reloaded');
+        } else {
+            console.warn('No fileExplorerInstance found');
+        }
+        
+        // Set file list loading state to false (if needed)
+        console.log('✓ Refresh complete');
+        
+    } catch (error) {
+        // Handle errors gracefully (log but don't show to user)
+        console.error('Error refreshing folder files:', error);
+        console.error('Error stack:', error.stack);
+        // Don't show error toast to user as this is a background refresh
+    }
+}
+
 // Load notifications
 async function loadNotifications() {
     try {
-        notifications = (await professor.getNotifications()).sort((a, b) => 
+        notifications = (await professor.getNotifications()).sort((a, b) =>
             new Date(b.createdAt) - new Date(a.createdAt)
         );
-        
+
         const unseenCount = notifications.filter(n => !n.seen).length;
         if (unseenCount > 0) {
             notificationBadge.classList.remove('hidden');
@@ -597,7 +1052,7 @@ window.openUploadModal = (courseAssignmentId, documentType, submissionId, isRepl
     const status = typeof statusData === 'string' ? JSON.parse(statusData) : statusData;
     const maxFileCount = status.maxFileCount || 5;
     const maxTotalSizeMb = status.maxTotalSizeMb || 50;
-    
+
     const content = `
         <form id="uploadForm" class="space-y-4">
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -668,8 +1123,8 @@ window.openUploadModal = (courseAssignmentId, documentType, submissionId, isRepl
     `;
 
     const modal = showModal(
-        isReplacement ? 'Replace Files' : 'Upload Files', 
-        content, 
+        isReplacement ? 'Replace Files' : 'Upload Files',
+        content,
         {
             size: 'lg',
             buttons: [
@@ -685,11 +1140,11 @@ window.openUploadModal = (courseAssignmentId, documentType, submissionId, isRepl
                     action: 'upload',
                     onClick: async (close) => {
                         await handleFileUpload(
-                            courseAssignmentId, 
-                            documentType, 
-                            submissionId, 
-                            isReplacement, 
-                            maxFileCount, 
+                            courseAssignmentId,
+                            documentType,
+                            submissionId,
+                            isReplacement,
+                            maxFileCount,
                             maxTotalSizeMb,
                             close
                         );
@@ -739,23 +1194,23 @@ function handleFileSelection(files, maxFileCount, maxTotalSizeMb) {
     const filePreviewList = document.getElementById('filePreviewList');
     const filePreviewContainer = document.getElementById('filePreviewContainer');
     const fileError = document.getElementById('fileError');
-    
+
     fileError.classList.add('hidden');
-    
+
     if (files.length === 0) return;
-    
+
     // Validate file count
     if (files.length > maxFileCount) {
         fileError.textContent = `You can only upload up to ${maxFileCount} file${maxFileCount > 1 ? 's' : ''}. Please select fewer files and try again.`;
         fileError.classList.remove('hidden');
         return;
     }
-    
+
     // Validate file types and calculate total size
     let totalSize = 0;
     const validFiles = [];
     const invalidFiles = [];
-    
+
     for (let file of files) {
         const ext = file.name.split('.').pop().toLowerCase();
         if (ext !== 'pdf' && ext !== 'zip') {
@@ -765,13 +1220,13 @@ function handleFileSelection(files, maxFileCount, maxTotalSizeMb) {
             validFiles.push(file);
         }
     }
-    
+
     if (invalidFiles.length > 0) {
         fileError.textContent = `Invalid file type${invalidFiles.length > 1 ? 's' : ''}: ${invalidFiles.join(', ')}. Only PDF and ZIP files are accepted. Please remove the invalid file${invalidFiles.length > 1 ? 's' : ''} and try again.`;
         fileError.classList.remove('hidden');
         return;
     }
-    
+
     // Validate total size
     const totalSizeMb = totalSize / (1024 * 1024);
     if (totalSizeMb > maxTotalSizeMb) {
@@ -779,12 +1234,12 @@ function handleFileSelection(files, maxFileCount, maxTotalSizeMb) {
         fileError.classList.remove('hidden');
         return;
     }
-    
+
     // Update file input
     const dataTransfer = new DataTransfer();
     validFiles.forEach(file => dataTransfer.items.add(file));
     fileInput.files = dataTransfer.files;
-    
+
     // Show file previews
     filePreviewList.classList.remove('hidden');
     filePreviewContainer.innerHTML = validFiles.map((file, index) => `
@@ -815,15 +1270,15 @@ window.removeFileFromSelection = (index) => {
     const fileInput = document.getElementById('fileInput');
     const files = Array.from(fileInput.files);
     files.splice(index, 1);
-    
+
     const dataTransfer = new DataTransfer();
     files.forEach(file => dataTransfer.items.add(file));
     fileInput.files = dataTransfer.files;
-    
+
     // Re-render previews
     const filePreviewContainer = document.getElementById('filePreviewContainer');
     const filePreviewList = document.getElementById('filePreviewList');
-    
+
     if (files.length === 0) {
         filePreviewList.classList.add('hidden');
     } else {
@@ -859,16 +1314,16 @@ async function handleFileUpload(courseAssignmentId, documentType, submissionId, 
     const uploadProgress = document.getElementById('uploadProgress');
     const progressFill = document.getElementById('progressFill');
     const progressText = document.getElementById('progressText');
-    
+
     const files = fileInput.files;
     const notes = notesInput.value.trim();
-    
+
     if (files.length === 0) {
         fileError.textContent = 'Please select at least one file';
         fileError.classList.remove('hidden');
         return;
     }
-    
+
     // Create FormData
     const formData = new FormData();
     for (let file of files) {
@@ -877,11 +1332,11 @@ async function handleFileUpload(courseAssignmentId, documentType, submissionId, 
     if (notes) {
         formData.append('notes', notes);
     }
-    
+
     // Show progress
     uploadProgress.classList.remove('hidden');
     const progressPercentage = document.getElementById('progressPercentage');
-    
+
     // Disable upload button and cancel button
     const uploadBtn = document.querySelector('[data-action="upload"]');
     const cancelBtn = document.querySelector('[data-action="cancel"]');
@@ -900,7 +1355,7 @@ async function handleFileUpload(courseAssignmentId, documentType, submissionId, 
         cancelBtn.disabled = true;
         cancelBtn.classList.add('opacity-50', 'cursor-not-allowed');
     }
-    
+
     try {
         if (isReplacement && submissionId) {
             await professor.replaceFiles(
@@ -936,7 +1391,7 @@ async function handleFileUpload(courseAssignmentId, documentType, submissionId, 
             );
             showToast('Files uploaded successfully! Your submission has been recorded.', 'success');
         }
-        
+
         // Reload courses
         if (selectedSemesterId) {
             await loadCourses(selectedSemesterId);
@@ -948,7 +1403,7 @@ async function handleFileUpload(courseAssignmentId, documentType, submissionId, 
         fileError.textContent = `${errorMessage}. Please check your files and try again. If the problem persists, contact support.`;
         fileError.classList.remove('hidden');
         showToast(`Upload failed: ${errorMessage}`, 'error');
-        
+
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
@@ -969,12 +1424,12 @@ window.viewSubmissionFiles = async (submissionId) => {
     try {
         const submission = await professor.getSubmission(submissionId);
         const files = submission.uploadedFiles || [];
-        
+
         if (files.length === 0) {
             showToast('No files found', 'info');
             return;
         }
-        
+
         const content = `
             <div class="space-y-3">
                 <p class="text-sm text-gray-600 mb-4">
@@ -1004,7 +1459,7 @@ window.viewSubmissionFiles = async (submissionId) => {
                 `).join('')}
             </div>
         `;
-        
+
         showModal('Submitted Files', content, {
             size: 'md',
             buttons: [
@@ -1105,10 +1560,10 @@ function initializeFileExplorer() {
                 console.log('Node expanded:', node);
             }
         });
-        
+
         // Make instance available globally for event handlers
         window.fileExplorerInstance = fileExplorerInstance;
-        
+
         console.log('FileExplorer initialized with Professor configuration:', {
             role: 'PROFESSOR',
             showOwnershipLabels: true,
@@ -1136,7 +1591,7 @@ async function loadFileExplorer(path = '') {
         if (!fileExplorerInstance) {
             initializeFileExplorer();
         }
-        
+
         if (path) {
             await fileExplorerInstance.loadNode(path);
         } else {
@@ -1221,20 +1676,20 @@ function renderFileExplorer(data) {
         fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No data available</p>';
         return;
     }
-    
+
     const children = data.children || [];
-    
+
     if (children.length === 0) {
         fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">No items found</p>';
         return;
     }
-    
+
     // Separate folders and files
     const folders = children.filter(item => item.type !== 'FILE');
     const files = children.filter(item => item.type === 'FILE');
-    
+
     let html = '';
-    
+
     // Render folders
     if (folders.length > 0) {
         html += '<div class="mb-6"><h3 class="text-sm font-medium text-gray-700 mb-3 flex items-center"><svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>Folders</h3><div class="space-y-2">';
@@ -1244,7 +1699,7 @@ function renderFileExplorer(data) {
             const bgColor = canWrite ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200';
             const hoverColor = canWrite ? 'hover:bg-blue-100' : 'hover:bg-gray-100';
             const writeIndicator = canWrite ? '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 ml-2 own-folder-indicator"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>Your Folder</span>' : '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 ml-2"><svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>Read Only</span>';
-            
+
             html += `
                 <div class="file-explorer-folder flex items-center justify-between p-4 ${bgColor} rounded-lg border ${hoverColor} cursor-pointer group"
                     onclick="navigateToPath('${folder.path}')">
@@ -1268,7 +1723,7 @@ function renderFileExplorer(data) {
         });
         html += '</div></div>';
     }
-    
+
     /**
      * Render files section
      * 
@@ -1320,7 +1775,7 @@ function renderFileExplorer(data) {
             const fileType = metadata.fileType || '';
             const fileIcon = getFileIcon(fileType);
             const fileIconClass = getFileIconClass(fileType);
-            
+
             html += `
                 <div class="file-explorer-item flex items-center justify-between p-4 bg-white rounded-lg border border-gray-200 hover:shadow-lg group">
                     <div class="flex items-center space-x-3 flex-1 min-w-0">
@@ -1375,7 +1830,7 @@ function renderFileExplorer(data) {
         });
         html += '</div></div>';
     }
-    
+
     fileExplorerContainer.innerHTML = html;
 }
 
@@ -1423,7 +1878,7 @@ function renderBreadcrumbs(path) {
         `;
         return;
     }
-    
+
     const parts = path.split('/').filter(p => p);
     let html = `
         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1431,25 +1886,25 @@ function renderBreadcrumbs(path) {
         </svg>
         <button onclick="loadFileExplorer('')" class="text-blue-600 hover:underline">Home</button>
     `;
-    
+
     let currentPath = '';
     parts.forEach((part, index) => {
         currentPath += (currentPath ? '/' : '') + part;
         const isLast = index === parts.length - 1;
-        
+
         html += `
             <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
             </svg>
         `;
-        
+
         if (isLast) {
             html += `<span class="text-gray-700 font-medium">${part}</span>`;
         } else {
             html += `<button onclick="loadFileExplorer('${currentPath}')" class="text-blue-600 hover:underline">${part}</button>`;
         }
     });
-    
+
     breadcrumbs.innerHTML = html;
 }
 
@@ -1484,3 +1939,314 @@ window.downloadFileFromExplorer = async (fileId, filename) => {
         showToast(`Failed to download file: ${errorMessage}. Please check your permissions and try again.`, 'error');
     }
 }
+
+/**
+ * Listen for file explorer upload events
+ * This event is dispatched by file-explorer.js when user clicks upload button
+  * or drops files on a writable folder
+ */
+window.addEventListener('fileExplorerUpload', (e) => {
+    const { path, documentType, files } = e.detail;
+    showFileExplorerUploadModal(path, documentType, files);
+});
+
+/**
+ * Show upload modal for file explorer
+ * Displays a modal where users can select files to upload to a specific path
+ * 
+ * @param {string} path - The folder path to upload to
+ * @param {string} documentType - The document type
+ * @param {FileList} preselectedFiles - Optional files from drag-drop
+ */
+function showFileExplorerUploadModal(path, documentType, preselectedFiles = null) {
+    const formattedType = formatDocumentTypeName(documentType);
+    
+    // Store selected files in closure scope
+    let selectedFiles = null;
+
+    const modalHtml = `
+        <div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Upload ${formattedType}
+                    <span class="text-gray-500 font-normal">(PDF or ZIP, max 10 files)</span>
+                </label>
+                <input type="file" id="uploadFilesInput" multiple accept=".pdf,.zip"
+                       class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none hover:bg-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                <p class="mt-1 text-xs text-gray-500">Maximum file size: 10MB per file</p>
+            </div>
+            
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">
+                    Notes (Optional)
+                </label>
+                <textarea id="uploadNotes" rows="3" 
+                          placeholder="Add any notes about these files..."
+                          class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg p-2.5 focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            
+            <div id="uploadProgress" class="hidden">
+                <div class="mb-2">
+                    <div class="flex justify-between text-xs text-gray-600 mb-1">
+                        <span id="uploadProgressText">Uploading...</span>
+                        <span id="uploadProgressPercent">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="uploadProgressBar" class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="fileList" class="mt-4"></div>
+        </div>
+    `;
+
+    showModal(`Upload ${formattedType}`, modalHtml, {
+        size: 'md',
+        buttons: [
+            {
+                text: 'Upload',
+                className: 'bg-blue-600 text-white hover:bg-blue-700',
+                action: 'upload',
+                onClick: async (close) => {
+                    console.log('Upload button clicked');
+                    
+                    // Use the preserved files from closure
+                    const files = selectedFiles;
+                    
+                    console.log('selectedFiles from closure:', selectedFiles);
+                    console.log('Files array:', files);
+                    
+                    const notesInput = document.getElementById('uploadNotes');
+                    const notes = notesInput ? notesInput.value.trim() : '';
+
+                    if (!files || files.length === 0) {
+                        showToast('Please select at least one file', 'error');
+                        return;
+                    }
+                    
+                    console.log('Files to upload:', files.map(f => f.name));
+
+                    // Validate file count
+                    if (files.length > 10) {
+                        showToast('Maximum 10 files allowed per upload', 'error');
+                        return;
+                    }
+
+                    // Validate file sizes
+                    const maxSize = 10 * 1024 * 1024; // 10MB
+                    for (const file of files) {
+                        if (file.size > maxSize) {
+                            showToast(`File "${file.name}" exceeds 10MB limit`, 'error');
+                            return;
+                        }
+                    }
+
+                    // Show progress
+                    const progressDiv = document.getElementById('uploadProgress');
+                    if (progressDiv) progressDiv.classList.remove('hidden');
+
+                    const formData = new FormData();
+                    for (const file of files) {
+                        formData.append('files', file);
+                    }
+                    if (notes) {
+                        formData.append('notes', notes);
+                    }
+
+                    try {
+                        // Use the fileExplorer API method
+                        console.log('Sending upload request to backend for path:', path);
+                        await fileExplorer.uploadFiles(path, formData, (progress) => {
+                            const progressBar = document.getElementById('uploadProgressBar');
+                            const progressPercent = document.getElementById('uploadProgressPercent');
+                            const progressText = document.getElementById('uploadProgressText');
+
+                            if (progressBar) progressBar.style.width = progress + '%';
+                            if (progressPercent) progressPercent.textContent = Math.round(progress) + '%';
+                            if (progressText) {
+                                if (progress < 100) {
+                                    progressText.textContent = 'Uploading...';
+                                } else {
+                                    progressText.textContent = 'Processing...';
+                                }
+                            }
+                        });
+
+                        showToast(`${files.length} file(s) uploaded successfully`, 'success');
+                        close();
+
+                        // Refresh file explorer to show new files
+                        if (window.fileExplorerInstance) {
+                            await window.fileExplorerInstance.loadNode(path);
+                        }
+
+                        // Also refresh dashboard if on My Courses tab
+                        if (typeof refreshDashboard === 'function') {
+                            refreshDashboard();
+                        }
+                    } catch (error) {
+                        console.error('Upload error:', error);
+                        showToast(error.message || 'Upload failed. Please try again.', 'error');
+                        if (progressDiv) progressDiv.classList.add('hidden');
+                    }
+                }
+            },
+            {
+                text: 'Cancel',
+                className: 'bg-gray-200 text-gray-800 hover:bg-gray-300',
+                action: 'cancel',
+                onClick: (close) => close()
+            }
+        ]
+    });
+
+    // IMMEDIATELY attach handler after modal creation
+    // Use requestAnimationFrame to ensure DOM is painted
+    requestAnimationFrame(() => {
+        const filesInput = document.getElementById('uploadFilesInput');
+        if (!filesInput) {
+            console.error('Could not find uploadFilesInput element after modal creation');
+            return;
+        }
+        
+        console.log('File input found, attaching change listener and polling');
+
+        // Attach change listener to capture files immediately
+        filesInput.addEventListener('change', (e) => {
+            console.log('CHANGE EVENT FIRED!');
+            selectedFiles = e.target.files;
+            console.log('Files selected via change event:', selectedFiles ? selectedFiles.length : 0);
+            
+            // CRITICAL: Store files in an array to preserve them
+            if (selectedFiles && selectedFiles.length > 0) {
+                const fileArray = Array.from(selectedFiles);
+                selectedFiles = fileArray;
+                console.log('Files preserved in array:', fileArray.map(f => f.name));
+                updateFileList(selectedFiles);
+            }
+        });
+
+        // FALLBACK: Poll the input every 200ms to detect file selection
+        // This works even if the change event doesn't fire
+        let lastFileCount = 0;
+        let pollCount = 0;
+        const pollInterval = setInterval(() => {
+            const input = document.getElementById('uploadFilesInput');
+            if (!input || !document.body.contains(input)) {
+                console.log('Poll stopped - input removed from DOM');
+                clearInterval(pollInterval);
+                return;
+            }
+            
+            pollCount++;
+            if (pollCount % 10 === 0) {
+                console.log(`Polling... count=${pollCount}, input.files.length=${input.files ? input.files.length : 'null'}, input.value="${input.value}"`);
+            }
+            
+            const currentFileCount = input.files ? input.files.length : 0;
+            if (currentFileCount > 0 && currentFileCount !== lastFileCount) {
+                console.log('Files detected via polling:', currentFileCount);
+                selectedFiles = Array.from(input.files);
+                console.log('Files:', selectedFiles.map(f => f.name));
+                updateFileList(selectedFiles);
+                lastFileCount = currentFileCount;
+            }
+        }, 200);
+
+        console.log('Change listener and polling attached successfully');
+
+        // Pre-fill files if dropped
+        if (preselectedFiles && preselectedFiles.length > 0) {
+            const dt = new DataTransfer();
+            for (let i = 0; i < preselectedFiles.length; i++) {
+                dt.items.add(preselectedFiles[i]);
+            }
+            filesInput.files = dt.files;
+            selectedFiles = Array.from(filesInput.files);
+            updateFileList(selectedFiles);
+        }
+    });
+}
+
+/**
+ * Update file list display in upload modal
+ * Shows list of selected files with names and sizes
+ * 
+ * @param {FileList} files - The selected files
+ */
+function updateFileList(files) {
+    const fileListContainer = document.getElementById('fileList');
+    if (!fileListContainer || files.length === 0) return;
+
+    let html = '<div class="border border-gray-200 rounded-lg p-3 max-h-48 overflow-y-auto">';
+    html += '<p class="text-xs font-semibold text-gray-700 mb-2">Selected Files:</p>';
+    html += '<ul class="space-y-1">';
+
+    for (const file of files) {
+        const sizeKB = (file.size / 1024).toFixed(1);
+        html += `
+            <li class="flex items-center justify-between text-xs">
+                <span class="text-gray-700 truncate flex-1">${escapeHtml(file.name)}</span>
+                <span class="text-gray-500 ml-2">${sizeKB} KB</span>
+            </li>
+        `;
+    }
+
+    html += '</ul></div>';
+    fileListContainer.innerHTML = html;
+}
+
+/**
+ * Format document type name for display
+ * Converts enum values to human-readable names
+ * 
+ * @param {string} documentType - The document type enum value
+ * @returns {string} Formatted document type name
+ */
+function formatDocumentTypeName(documentType) {
+    if (!documentType) return 'Files';
+
+    const typeMap = {
+        'SYLLABUS': 'Syllabus',
+        'EXAM': 'Exams',
+        'ASSIGNMENT': 'Assignments',
+        'PROJECT_DOCS': 'Project Documents',
+        'LECTURE_NOTES': 'Lecture Notes',
+        'OTHER': 'Other Documents',
+        'syllabus': 'Syllabus',
+        'exam': 'Exams',
+        'assignment': 'Assignments',
+        'project_docs': 'Project Documents',
+        'lecture_notes': 'Lecture Notes',
+        'other': 'Other Documents'
+    };
+
+    return typeMap[documentType] || documentType;
+}
+
+/**
+ * Escape HTML to prevent XSS
+ * @param {string} text - Text to escape
+ * @returns {string} Escaped text
+ */
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+
+// ==================== DEBUG: Verify Window Functions ====================
+console.log('=== PROF.JS: Verifying Window Functions ===');
+console.log('window.openFileExplorerUploadModal:', typeof window.openFileExplorerUploadModal);
+console.log('window.openUploadModal:', typeof window.openUploadModal);
+console.log('window.closeUploadModal:', typeof window.closeUploadModal);
+console.log('window.handleUpload:', typeof window.handleUpload);
+console.log('window.switchTab:', typeof window.switchTab);
+console.log('window.markNotificationSeen:', typeof window.markNotificationSeen);
+console.log('window.removeFileFromSelection:', typeof window.removeFileFromSelection);
+console.log('window.downloadSubmissionFile:', typeof window.downloadSubmissionFile);
+console.log('window.viewSubmissionFiles:', typeof window.viewSubmissionFiles);
+console.log('=== END Window Functions Verification ===');

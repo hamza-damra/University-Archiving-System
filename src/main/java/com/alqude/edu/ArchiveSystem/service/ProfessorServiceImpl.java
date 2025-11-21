@@ -40,6 +40,7 @@ public class ProfessorServiceImpl implements ProfessorService {
     private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final FolderService folderService;
     
     @Override
     public User createProfessor(ProfessorDTO dto) {
@@ -80,6 +81,13 @@ public class ProfessorServiceImpl implements ProfessorService {
         professor = userRepository.save(professor);
         
         log.info("Successfully created professor with ID: {} and professorId: {}", professor.getId(), professorId);
+        
+        // Note: Auto-folder creation is not performed here because academic year/semester context
+        // is not available at professor creation time. Folders will be created when:
+        // 1. Course assignments are made (which have semester context)
+        // 2. Manual folder creation endpoint is called
+        // This prevents creating folders for all possible year/semester combinations
+        
         return professor;
     }
     
@@ -493,5 +501,32 @@ public class ProfessorServiceImpl implements ProfessorService {
                 .overdueDocuments(overdueDocuments)
                 .completionPercentage(completionPercentage)
                 .build();
+    }
+    
+    @Override
+    public com.alqude.edu.ArchiveSystem.entity.Folder createProfessorFolder(Long professorId, Long academicYearId, Long semesterId) {
+        log.info("Creating professor folder for professor ID: {}, academic year ID: {}, semester ID: {}", 
+                professorId, academicYearId, semesterId);
+        
+        // Validate professor exists and is a professor
+        User professor = userRepository.findById(professorId)
+                .orElseThrow(() -> new EntityNotFoundException("Professor not found with ID: " + professorId));
+        
+        if (professor.getRole() != Role.ROLE_PROFESSOR) {
+            throw new BusinessException("INVALID_ROLE", "User with ID " + professorId + " is not a professor");
+        }
+        
+        try {
+            // Call FolderService to create professor folder
+            com.alqude.edu.ArchiveSystem.entity.Folder folder = folderService.createProfessorFolder(
+                    professorId, academicYearId, semesterId);
+            
+            log.info("Successfully created/retrieved professor folder with path: {}", folder.getPath());
+            return folder;
+        } catch (Exception e) {
+            log.error("Error creating professor folder for professor ID: {}", professorId, e);
+            throw new BusinessException("FOLDER_CREATION_ERROR", 
+                    "Failed to create professor folder: " + e.getMessage());
+        }
     }
 }

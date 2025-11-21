@@ -17,29 +17,31 @@ import org.springframework.stereotype.Component;
 @Deprecated(since = "2.0", forRemoval = false)
 @Component("documentRequestMapper")
 public class DocumentRequestMapperManual implements DocumentRequestMapper {
-    
+
     @Override
+    @Deprecated
     public DocumentRequest toEntity(DocumentRequestCreateRequest request) {
         if (request == null) {
             return null;
         }
-        
+
         DocumentRequest documentRequest = new DocumentRequest();
         documentRequest.setCourseName(request.getCourseName());
         documentRequest.setDocumentType(request.getDocumentType());
         documentRequest.setRequiredFileExtensions(request.getRequiredFileExtensions());
         documentRequest.setDeadline(request.getDeadline());
         documentRequest.setDescription(request.getDescription());
-        
+
         return documentRequest;
     }
-    
+
     @Override
+    @Deprecated
     public DocumentRequestResponse toResponse(DocumentRequest documentRequest) {
         if (documentRequest == null) {
             return null;
         }
-        
+
         DocumentRequestResponse response = new DocumentRequestResponse();
         response.setId(documentRequest.getId());
         response.setCourseName(documentRequest.getCourseName());
@@ -51,20 +53,20 @@ public class DocumentRequestMapperManual implements DocumentRequestMapper {
         response.setMaxTotalSizeMb(documentRequest.getMaxTotalSizeMb());
         response.setCreatedAt(documentRequest.getCreatedAt());
         response.setUpdatedAt(documentRequest.getUpdatedAt());
-        
+
         // Map professor name
         if (documentRequest.getProfessor() != null) {
-            response.setProfessorName(documentRequest.getProfessor().getFirstName() + " " + 
-                                     documentRequest.getProfessor().getLastName());
+            response.setProfessorName(documentRequest.getProfessor().getFirstName() + " " +
+                    documentRequest.getProfessor().getLastName());
             response.setProfessorEmail(documentRequest.getProfessor().getEmail());
         }
-        
+
         // Map created by name
         if (documentRequest.getCreatedBy() != null) {
-            response.setCreatedByName(documentRequest.getCreatedBy().getFirstName() + " " + 
-                                     documentRequest.getCreatedBy().getLastName());
+            response.setCreatedByName(documentRequest.getCreatedBy().getFirstName() + " " +
+                    documentRequest.getCreatedBy().getLastName());
         }
-        
+
         // Map submitted document info
         if (documentRequest.getSubmittedDocument() != null) {
             response.setIsSubmitted(true);
@@ -74,18 +76,20 @@ public class DocumentRequestMapperManual implements DocumentRequestMapper {
         } else {
             response.setIsSubmitted(false);
         }
-        
+
         return response;
     }
-    
+
     @Override
-    public com.alqude.edu.ArchiveSystem.dto.common.SubmittedDocumentResponse mapSubmittedDocument(com.alqude.edu.ArchiveSystem.entity.DocumentRequest documentRequest) {
+    @Deprecated
+    public com.alqude.edu.ArchiveSystem.dto.common.SubmittedDocumentResponse mapSubmittedDocument(
+            com.alqude.edu.ArchiveSystem.entity.DocumentRequest documentRequest) {
         if (documentRequest == null || documentRequest.getSubmittedDocument() == null) {
             return null;
         }
-        
+
         var doc = documentRequest.getSubmittedDocument();
-        
+
         return com.alqude.edu.ArchiveSystem.dto.common.SubmittedDocumentResponse.builder()
                 .id(doc.getId())
                 .requestId(documentRequest.getId())

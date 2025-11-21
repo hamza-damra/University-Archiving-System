@@ -5,6 +5,7 @@ import com.alqude.edu.ArchiveSystem.dto.academic.CourseDTO;
 import com.alqude.edu.ArchiveSystem.dto.academic.RequiredDocumentTypeDTO;
 import com.alqude.edu.ArchiveSystem.entity.Course;
 import com.alqude.edu.ArchiveSystem.entity.CourseAssignment;
+import com.alqude.edu.ArchiveSystem.entity.Folder;
 import com.alqude.edu.ArchiveSystem.entity.RequiredDocumentType;
 
 import java.util.List;
@@ -32,6 +33,16 @@ public interface CourseService {
     List<CourseAssignment> getAssignmentsBySemester(Long semesterId);
     
     List<CourseAssignment> getAssignmentsByProfessor(Long professorId, Long semesterId);
+    
+    /**
+     * Manually trigger course folder creation for an existing assignment.
+     * This is useful for creating folders for assignments that were created before
+     * the auto-provisioning feature was implemented.
+     *
+     * @param assignmentId the course assignment ID
+     * @return list of created or existing folders
+     */
+    List<Folder> createCourseFoldersForAssignment(Long assignmentId);
     
     // Required Document Types
     RequiredDocumentType addRequiredDocumentType(Long courseId, RequiredDocumentTypeDTO dto);

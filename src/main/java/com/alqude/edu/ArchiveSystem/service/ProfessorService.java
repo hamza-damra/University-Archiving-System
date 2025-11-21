@@ -108,4 +108,16 @@ public interface ProfessorService {
      * @return Dashboard overview with statistics
      */
     ProfessorDashboardOverview getProfessorDashboardOverview(Long professorId, Long semesterId);
+    
+    /**
+     * Manually create professor folder for a specific academic year and semester.
+     * This is idempotent - returns existing folder if already created.
+     * Only accessible by Deanship role.
+     * 
+     * @param professorId Professor user ID
+     * @param academicYearId Academic year ID
+     * @param semesterId Semester ID
+     * @return Created or existing folder
+     */
+    com.alqude.edu.ArchiveSystem.entity.Folder createProfessorFolder(Long professorId, Long academicYearId, Long semesterId);
 }

@@ -101,19 +101,25 @@ class FileExplorerControllerIntegrationTest {
         hodUser = createUser("hod.fe@alquds.edu", Role.ROLE_HOD, department1);
         professorUser = createUser("prof.fe@alquds.edu", Role.ROLE_PROFESSOR, department1);
 
-        // Create academic year and semester
-        academicYear = new AcademicYear();
-        academicYear.setYearCode("2024-2025");
-        academicYear.setStartYear(2024);
-        academicYear.setEndYear(2025);
-        academicYear = academicYearRepository.saveAndFlush(academicYear);
+        // Create or find academic year and semester
+        academicYear = academicYearRepository.findByYearCode("2024-2025")
+                .orElseGet(() -> {
+                    AcademicYear year = new AcademicYear();
+                    year.setYearCode("2024-2025");
+                    year.setStartYear(2024);
+                    year.setEndYear(2025);
+                    return academicYearRepository.saveAndFlush(year);
+                });
 
-        semester = new Semester();
-        semester.setAcademicYear(academicYear);
-        semester.setType(SemesterType.FIRST);
-        semester.setStartDate(LocalDate.of(2024, 9, 1));
-        semester.setEndDate(LocalDate.of(2025, 1, 31));
-        semester = semesterRepository.saveAndFlush(semester);
+        semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), SemesterType.FIRST)
+                .orElseGet(() -> {
+                    Semester sem = new Semester();
+                    sem.setAcademicYear(academicYear);
+                    sem.setType(SemesterType.FIRST);
+                    sem.setStartDate(LocalDate.of(2024, 9, 1));
+                    sem.setEndDate(LocalDate.of(2025, 1, 31));
+                    return semesterRepository.saveAndFlush(sem);
+                });
 
         // Login users
         deanshipCookie = loginUser("deanship.fe@alquds.edu", "Test123!");
@@ -249,11 +255,141 @@ class FileExplorerControllerIntegrationTest {
     }
 
     /**
+     * Test: Refresh endpoint returns updated tree structure
+     * Requirement: 3.1, 3.2
+     */
+    @Test
+    @Order(4)
+    @DisplayName("Refresh endpoint should return updated file explorer tree")
+    void testRefreshEndpointReturnsUpdatedTree() throws Exception {
+        // Create initial professor
+        User prof1 = createUser("prof7.fe@alquds.edu", Role.ROLE_PROFESSOR, department1);
+        Course course1 = createCourse("CS401", "Course 7", department1);
+        createCourseAssignment(semester, course1, prof1);
+
+        // Get initial root node
+        MvcResult initialResult = mockMvc.perform(get("/api/file-explorer/root")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .param("semesterId", semester.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andReturn();
+
+        String initialResponse = initialResult.getResponse().getContentAsString();
+        assertThat(initialResponse).contains(prof1.getProfessorId());
+
+        // Create another professor
+        User prof2 = createUser("prof8.fe@alquds.edu", Role.ROLE_PROFESSOR, department1);
+        Course course2 = createCourse("CS402", "Course 8", department1);
+        createCourseAssignment(semester, course2, prof2);
+
+        // Call refresh endpoint
+        MvcResult refreshResult = mockMvc.perform(post("/api/file-explorer/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .param("semesterId", semester.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").value("File explorer refreshed successfully"))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andReturn();
+
+        // Verify both professors are now visible
+        String refreshResponse = refreshResult.getResponse().getContentAsString();
+        assertThat(refreshResponse).contains(prof1.getProfessorId());
+        assertThat(refreshResponse).contains(prof2.getProfessorId());
+
+        // Clean up
+        userRepository.delete(prof1);
+        userRepository.delete(prof2);
+    }
+
+    /**
+     * Test: Node endpoint returns empty children for empty folders
+     * Requirement: 3.2, 3.5
+     */
+    @Test
+    @Order(5)
+    @DisplayName("Node endpoint should return empty children array for empty folders")
+    void testNodeEndpointReturnsEmptyChildrenForEmptyFolders() throws Exception {
+        // Create professor with no courses
+        User prof = createUser("prof9.fe@alquds.edu", Role.ROLE_PROFESSOR, department1);
+
+        // Get professor node (should have no course children)
+        String professorPath = "/" + academicYear.getYearCode() + "/" + 
+                              semester.getType().name().toLowerCase() + "/" + 
+                              prof.getProfessorId();
+
+        MvcResult result = mockMvc.perform(get("/api/file-explorer/node")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("path", professorPath))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.children").isArray())
+                .andExpect(jsonPath("$.data.children").isEmpty())
+                .andReturn();
+
+        // Clean up
+        userRepository.delete(prof);
+    }
+
+    /**
+     * Test: Node endpoint handles non-existent paths properly
+     * Requirement: 3.2
+     */
+    @Test
+    @Order(6)
+    @DisplayName("Node endpoint should return 404 for non-existent paths")
+    void testNodeEndpointHandlesNonExistentPaths() throws Exception {
+        String nonExistentPath = "/" + academicYear.getYearCode() + "/" + 
+                                semester.getType().name().toLowerCase() + "/NONEXISTENT";
+
+        mockMvc.perform(get("/api/file-explorer/node")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("path", nonExistentPath))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").exists());
+    }
+
+    /**
+     * Test: API responses include consistent metadata
+     * Requirement: 3.5
+     */
+    @Test
+    @Order(7)
+    @DisplayName("API responses should include consistent metadata")
+    void testApiResponsesIncludeConsistentMetadata() throws Exception {
+        // Test root endpoint
+        mockMvc.perform(get("/api/file-explorer/root")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .param("semesterId", semester.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.data").exists());
+
+        // Test refresh endpoint
+        mockMvc.perform(post("/api/file-explorer/refresh")
+                        .cookie(new jakarta.servlet.http.Cookie("ARCHIVESESSION", deanshipCookie))
+                        .param("academicYearId", academicYear.getId().toString())
+                        .param("semesterId", semester.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.message").exists())
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.data").exists());
+    }
+
+    /**
      * Test: File download enforces permissions
      * Requirement: 5.5
      */
     @Test
-    @Order(4)
+    @Order(8)
     @DisplayName("File download should enforce role-based permissions")
     void testFileDownloadEnforcesPermissions() throws Exception {
         // Create professor in department2

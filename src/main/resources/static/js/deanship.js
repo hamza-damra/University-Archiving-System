@@ -6,6 +6,7 @@
 import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
 import { showToast, showModal, showConfirm, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
+import { fileExplorerState } from './file-explorer-state.js';
 
 // State
 let currentTab = 'academic-years';
@@ -202,6 +203,18 @@ function switchTab(tabName) {
  * Handle context change (academic year or semester)
  */
 function onContextChange() {
+    // Update FileExplorerState with new context
+    if (selectedAcademicYearId && selectedSemesterId) {
+        const semester = semesters.find(s => s.id === selectedSemesterId);
+        fileExplorerState.setContext(
+            selectedAcademicYearId,
+            selectedSemesterId,
+            selectedAcademicYear?.yearCode || '',
+            semester?.type || ''
+        );
+    }
+    
+    // Reload tab data if needed
     if (currentTab === 'assignments' || currentTab === 'reports' || currentTab === 'file-explorer') {
         loadTabData(currentTab);
     }
@@ -955,6 +968,12 @@ async function handleCreateProfessor(closeModal) {
         showToast('Professor created successfully', 'success');
         closeModal();
         loadProfessors();
+        
+        // Refresh File Explorer if on file-explorer tab and context is set
+        if (currentTab === 'file-explorer' && fileExplorerState.hasContext() && fileExplorerInstance) {
+            await fileExplorerInstance.loadRoot(selectedAcademicYearId, selectedSemesterId, true);
+            showToast('Professor folder created', 'info');
+        }
     } catch (error) {
         console.error('Error creating professor:', error);
         const errorMessage = getErrorMessage(error);
@@ -1677,6 +1696,12 @@ async function handleCreateAssignment(semesterId, closeModal) {
         showToast('Course assigned successfully', 'success');
         closeModal();
         loadAssignments();
+        
+        // Refresh File Explorer if on file-explorer tab and context is set
+        if (currentTab === 'file-explorer' && fileExplorerState.hasContext() && fileExplorerInstance) {
+            await fileExplorerInstance.loadRoot(selectedAcademicYearId, selectedSemesterId, true);
+            showToast('Course folders created', 'info');
+        }
     } catch (error) {
         console.error('Error creating assignment:', error);
         showToast(getErrorMessage(error), 'error');
@@ -1871,6 +1896,15 @@ async function loadFileExplorer() {
     }
 
     try {
+        // Update FileExplorerState context
+        const semester = semesters.find(s => s.id === selectedSemesterId);
+        fileExplorerState.setContext(
+            selectedAcademicYearId,
+            selectedSemesterId,
+            selectedAcademicYear?.yearCode || '',
+            semester?.type || ''
+        );
+        
         // Check if we have existing content to decide on background update
         const container = document.getElementById('fileExplorerContainer');
         const hasContent = container && container.querySelector('#fileExplorerTree') &&

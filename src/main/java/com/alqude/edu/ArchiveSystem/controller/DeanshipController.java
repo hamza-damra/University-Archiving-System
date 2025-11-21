@@ -275,6 +275,38 @@ public class DeanshipController {
         }
     }
     
+    /**
+     * Manually create professor folder for a specific academic year and semester.
+     * This endpoint allows Deanship to create professor folders on demand.
+     * The operation is idempotent - returns existing folder if already created.
+     * 
+     * @param id Professor ID
+     * @param academicYearId Academic year ID (query parameter)
+     * @param semesterId Semester ID (query parameter)
+     * @return Created or existing folder information
+     */
+    @PostMapping("/professors/{id}/create-folder")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.Folder>> createProfessorFolder(
+            @PathVariable Long id,
+            @RequestParam Long academicYearId,
+            @RequestParam Long semesterId) {
+        
+        log.info("Deanship creating folder for professor ID: {}, academic year ID: {}, semester ID: {}", 
+                id, academicYearId, semesterId);
+        
+        try {
+            com.alqude.edu.ArchiveSystem.entity.Folder folder = professorService.createProfessorFolder(
+                    id, academicYearId, semesterId);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Professor folder created successfully", folder));
+        } catch (Exception e) {
+            log.error("Error creating professor folder for professor ID: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
     // ==================== Course Management ====================
     
     /**
@@ -447,6 +479,32 @@ public class DeanshipController {
             log.error("Error retrieving course assignments", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to retrieve course assignments: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Manually create course folder structure for an existing assignment.
+     * This endpoint allows Deanship to create course folders on demand.
+     * The operation is idempotent - returns existing folders if already created.
+     * 
+     * @param id Course assignment ID
+     * @return List of created or existing folders
+     */
+    @PostMapping("/course-assignments/{id}/create-folders")
+    @PreAuthorize("hasRole('DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Folder>>> createCourseFolders(
+            @PathVariable Long id) {
+        
+        log.info("Deanship creating course folders for assignment ID: {}", id);
+        
+        try {
+            List<com.alqude.edu.ArchiveSystem.entity.Folder> folders = courseService.createCourseFoldersForAssignment(id);
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(ApiResponse.success("Course folders created successfully", folders));
+        } catch (Exception e) {
+            log.error("Error creating course folders for assignment ID: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
     

@@ -1477,11 +1477,53 @@ window.viewSubmissionFiles = async (submissionId) => {
     }
 };
 
+// Helper to extract filename from Content-Disposition header
+function extractFilenameFromContentDisposition(contentDisposition, fallbackName = 'download') {
+    let filename = fallbackName;
+
+    if (!contentDisposition) {
+        return filename;
+    }
+
+    // Pattern 1: filename="example.pdf"
+    let match = /filename="([^"]+)"/i.exec(contentDisposition);
+
+    // Pattern 2: filename=example.pdf (no quotes)
+    if (!match) {
+        match = /filename=([^;]+)/i.exec(contentDisposition);
+    }
+
+    // Pattern 3: filename*=UTF-8''example.pdf (RFC 5987)
+    if (!match) {
+        match = /filename\*=UTF-8''([^;]+)/i.exec(contentDisposition);
+    }
+
+    if (match && match[1]) {
+        filename = match[1].trim().replace(/['"]/g, '');
+        try {
+            filename = decodeURIComponent(filename);
+        } catch (e) {
+            console.warn('Failed to decode filename from header:', e);
+        }
+    }
+
+    return filename;
+}
+
 // Download submission file
-window.downloadSubmissionFile = async (fileId, filename) => {
+window.downloadSubmissionFile = async (fileId, fallbackName) => {
     try {
         showToast('Downloading file...', 'info');
         const response = await professor.downloadSubmissionFile(fileId);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to download file');
+        }
+
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const filename = extractFilenameFromContentDisposition(contentDisposition, fallbackName || 'download');
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1918,11 +1960,21 @@ window.navigateToPath = (path) => {
 // The FileExplorer class provides all rendering, navigation, and role-specific
 // label functionality based on the configuration set in initializeFileExplorer().
 
-// Download file from explorer
-window.downloadFileFromExplorer = async (fileId, filename) => {
+// Download file from explorer (Professor dashboard)
+window.downloadFileFromExplorer = async (fileId, fallbackName) => {
     try {
         showToast('Downloading file...', 'info');
-        const response = await professor.downloadSubmissionFile(fileId);
+        // For professor file explorer, files are served by /api/file-explorer/... endpoint
+        const response = await fileExplorer.downloadFile(fileId);
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Failed to download file');
+        }
+
+        const contentDisposition = response.headers.get('Content-Disposition');
+        const filename = extractFilenameFromContentDisposition(contentDisposition, fallbackName || 'download');
+
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');

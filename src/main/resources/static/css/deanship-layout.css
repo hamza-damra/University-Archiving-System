@@ -13,17 +13,17 @@
     --font-size-xl: 20px;
     --font-size-2xl: 24px;
     --font-size-3xl: 30px;
-    
+
     --line-height-base: 1.5;
     --line-height-tight: 1.25;
     --line-height-relaxed: 1.75;
-    
+
     /* Font Weights */
     --font-weight-normal: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    
+
     /* Spacing Scale */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
@@ -31,41 +31,37 @@
     --spacing-lg: 24px;
     --spacing-xl: 32px;
     --spacing-2xl: 48px;
-    
-    /* Colors - WCAG AA Compliant (4.5:1 minimum for normal text) */
-    --color-primary: #3b82f6;
-    --color-primary-dark: #2563eb;
-    --color-primary-light: #60a5fa;
-    
-    --color-secondary: #6b7280;
-    --color-secondary-dark: #4b5563;
-    --color-secondary-light: #9ca3af;
-    
-    --color-success: #10b981;
-    --color-warning: #f59e0b;
-    --color-danger: #ef4444;
-    --color-info: #3b82f6;
-    
-    /* Text colors with WCAG AA contrast ratios on white background:
-       - text-primary (#111827): 16.1:1 (AAA)
-       - text-secondary (#6b7280): 5.4:1 (AA)
-       - text-muted (#9ca3af): 3.5:1 (AA Large text only) */
-    --color-text-primary: #111827;
-    --color-text-secondary: #6b7280;
-    --color-text-muted: #9ca3af;
-    
-    --color-bg-primary: #ffffff;
-    --color-bg-secondary: #f9fafb;
-    --color-bg-tertiary: #f3f4f6;
-    
-    --color-border: #e5e7eb;
-    --color-border-light: #f3f4f6;
-    
+
+    /* Colors - Mapped to common.css theme variables */
+    --color-primary: var(--accent-blue);
+    --color-primary-dark: var(--accent-blue-hover);
+    --color-primary-light: var(--accent-blue-light);
+
+    --color-secondary: var(--text-secondary);
+    --color-secondary-dark: var(--text-tertiary);
+    --color-secondary-light: var(--text-tertiary);
+
+    --color-success: var(--status-success-text);
+    --color-warning: var(--status-warning-text);
+    --color-danger: var(--status-danger-text);
+    --color-info: var(--status-info-text);
+
+    --color-text-primary: var(--text-primary);
+    --color-text-secondary: var(--text-secondary);
+    --color-text-muted: var(--text-tertiary);
+
+    --color-bg-primary: var(--bg-primary);
+    --color-bg-secondary: var(--bg-secondary);
+    --color-bg-tertiary: var(--bg-tertiary);
+
+    --color-border: var(--border-primary);
+    --color-border-light: var(--border-secondary);
+
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    
+    --shadow-sm: var(--shadow-sm);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+
     /* Border Radius */
     --radius-sm: 4px;
     --radius-md: 8px;
@@ -131,7 +127,7 @@ body {
 }
 
 .header-logout-btn:hover {
-    background-color: #dc2626;
+    background-color: var(--status-danger-text);
 }
 
 /* ===== Navigation ===== */
@@ -228,21 +224,26 @@ body {
 
 /* ===== Section Styles ===== */
 .section {
-    margin-bottom: 24px; /* Explicit 24px vertical spacing as per requirements */
+    margin-bottom: 24px;
+    /* Explicit 24px vertical spacing as per requirements */
 }
 
 .section-title {
-    font-size: 24px; /* Explicit 24px as per requirements */
-    font-weight: 700; /* Explicit 700 (bold) as per requirements */
+    font-size: 24px;
+    /* Explicit 24px as per requirements */
+    font-weight: 700;
+    /* Explicit 700 (bold) as per requirements */
     color: var(--color-text-primary);
-    margin-bottom: 24px; /* Explicit 24px spacing */
+    margin-bottom: 24px;
+    /* Explicit 24px spacing */
 }
 
 .section-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 24px; /* Explicit 24px spacing */
+    margin-bottom: 24px;
+    /* Explicit 24px spacing */
 }
 
 /* ===== Card Styles ===== */
@@ -250,14 +251,17 @@ body {
     background-color: var(--color-bg-primary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    padding: 24px; /* Explicit 24px padding as per requirements */
+    padding: 24px;
+    /* Explicit 24px padding as per requirements */
     box-shadow: var(--shadow-sm);
     margin-bottom: var(--spacing-lg);
 }
 
 .card-title {
-    font-size: 20px; /* Explicit 20px as per requirements */
-    font-weight: 600; /* Explicit 600 as per requirements */
+    font-size: 20px;
+    /* Explicit 20px as per requirements */
+    font-weight: 600;
+    /* Explicit 600 as per requirements */
     color: var(--color-text-primary);
     margin-bottom: var(--spacing-md);
 }
@@ -272,7 +276,8 @@ body {
     background-color: var(--color-bg-primary);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
-    padding: 24px; /* Explicit 24px padding */
+    padding: 24px;
+    /* Explicit 24px padding */
     box-shadow: var(--shadow-md);
     transition: transform 0.2s, box-shadow 0.2s;
     display: flex;
@@ -292,8 +297,10 @@ body {
 }
 
 .dashboard-card-title {
-    font-size: 20px; /* Explicit 20px as per requirements */
-    font-weight: 600; /* Explicit 600 as per requirements */
+    font-size: 20px;
+    /* Explicit 20px as per requirements */
+    font-weight: 600;
+    /* Explicit 600 as per requirements */
     color: var(--color-text-primary);
     margin-bottom: var(--spacing-sm);
 }
@@ -314,19 +321,22 @@ body {
 
 .dashboard-card-button {
     width: 100%;
-    min-height: 40px; /* Explicit 40px minimum height */
+    min-height: 40px;
+    /* Explicit 40px minimum height */
 }
 
 /* ===== Button Styles ===== */
 .btn {
     padding: var(--spacing-sm) var(--spacing-lg);
-    font-size: 16px; /* Explicit 16px base font size */
+    font-size: 16px;
+    /* Explicit 16px base font size */
     font-weight: var(--font-weight-medium);
     border-radius: var(--radius-md);
     border: none;
     cursor: pointer;
     transition: all 0.2s;
-    min-height: 40px; /* Explicit 40px minimum height as per requirements */
+    min-height: 40px;
+    /* Explicit 40px minimum height as per requirements */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -363,7 +373,7 @@ body {
 }
 
 .btn-success:hover {
-    background-color: #059669;
+    background-color: var(--status-success-text);
 }
 
 .btn-danger {
@@ -372,7 +382,7 @@ body {
 }
 
 .btn-danger:hover {
-    background-color: #dc2626;
+    background-color: var(--status-danger-text);
 }
 
 .btn-outline {
@@ -394,7 +404,8 @@ body {
 
 /* Action buttons - prominent styling */
 .btn-action {
-    min-height: 40px; /* Explicit 40px minimum height */
+    min-height: 40px;
+    /* Explicit 40px minimum height */
     font-weight: var(--font-weight-semibold);
     box-shadow: var(--shadow-sm);
 }
@@ -425,24 +436,30 @@ body {
 .data-table th {
     padding: var(--spacing-md);
     text-align: left;
-    font-size: 18px; /* Explicit 18px as per requirements */
-    font-weight: 600; /* Explicit 600 as per requirements */
+    font-size: 18px;
+    /* Explicit 18px as per requirements */
+    font-weight: 600;
+    /* Explicit 600 as per requirements */
     color: var(--color-text-primary);
     border-bottom: 2px solid var(--color-border);
-    height: 56px; /* Explicit minimum height */
+    height: 56px;
+    /* Explicit minimum height */
 }
 
 .data-table td {
     padding: var(--spacing-md);
-    font-size: 16px; /* Explicit 16px base font size */
+    font-size: 16px;
+    /* Explicit 16px base font size */
     color: var(--color-text-secondary);
     border-bottom: 1px solid var(--color-border-light);
-    height: 56px; /* Explicit minimum 56px height as per requirements */
+    height: 56px;
+    /* Explicit minimum 56px height as per requirements */
 }
 
 .data-table tbody tr {
     transition: background-color 0.15s;
-    height: 56px; /* Explicit minimum 56px height as per requirements */
+    height: 56px;
+    /* Explicit minimum 56px height as per requirements */
 }
 
 .data-table tbody tr:hover {
@@ -559,14 +576,19 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===== Context Message ===== */
 .context-message {
-    background-color: #fef3c7;
-    border: 1px solid #fbbf24;
+    background-color: var(--status-warning-bg);
+    border: 1px solid var(--status-warning-text);
     border-radius: var(--radius-md);
     padding: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
@@ -576,13 +598,13 @@ body {
 }
 
 .context-message-icon {
-    color: #f59e0b;
+    color: var(--status-warning-text);
     font-size: var(--font-size-xl);
 }
 
 .context-message-text {
     font-size: var(--font-size-md);
-    color: #92400e;
+    color: var(--status-warning-text);
 }
 
 /* ===== Responsive Design ===== */
@@ -590,20 +612,24 @@ body {
 @media (max-width: 1366px) {
     #page-content {
         padding: var(--spacing-md);
-        overflow-x: auto; /* Enable horizontal scrolling if content is wider */
+        overflow-x: auto;
+        /* Enable horizontal scrolling if content is wider */
     }
-    
+
     .deanship-nav {
         overflow-x: auto;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on touch devices */
+        -webkit-overflow-scrolling: touch;
+        /* Smooth scrolling on touch devices */
     }
-    
+
     .table-wrapper {
-        overflow-x: auto; /* Enable horizontal scrolling for wide tables */
+        overflow-x: auto;
+        /* Enable horizontal scrolling for wide tables */
     }
-    
+
     .data-table {
-        min-width: 800px; /* Ensure table maintains readable width */
+        min-width: 800px;
+        /* Ensure table maintains readable width */
     }
 }
 
@@ -613,26 +639,27 @@ body {
         gap: var(--spacing-md);
         align-items: flex-start;
     }
-    
+
     .deanship-filters {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .filter-select {
         width: 100%;
     }
-    
+
     .search-filter-bar {
         flex-direction: column;
     }
-    
+
     .search-input {
         width: 100%;
     }
-    
+
     .data-table {
-        min-width: 600px; /* Smaller minimum width for mobile */
+        min-width: 600px;
+        /* Smaller minimum width for mobile */
     }
 }
 

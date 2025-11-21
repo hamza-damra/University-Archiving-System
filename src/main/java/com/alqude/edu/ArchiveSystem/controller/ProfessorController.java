@@ -7,6 +7,7 @@ import com.alqude.edu.ArchiveSystem.dto.common.SubmittedDocumentResponse;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.entity.SubmittedDocument;
 import com.alqude.edu.ArchiveSystem.repository.FileAttachmentRepository;
+import com.alqude.edu.ArchiveSystem.repository.SubmittedDocumentRepository;
 import com.alqude.edu.ArchiveSystem.service.AcademicService;
 import com.alqude.edu.ArchiveSystem.service.AuthService;
 import com.alqude.edu.ArchiveSystem.service.DocumentRequestService;
@@ -113,6 +114,7 @@ public class ProfessorController {
     private final FileUploadService fileUploadService;
     private final MultiFileUploadService multiFileUploadService;
     private final FileAttachmentRepository fileAttachmentRepository;
+    private final SubmittedDocumentRepository submittedDocumentRepository;
     private final AuthService authService;
     private final NotificationService notificationService;
     private final ProfessorService professorService;
@@ -874,12 +876,23 @@ public class ProfessorController {
             // Load file as resource
             Resource resource = fileService.loadFileAsResource(uploadedFile.getFileUrl());
             
+            // Build Content-Disposition header with proper filename encoding
+            // Use both filename and filename* (RFC 5987) for better browser compatibility
+            String originalFilename = uploadedFile.getOriginalFilename();
+            String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20"); // Replace + with %20 for spaces
+            
+            String contentDisposition = String.format(
+                    "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+                    originalFilename,
+                    encodedFilename
+            );
+            
             log.info("Successfully served file {} ({} bytes) to professor {}", 
                     uploadedFile.getOriginalFilename(), uploadedFile.getFileSize(), currentUser.getId());
             
             return ResponseEntity.ok()
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                            "attachment; filename=\"" + uploadedFile.getOriginalFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                     .contentType(Objects.requireNonNull(MediaType.APPLICATION_OCTET_STREAM))
                     .body(resource);
         } catch (Exception e) {
@@ -1128,9 +1141,20 @@ public class ProfessorController {
         
         ByteArrayResource resource = new ByteArrayResource(fileData);
         
+        // Build Content-Disposition header with proper filename encoding
+        // Use both filename and filename* (RFC 5987) for better browser compatibility
+        String originalFilename = attachment.getOriginalFilename();
+        String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
+                .replace("+", "%20"); // Replace + with %20 for spaces
+        
+        String contentDisposition = String.format(
+                "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+                originalFilename,
+                encodedFilename
+        );
+        
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
-                        "attachment; filename=\"" + attachment.getOriginalFilename() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_OCTET_STREAM))
                 .contentLength(fileData.length)
                 .body(resource);
@@ -1176,12 +1200,29 @@ public class ProfessorController {
             throw new IllegalStateException("File data is null for document id: " + documentId);
         }
         
-        // Get document info for proper filename and content type
-        // For now, we'll use a generic approach
+        // Get document info for proper filename
+        SubmittedDocument document = submittedDocumentRepository.findById(documentId)
+                .orElseThrow(() -> new IllegalArgumentException("Document not found with id: " + documentId));
         ByteArrayResource resource = new ByteArrayResource(fileData);
         
+        // Build Content-Disposition header with proper filename encoding
+        // Use both filename and filename* (RFC 5987) for better browser compatibility
+        String originalFilename = document.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            originalFilename = "document_" + documentId;
+        }
+        
+        String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
+                .replace("+", "%20"); // Replace + with %20 for spaces
+        
+        String contentDisposition = String.format(
+                "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+                originalFilename,
+                encodedFilename
+        );
+        
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"document_" + documentId + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .contentType(Objects.requireNonNull(MediaType.APPLICATION_OCTET_STREAM))
                 .contentLength(fileData.length)
                 .body(resource);

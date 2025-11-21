@@ -830,6 +830,12 @@ export class FileExplorer {
         // Check for uploaded files in the files array (from Task 26 backend enhancement)
         const uploadedFiles = node.files || [];
         
+        // Debug: Log file data structure
+        if (uploadedFiles.length > 0) {
+            console.log('📁 Files found:', uploadedFiles.length);
+            console.log('📄 First file structure:', uploadedFiles[0]);
+        }
+        
         // Combine files from both sources
         const allFiles = [...filesFromChildren, ...uploadedFiles];
 
@@ -964,10 +970,27 @@ export class FileExplorer {
      * });
      */
     renderFileCard(file) {
-        const metadata = file.metadata || {};
+        // Support both old format (file.metadata) and new format (direct properties from UploadedFileDTO)
+        const fileId = file.id || (file.metadata && file.metadata.fileId);
+        const fileName = file.originalFilename || file.name || 'Unknown';
+        const fileSize = file.fileSize || (file.metadata && file.metadata.fileSize);
+        const uploadedAt = file.uploadedAt || (file.metadata && file.metadata.uploadedAt);
+        const uploaderName = file.uploaderName || (file.metadata && file.metadata.uploaderName);
+        const notes = file.notes || (file.metadata && file.metadata.notes);
+        const fileType = file.fileType || (file.metadata && file.metadata.fileType) || '';
+        
+        // Debug: Log extracted values
+        console.log('🔍 Rendering file card:', {
+            fileId,
+            fileName,
+            fileSize,
+            uploadedAt,
+            uploaderName,
+            rawFile: file
+        });
+        
         const canDownload = file.canRead !== false;
         const canView = file.canRead !== false;
-        const fileType = metadata.fileType || '';
         const fileIconClass = this.getFileIconClass(fileType);
 
         return `
@@ -980,10 +1003,10 @@ export class FileExplorer {
                             </svg>
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">${this.escapeHtml(file.name)}</span>
-                            ${metadata.notes ? `
-                                <span class="text-xs text-gray-500 mt-1" title="${this.escapeHtml(metadata.notes)}">
-                                    ${this.escapeHtml(metadata.notes.length > 50 ? metadata.notes.substring(0, 50) + '...' : metadata.notes)}
+                            <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">${this.escapeHtml(fileName)}</span>
+                            ${notes ? `
+                                <span class="text-xs text-gray-500 mt-1" title="${this.escapeHtml(notes)}">
+                                    ${this.escapeHtml(notes.length > 50 ? notes.substring(0, 50) + '...' : notes)}
                                 </span>
                             ` : ''}
                         </div>
@@ -991,24 +1014,24 @@ export class FileExplorer {
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                        ${metadata.fileSize ? this.formatFileSize(metadata.fileSize) : '-'}
+                        ${fileSize ? this.formatFileSize(fileSize) : '-'}
                     </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                        ${metadata.uploadedAt ? formatDate(metadata.uploadedAt) : '-'}
+                        ${uploadedAt ? formatDate(uploadedAt) : '-'}
                     </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
                     <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                        ${metadata.uploaderName ? this.escapeHtml(metadata.uploaderName) : '-'}
+                        ${uploaderName ? this.escapeHtml(uploaderName) : '-'}
                     </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex items-center justify-end space-x-2">
-                        ${canView ? `
+                        ${canView && fileId ? `
                             <button 
-                                onclick="window.fileExplorerInstance.handleFileView(${metadata.fileId})"
+                                onclick="window.fileExplorerInstance.handleFileView(${fileId})"
                                 class="text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-all"
                                 title="View file details"
                             >
@@ -1018,9 +1041,9 @@ export class FileExplorer {
                                 </svg>
                             </button>
                         ` : ''}
-                        ${canDownload ? `
+                        ${canDownload && fileId ? `
                             <button 
-                                onclick="window.fileExplorerInstance.handleFileDownload(${metadata.fileId})"
+                                onclick="window.fileExplorerInstance.handleFileDownload(${fileId})"
                                 class="download-button text-white bg-blue-600 hover:bg-blue-700 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
                                 title="Download file"
                             >
@@ -1028,9 +1051,10 @@ export class FileExplorer {
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                                 </svg>
                             </button>
-                        ` : `
+                        ` : ''}
+                        ${!fileId ? `
                             <span class="text-gray-400 text-xs px-2 py-1 bg-gray-100 rounded">No access</span>
-                        `}
+                        ` : ''}
                     </div>
                 </td>
             </tr>
@@ -1045,40 +1069,46 @@ export class FileExplorer {
      * Provides Download and Close buttons.
      * 
      * @param {number} fileId - The ID of the file to view
-     * @returns {Promise<void>}e details
+     * @returns {Promise<void>}
      */
     async handleFileView(fileId) {
         try {
             const response = await fileExplorer.getFileMetadata(fileId);
             const file = response.data || response;
 
-            const metadata = file.metadata || {};
+            // Extract uploader name from nested uploader object
+            const uploaderName = file.uploader ? 
+                ((file.uploader.firstName && file.uploader.lastName) ? 
+                    `${file.uploader.firstName} ${file.uploader.lastName}` : 
+                    (file.uploader.email || 'Unknown')) : 
+                'Unknown';
+
             const content = `
                 <div class="space-y-3">
                     <div>
                         <label class="text-sm font-medium text-gray-700">File Name:</label>
-                        <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(file.name || metadata.originalFilename || 'Unknown')}</p>
+                        <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(file.originalFilename || 'Unknown')}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-700">Size:</label>
-                        <p class="text-sm text-gray-900 mt-1">${metadata.fileSize ? this.formatFileSize(metadata.fileSize) : 'Unknown'}</p>
+                        <p class="text-sm text-gray-900 mt-1">${file.fileSize ? this.formatFileSize(file.fileSize) : 'Unknown'}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-700">Type:</label>
-                        <p class="text-sm text-gray-900 mt-1">${metadata.fileType || 'Unknown'}</p>
+                        <p class="text-sm text-gray-900 mt-1">${file.fileType || 'Unknown'}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-700">Uploaded:</label>
-                        <p class="text-sm text-gray-900 mt-1">${metadata.uploadedAt ? formatDate(metadata.uploadedAt) : 'Unknown'}</p>
+                        <p class="text-sm text-gray-900 mt-1">${file.createdAt ? formatDate(file.createdAt) : 'Unknown'}</p>
                     </div>
                     <div>
                         <label class="text-sm font-medium text-gray-700">Uploaded By:</label>
-                        <p class="text-sm text-gray-900 mt-1">${metadata.uploaderName || 'Unknown'}</p>
+                        <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(uploaderName)}</p>
                     </div>
-                    ${metadata.notes ? `
+                    ${file.notes ? `
                         <div>
                             <label class="text-sm font-medium text-gray-700">Notes:</label>
-                            <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(metadata.notes)}</p>
+                            <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(file.notes)}</p>
                         </div>
                     ` : ''}
                 </div>
@@ -1128,9 +1158,6 @@ export class FileExplorer {
      * @returns {Promise<void>}
      */
     async handleFileDownload(fileId) {
-        // Show loading toast
-        const loadingToast = showToast('Preparing download...', 'info', 30000);
-
         try {
             const response = await fileExplorer.downloadFile(fileId);
 
@@ -1144,17 +1171,39 @@ export class FileExplorer {
             let filename = 'download';
 
             if (contentDisposition) {
-                // Try to extract filename from Content-Disposition header
-                const filenameMatch = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
-                if (filenameMatch != null && filenameMatch[1]) {
-                    filename = filenameMatch[1].replace(/['"]/g, '');
-                    // Decode URI component if needed
+                console.log('Content-Disposition header:', contentDisposition);
+                
+                // Try multiple patterns to extract filename from Content-Disposition header
+                // Pattern 1: filename="example.pdf"
+                let filenameMatch = /filename="([^"]+)"/.exec(contentDisposition);
+                
+                // Pattern 2: filename=example.pdf (without quotes)
+                if (!filenameMatch) {
+                    filenameMatch = /filename=([^;]+)/.exec(contentDisposition);
+                }
+                
+                // Pattern 3: filename*=UTF-8''example.pdf (RFC 5987)
+                if (!filenameMatch) {
+                    filenameMatch = /filename\*=UTF-8''([^;]+)/.exec(contentDisposition);
+                }
+
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].trim().replace(/['"]/g, '');
+                    console.log('Extracted filename:', filename);
+                    
+                    // Decode URI component if needed (for RFC 5987 format)
                     try {
                         filename = decodeURIComponent(filename);
+                        console.log('Decoded filename:', filename);
                     } catch (e) {
                         // Keep original filename if decode fails
+                        console.warn('Failed to decode filename:', e);
                     }
+                } else {
+                    console.warn('Could not extract filename from Content-Disposition header');
                 }
+            } else {
+                console.warn('No Content-Disposition header found');
             }
 
             // Get the blob
@@ -1177,19 +1226,11 @@ export class FileExplorer {
                 document.body.removeChild(a);
             }, 100);
 
-            // Remove loading toast and show success
-            if (loadingToast && loadingToast.remove) {
-                loadingToast.remove();
-            }
-            showToast(`File "${filename}" downloaded successfully`, 'success');
+            // Show success message
+            showToast(`File downloaded successfully`, 'success');
 
         } catch (error) {
             console.error('Error downloading file:', error);
-
-            // Remove loading toast
-            if (loadingToast && loadingToast.remove) {
-                loadingToast.remove();
-            }
 
             // Show error message
             const errorMessage = error.message || 'Failed to download file';
@@ -1949,7 +1990,7 @@ export class FileExplorer {
                     class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                     </svg>
                     Upload Files
                 </button>

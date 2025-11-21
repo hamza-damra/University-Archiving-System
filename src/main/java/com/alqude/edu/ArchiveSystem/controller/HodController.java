@@ -567,10 +567,21 @@ public class HodController {
                 contentType = "application/octet-stream";
             }
             
+            // Build Content-Disposition header with proper filename encoding
+            // Use both filename and filename* (RFC 5987) for better browser compatibility
+            String originalFilename = uploadedFile.getOriginalFilename();
+            String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
+                    .replace("+", "%20"); // Replace + with %20 for spaces
+            
+            String contentDisposition = String.format(
+                    "attachment; filename=\"%s\"; filename*=UTF-8''%s",
+                    originalFilename,
+                    encodedFilename
+            );
+            
             return ResponseEntity.ok()
                     .contentType(MediaType.parseMediaType(contentType))
-                    .header(HttpHeaders.CONTENT_DISPOSITION, 
-                            "attachment; filename=\"" + uploadedFile.getOriginalFilename() + "\"")
+                    .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                     .body(resource);
                     
         } catch (Exception e) {

@@ -5,6 +5,7 @@
 import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
+import { fileExplorerState } from './file-explorer-state.js';
 
 // Check authentication
 if (!isAuthenticated()) {
@@ -187,13 +188,32 @@ function switchTab(tabName) {
     if (tabName === 'submission-status' && selectedSemester) {
         loadSubmissionStatus();
     } else if (tabName === 'file-explorer') {
-        // Initialize file explorer if not already initialized
-        if (!fileExplorerInstance) {
-            initializeFileExplorer();
-        }
-        // Load data if semester is selected
-        if (selectedSemester) {
+        if (selectedAcademicYear && selectedSemester) {
+            // Initialize file explorer if not already initialized
+            if (!fileExplorerInstance) {
+                initializeFileExplorer();
+            }
+            // Update breadcrumbs to show current semester
+            const selectedYear = academicYears.find(y => y.id === selectedAcademicYear);
+            const semester = semesters.find(s => s.id === selectedSemester);
+            const fileExplorerContainer = document.getElementById('hodFileExplorer');
+            const breadcrumbs = fileExplorerContainer?.querySelector('.breadcrumbs');
+            if (selectedYear && semester && breadcrumbs) {
+                const semesterText = `${selectedYear.yearCode} - ${formatSemesterName(semester.type)}`;
+                breadcrumbs.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-gray-700 font-medium">${semesterText}</span>
+                `;
+            }
+            // Load data
             loadFileExplorerData();
+        } else {
+            const fileExplorerContainer = document.getElementById('hodFileExplorer');
+            if (fileExplorerContainer) {
+                fileExplorerContainer.innerHTML = '<p class="text-gray-500 text-center py-8">Please select a semester to view files</p>';
+            }
         }
     }
 }
@@ -301,7 +321,26 @@ academicYearSelect.addEventListener('change', async (e) => {
 semesterSelect.addEventListener('change', async (e) => {
     selectedSemester = parseInt(e.target.value);
     if (selectedSemester) {
+        // Update FileExplorerState with new context
+        const selectedYear = academicYears.find(y => y.id === selectedAcademicYear);
+        const semester = semesters.find(s => s.id === selectedSemester);
+        
+        if (selectedYear && semester) {
+            fileExplorerState.setContext(
+                selectedAcademicYear,
+                selectedSemester,
+                selectedYear.yearCode,
+                semester.type
+            );
+        }
+        
         await loadDashboardData();
+        
+        // Trigger File Explorer reload if on file-explorer tab
+        const activeTab = document.querySelector('.tab-content:not(.hidden)');
+        if (activeTab && activeTab.id === 'file-explorer-tab') {
+            loadFileExplorerData();
+        }
     }
 });
 

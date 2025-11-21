@@ -17,11 +17,13 @@ import java.util.List;
 /**
  * LEGACY ENTITY - ARCHIVED
  * 
- * This entity is part of the old request-based document system and has been replaced
+ * This entity is part of the old request-based document system and has been
+ * replaced
  * by the new semester-based DocumentSubmission entity.
  * 
  * Replacement entity:
- * - DocumentSubmission: Tracks document submissions within the semester-based structure
+ * - DocumentSubmission: Tracks document submissions within the semester-based
+ * structure
  * 
  * This entity is kept for:
  * 1. Historical data access
@@ -40,18 +42,18 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubmittedDocument {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @JsonBackReference
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id", nullable = false)
     private DocumentRequest documentRequest;
-    
-        @ManyToOne(fetch = FetchType.LAZY)
-        @JsonIgnoreProperties({
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonIgnoreProperties({
             "documentRequests",
             "submittedDocuments",
             "notifications",
@@ -63,65 +65,67 @@ public class SubmittedDocument {
             "accountNonExpired",
             "accountNonLocked",
             "credentialsNonExpired"
-        })
+    })
     @JoinColumn(name = "professor_id", nullable = false)
     private User professor;
-    
+
     // Legacy single file fields (kept for backward compatibility)
     @Column(name = "file_url")
     private String fileUrl;
-    
+
     @Column(name = "original_filename")
     private String originalFilename;
-    
+
     @Column(name = "file_size")
     private Long fileSize;
-    
+
     @Column(name = "file_type")
     private String fileType;
-    
+
     // New multi-file support
     @JsonManagedReference
     @OneToMany(mappedBy = "submittedDocument", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @OrderBy("fileOrder ASC")
     private List<FileAttachment> fileAttachments = new ArrayList<>();
-    
+
     @Column(name = "total_file_size")
     private Long totalFileSize;
-    
+
     @Column(name = "file_count")
     private Integer fileCount = 0;
-    
+
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
-    
+
     @Column(name = "is_late_submission", nullable = false)
     private Boolean isLateSubmission = false;
-    
+
     @Column(name = "notes", length = 1000)
     private String notes;
-    
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
-    
+
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
-    
+
     // Helper methods
+    @Deprecated
     public void addFileAttachment(FileAttachment attachment) {
         fileAttachments.add(attachment);
         attachment.setSubmittedDocument(this);
         updateFileCount();
     }
-    
+
+    @Deprecated
     public void removeFileAttachment(FileAttachment attachment) {
         fileAttachments.remove(attachment);
         attachment.setSubmittedDocument(null);
         updateFileCount();
     }
-    
+
     private void updateFileCount() {
         this.fileCount = fileAttachments.size();
         this.totalFileSize = fileAttachments.stream()

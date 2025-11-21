@@ -46,6 +46,9 @@ class CourseServiceTest {
     @Mock
     private DepartmentScopedFilterService departmentScopedFilterService;
 
+    @Mock
+    private FolderService folderService;
+
     @InjectMocks
     private CourseServiceImpl courseService;
 
@@ -62,10 +65,16 @@ class CourseServiceTest {
         department.setId(1L);
         department.setName("Computer Science");
 
+        // Setup academic year
+        AcademicYear academicYear = new AcademicYear();
+        academicYear.setId(1L);
+        academicYear.setYearCode("2024-2025");
+
         // Setup semester
         semester = new Semester();
         semester.setId(1L);
         semester.setType(SemesterType.FIRST);
+        semester.setAcademicYear(academicYear);
 
         // Setup course
         course = new Course();
@@ -321,5 +330,142 @@ class CourseServiceTest {
         // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
+    }
+
+    // ==================== Course Folder Auto-Creation Tests ====================
+
+    @Test
+    void testAssignCourse_CallsFolderServiceToCreateCourseFolders() {
+        // Arrange
+        AcademicYear academicYear = new AcademicYear();
+        academicYear.setId(1L);
+        academicYear.setYearCode("2024-2025");
+        semester.setAcademicYear(academicYear);
+
+        when(semesterRepository.findById(1L)).thenReturn(Optional.of(semester));
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(professor));
+        
+        CourseAssignment savedAssignment = new CourseAssignment();
+        savedAssignment.setId(1L);
+        savedAssignment.setSemester(semester);
+        savedAssignment.setCourse(course);
+        savedAssignment.setProfessor(professor);
+        savedAssignment.setIsActive(true);
+        
+        when(courseAssignmentRepository.save(any(CourseAssignment.class))).thenReturn(savedAssignment);
+
+        // Mock folder service to return empty list (folders created)
+        when(folderService.createCourseFolderStructure(anyLong(), anyLong(), anyLong(), anyLong()))
+            .thenReturn(List.of());
+
+        // Act
+        CourseAssignment result = courseService.assignCourse(courseAssignmentDTO);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        
+        // Verify that folder service was called with correct parameters
+        verify(folderService, times(1)).createCourseFolderStructure(
+            eq(1L),  // professorId
+            eq(1L),  // courseId
+            eq(1L),  // academicYearId
+            eq(1L)   // semesterId
+        );
+        verify(courseAssignmentRepository, times(1)).save(any(CourseAssignment.class));
+    }
+
+    @Test
+    void testAssignCourse_SucceedsEvenIfFolderCreationFails() {
+        // Arrange
+        AcademicYear academicYear = new AcademicYear();
+        academicYear.setId(1L);
+        academicYear.setYearCode("2024-2025");
+        semester.setAcademicYear(academicYear);
+
+        when(semesterRepository.findById(1L)).thenReturn(Optional.of(semester));
+        when(courseRepository.findById(1L)).thenReturn(Optional.of(course));
+        when(userRepository.findById(1L)).thenReturn(Optional.of(professor));
+        
+        CourseAssignment savedAssignment = new CourseAssignment();
+        savedAssignment.setId(1L);
+        savedAssignment.setSemester(semester);
+        savedAssignment.setCourse(course);
+        savedAssignment.setProfessor(professor);
+        savedAssignment.setIsActive(true);
+        
+        when(courseAssignmentRepository.save(any(CourseAssignment.class))).thenReturn(savedAssignment);
+
+        // Mock folder service to throw exception
+        when(folderService.createCourseFolderStructure(anyLong(), anyLong(), anyLong(), anyLong()))
+            .thenThrow(new RuntimeException("Folder creation failed"));
+
+        // Act
+        CourseAssignment result = courseService.assignCourse(courseAssignmentDTO);
+
+        // Assert - assignment should still be created successfully
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        assertEquals(semester, result.getSemester());
+        assertEquals(course, result.getCourse());
+        assertEquals(professor, result.getProfessor());
+        
+        // Verify that folder service was called
+        verify(folderService, times(1)).createCourseFolderStructure(anyLong(), anyLong(), anyLong(), anyLong());
+        verify(courseAssignmentRepository, times(1)).save(any(CourseAssignment.class));
+    }
+
+    @Test
+    void testCreateCourseFoldersForAssignment_CreatesCourseFolders() {
+        // Arrange
+        AcademicYear academicYear = new AcademicYear();
+        academicYear.setId(1L);
+        academicYear.setYearCode("2024-2025");
+        semester.setAcademicYear(academicYear);
+
+        CourseAssignment assignment = new CourseAssignment();
+        assignment.setId(1L);
+        assignment.setSemester(semester);
+        assignment.setCourse(course);
+        assignment.setProfessor(professor);
+
+        when(courseAssignmentRepository.findById(1L)).thenReturn(Optional.of(assignment));
+
+        Folder courseFolder = new Folder();
+        courseFolder.setId(1L);
+        courseFolder.setPath("2024-2025/first/PROF001/CS101 - Introduction to Programming");
+        courseFolder.setName("CS101 - Introduction to Programming");
+
+        when(folderService.createCourseFolderStructure(1L, 1L, 1L, 1L))
+            .thenReturn(List.of(courseFolder));
+
+        // Act
+        List<Folder> result = courseService.createCourseFoldersForAssignment(1L);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(courseFolder, result.get(0));
+        
+        verify(folderService, times(1)).createCourseFolderStructure(
+            eq(1L),  // professorId
+            eq(1L),  // courseId
+            eq(1L),  // academicYearId
+            eq(1L)   // semesterId
+        );
+    }
+
+    @Test
+    void testCreateCourseFoldersForAssignment_ThrowsExceptionWhenAssignmentNotFound() {
+        // Arrange
+        when(courseAssignmentRepository.findById(999L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(EntityNotFoundException.class, () -> {
+            courseService.createCourseFoldersForAssignment(999L);
+        });
+        
+        verify(folderService, never()).createCourseFolderStructure(anyLong(), anyLong(), anyLong(), anyLong());
     }
 }

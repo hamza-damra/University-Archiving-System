@@ -27,7 +27,10 @@ public interface CourseAssignmentRepository extends JpaRepository<CourseAssignme
     
     Optional<CourseAssignment> findBySemesterIdAndCourseId(Long semesterId, Long courseId);
     
-    @Query("SELECT ca FROM CourseAssignment ca WHERE ca.semester.id = :semesterId AND ca.course.courseCode = :courseCode AND ca.professor.id = :professorId")
+    @Query("SELECT ca FROM CourseAssignment ca " +
+           "JOIN FETCH ca.course c " +
+           "JOIN FETCH ca.professor " +
+           "WHERE ca.semester.id = :semesterId AND c.courseCode = :courseCode AND ca.professor.id = :professorId")
     Optional<CourseAssignment> findBySemesterIdAndCourseCodeAndProfessorId(
             @Param("semesterId") Long semesterId, 
             @Param("courseCode") String courseCode, 

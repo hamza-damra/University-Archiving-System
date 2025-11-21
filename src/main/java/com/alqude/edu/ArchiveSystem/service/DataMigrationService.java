@@ -48,6 +48,7 @@ public class DataMigrationService {
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UploadedFileRepository uploadedFileRepository;
     private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
+    private final FolderService folderService;
 
     @Value("${app.upload.base-path:./uploads}")
     private String uploadBasePath;
@@ -844,6 +845,101 @@ public class DataMigrationService {
     }
 
     /**
+     * Rebuilds folder structures for all existing course assignments.
+     * Creates professor folders and course subfolders (Syllabus, Exams, Course Notes, Assignments)
+     * for assignments that don't have them yet.
+     * 
+     * This method is idempotent - it will skip folders that already exist.
+     * 
+     * @return FolderRebuildResult containing statistics about the rebuild operation
+     */
+    @Transactional
+    public FolderRebuildResult rebuildCourseFolders() {
+        log.info("Starting folder rebuild for all course assignments...");
+        
+        FolderRebuildResult result = new FolderRebuildResult();
+        
+        try {
+            // Get all course assignments
+            List<CourseAssignment> allAssignments = courseAssignmentRepository.findAll();
+            result.setTotalAssignments(allAssignments.size());
+            
+            log.info("Found {} course assignments to process", allAssignments.size());
+            
+            // Track unique professors
+            Set<Long> processedProfessors = new HashSet<>();
+            int professorFoldersCreated = 0;
+            int courseFoldersCreated = 0;
+            int subfoldersCreated = 0;
+            
+            for (CourseAssignment assignment : allAssignments) {
+                try {
+                    Long professorId = assignment.getProfessor().getId();
+                    Long courseId = assignment.getCourse().getId();
+                    Long academicYearId = assignment.getSemester().getAcademicYear().getId();
+                    Long semesterId = assignment.getSemester().getId();
+                    
+                    // Create professor folder if not exists
+                    if (!processedProfessors.contains(professorId)) {
+                        boolean professorFolderExisted = folderService.professorFolderExists(
+                                professorId, academicYearId, semesterId);
+                        
+                        folderService.createProfessorFolder(professorId, academicYearId, semesterId);
+                        
+                        if (!professorFolderExisted) {
+                            professorFoldersCreated++;
+                            log.debug("Created professor folder for professor ID: {}", professorId);
+                        }
+                        
+                        processedProfessors.add(professorId);
+                    }
+                    
+                    // Create course folder structure
+                    boolean courseFolderExisted = folderService.courseFolderExists(
+                            professorId, courseId, academicYearId, semesterId);
+                    
+                    List<Folder> createdFolders = folderService.createCourseFolderStructure(
+                            professorId, courseId, academicYearId, semesterId);
+                    
+                    if (!courseFolderExisted) {
+                        // Count course folder + subfolders
+                        courseFoldersCreated++;
+                        // Subtract 1 for the course folder itself to get subfolder count
+                        subfoldersCreated += (createdFolders.size() - 1);
+                        
+                        log.debug("Created course folder structure for assignment ID: {} ({} folders)", 
+                                assignment.getId(), createdFolders.size());
+                    }
+                    
+                } catch (Exception e) {
+                    String error = String.format("Failed to create folders for assignment ID %d: %s", 
+                            assignment.getId(), e.getMessage());
+                    log.error(error, e);
+                    result.addError(error);
+                }
+            }
+            
+            result.setProfessorsProcessed(processedProfessors.size());
+            result.setProfessorFoldersCreated(professorFoldersCreated);
+            result.setCourseFoldersCreated(courseFoldersCreated);
+            result.setSubfoldersCreated(subfoldersCreated);
+            result.setSuccess(true);
+            
+            log.info("Folder rebuild completed: {} professors, {} professor folders created, " +
+                    "{} course folders created, {} subfolders created, {} errors",
+                    processedProfessors.size(), professorFoldersCreated, 
+                    courseFoldersCreated, subfoldersCreated, result.getErrors().size());
+            
+        } catch (Exception e) {
+            log.error("Folder rebuild failed: {}", e.getMessage(), e);
+            result.setSuccess(false);
+            result.setErrorMessage(e.getMessage());
+        }
+        
+        return result;
+    }
+
+    /**
      * Data class to hold migration results
      */
     public static class MigrationResult {
@@ -942,6 +1038,61 @@ public class DataMigrationService {
         public Set<String> getUniqueDocumentTypes() { return uniqueDocumentTypes; }
         public void setUniqueDocumentTypes(Set<String> uniqueDocumentTypes) { 
             this.uniqueDocumentTypes = uniqueDocumentTypes; 
+        }
+    }
+
+    /**
+     * Data class to hold folder rebuild results
+     */
+    public static class FolderRebuildResult {
+        private boolean success;
+        private String errorMessage;
+        private int totalAssignments;
+        private int professorsProcessed;
+        private int professorFoldersCreated;
+        private int courseFoldersCreated;
+        private int subfoldersCreated;
+        private List<String> errors;
+
+        public FolderRebuildResult() {
+            this.errors = new ArrayList<>();
+        }
+
+        // Getters and setters
+        public boolean isSuccess() { return success; }
+        public void setSuccess(boolean success) { this.success = success; }
+        
+        public String getErrorMessage() { return errorMessage; }
+        public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+        
+        public int getTotalAssignments() { return totalAssignments; }
+        public void setTotalAssignments(int totalAssignments) { this.totalAssignments = totalAssignments; }
+        
+        public int getProfessorsProcessed() { return professorsProcessed; }
+        public void setProfessorsProcessed(int professorsProcessed) { 
+            this.professorsProcessed = professorsProcessed; 
+        }
+        
+        public int getProfessorFoldersCreated() { return professorFoldersCreated; }
+        public void setProfessorFoldersCreated(int professorFoldersCreated) { 
+            this.professorFoldersCreated = professorFoldersCreated; 
+        }
+        
+        public int getCourseFoldersCreated() { return courseFoldersCreated; }
+        public void setCourseFoldersCreated(int courseFoldersCreated) { 
+            this.courseFoldersCreated = courseFoldersCreated; 
+        }
+        
+        public int getSubfoldersCreated() { return subfoldersCreated; }
+        public void setSubfoldersCreated(int subfoldersCreated) { 
+            this.subfoldersCreated = subfoldersCreated; 
+        }
+        
+        public List<String> getErrors() { return errors; }
+        public void setErrors(List<String> errors) { this.errors = errors; }
+        
+        public void addError(String error) {
+            this.errors.add(error);
         }
     }
 }

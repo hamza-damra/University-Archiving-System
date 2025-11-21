@@ -15,7 +15,8 @@ import java.util.Optional;
  * This repository is part of the old request-based document system.
  * 
  * Replacement repository:
- * - DocumentSubmissionRepository: For document submissions in semester-based system
+ * - DocumentSubmissionRepository: For document submissions in semester-based
+ * system
  * 
  * This repository is kept for:
  * 1. Historical data access
@@ -30,20 +31,26 @@ import java.util.Optional;
 @Deprecated(since = "2.0", forRemoval = false)
 @Repository
 public interface SubmittedDocumentRepository extends JpaRepository<SubmittedDocument, Long> {
-    
+
+    @Deprecated
     Optional<SubmittedDocument> findByDocumentRequestId(Long documentRequestId);
-    
+
+    @Deprecated
     List<SubmittedDocument> findByProfessorId(Long professorId);
-    
+
+    @Deprecated
     @Query("SELECT sd FROM SubmittedDocument sd WHERE sd.professor.department.id = :departmentId")
     List<SubmittedDocument> findByDepartmentId(@Param("departmentId") Long departmentId);
-    
+
+    @Deprecated
     @Query("SELECT sd FROM SubmittedDocument sd WHERE sd.documentRequest.id IN :requestIds")
     List<SubmittedDocument> findByDocumentRequestIds(@Param("requestIds") List<Long> requestIds);
-    
+
+    @Deprecated
     @Query("SELECT COUNT(sd) FROM SubmittedDocument sd WHERE sd.professor.id = :professorId AND sd.isLateSubmission = true")
     long countLateSubmissionsByProfessor(@Param("professorId") Long professorId);
-    
+
+    @Deprecated
     @Query("SELECT COUNT(sd) FROM SubmittedDocument sd WHERE sd.professor.department.id = :departmentId AND sd.isLateSubmission = true")
     long countLateSubmissionsByDepartment(@Param("departmentId") Long departmentId);
 }

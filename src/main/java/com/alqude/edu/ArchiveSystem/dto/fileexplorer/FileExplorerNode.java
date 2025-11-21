@@ -27,6 +27,9 @@ public class FileExplorerNode {
     @Builder.Default
     private List<FileExplorerNode> children = new ArrayList<>();
     
+    @Builder.Default
+    private List<UploadedFileDTO> files = new ArrayList<>();
+    
     private boolean canRead;
     private boolean canWrite;
     private boolean canDelete;

@@ -74,4 +74,21 @@ public class MigrationController {
         var courses = migrationService.extractAndCreateCourses();
         return ResponseEntity.ok("Created " + courses.size() + " courses");
     }
+
+    /**
+     * Rebuilds folder structures for all existing course assignments
+     * Creates professor folders and course subfolders (Syllabus, Exams, Course Notes, Assignments)
+     * for assignments that don't have them yet.
+     */
+    @PostMapping("/rebuild-folders")
+    public ResponseEntity<DataMigrationService.FolderRebuildResult> rebuildFolders() {
+        log.info("Rebuilding folder structures for existing assignments");
+        DataMigrationService.FolderRebuildResult result = migrationService.rebuildCourseFolders();
+        
+        if (result.isSuccess()) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.status(500).body(result);
+        }
+    }
 }

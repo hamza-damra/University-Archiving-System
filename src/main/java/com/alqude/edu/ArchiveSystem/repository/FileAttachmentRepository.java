@@ -29,16 +29,21 @@ import java.util.List;
 @Deprecated(since = "2.0", forRemoval = false)
 @Repository
 public interface FileAttachmentRepository extends JpaRepository<FileAttachment, Long> {
-    
+
+    @Deprecated
     List<FileAttachment> findBySubmittedDocumentId(Long submittedDocumentId);
-    
+
+    @Deprecated
     List<FileAttachment> findBySubmittedDocumentIdOrderByFileOrderAsc(Long submittedDocumentId);
-    
+
+    @Deprecated
     @Query("SELECT fa FROM FileAttachment fa WHERE fa.submittedDocument.documentRequest.id = :requestId ORDER BY fa.fileOrder ASC")
     List<FileAttachment> findByDocumentRequestId(@Param("requestId") Long requestId);
-    
+
+    @Deprecated
     @Query("SELECT COUNT(fa) FROM FileAttachment fa WHERE fa.submittedDocument.id = :submittedDocumentId")
     long countBySubmittedDocumentId(@Param("submittedDocumentId") Long submittedDocumentId);
-    
+
+    @Deprecated
     void deleteBySubmittedDocumentId(Long submittedDocumentId);
 }

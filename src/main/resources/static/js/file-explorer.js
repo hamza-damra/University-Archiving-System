@@ -66,6 +66,7 @@
 
 import { fileExplorer } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
+import { fileExplorerState } from './file-explorer-state.js';
 
 /**
  * FileExplorer class
@@ -169,10 +170,65 @@ export class FileExplorer {
         this.treeRoot = null;
         this.breadcrumbs = [];
 
+        // Subscribe to FileExplorerState changes
+        this.unsubscribe = fileExplorerState.subscribe((state) => {
+            this.onStateChange(state);
+        });
+
         // Check if container already has structure (e.g. restored from storage)
         // If so, skip initial render to prevent flash
         if (!this.container.querySelector('#fileExplorerBreadcrumbs')) {
             this.render();
+        }
+    }
+
+    /**
+     * Handle state changes from FileExplorerState
+     * 
+     * Called whenever the centralized state changes.
+     * Updates local component properties and triggers UI re-renders.
+     * 
+     * @param {Object} state - The new state from FileExplorerState
+     * @returns {void}
+     */
+    onStateChange(state) {
+        // Update local properties from state
+        const hasChanges = 
+            this.currentPath !== state.currentPath ||
+            this.treeRoot !== state.treeRoot ||
+            this.currentNode !== state.currentNode;
+
+        if (hasChanges) {
+            this.currentPath = state.currentPath;
+            this.treeRoot = state.treeRoot;
+            this.currentNode = state.currentNode;
+            this.breadcrumbs = state.breadcrumbs;
+            this.expandedNodes = state.expandedNodes;
+
+            // Handle loading states
+            if (state.isLoading) {
+                this.showLoading();
+            } else if (state.isTreeLoading) {
+                this.showTreeLoading();
+            } else if (state.isFileListLoading) {
+                this.showFileListLoading();
+            } else {
+                // Render updated content
+                if (this.treeRoot) {
+                    this.renderTree(this.treeRoot);
+                }
+                if (this.currentNode) {
+                    this.renderFileList(this.currentNode);
+                }
+                if (this.breadcrumbs) {
+                    this.renderBreadcrumbs();
+                }
+            }
+
+            // Handle error state
+            if (state.error) {
+                this.renderError(state.error);
+            }
         }
     }
 
@@ -255,7 +311,7 @@ export class FileExplorer {
     async loadRoot(academicYearId, semesterId, isBackground = false) {
         // Show loading state only if not a background update
         if (!isBackground) {
-            this.showLoading();
+            fileExplorerState.setLoading(true);
         }
 
         try {
@@ -263,6 +319,10 @@ export class FileExplorer {
             this.treeRoot = response.data || response;
             this.currentNode = this.treeRoot;
             this.currentPath = this.currentNode.path || '';
+
+            // Update state with loaded data
+            fileExplorerState.setTreeRoot(this.treeRoot);
+            fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
 
             await this.loadBreadcrumbs(this.currentPath);
 
@@ -276,6 +336,9 @@ export class FileExplorer {
                 this.renderTree(this.treeRoot);
                 this.renderFileList(this.currentNode);
             }
+
+            // Clear loading state
+            fileExplorerState.setLoading(false);
         } catch (error) {
             console.error('Error loading file explorer root:', error);
 
@@ -289,11 +352,15 @@ export class FileExplorer {
                 }
             } else {
                 // Actual error occurred
+                fileExplorerState.setError(error.message || 'Failed to load file explorer');
                 if (!isBackground) {
                     showToast('Failed to load file explorer', 'error');
                     this.renderError('Failed to load file explorer', 'Please try again or select a different semester');
                 }
             }
+
+            // Clear loading state
+            fileExplorerState.setLoading(false);
         }
     }
 
@@ -315,13 +382,16 @@ export class FileExplorer {
      */
     async loadNode(path) {
         // Show loading state in file list only (tree stays visible)
-        this.showFileListLoading();
+        fileExplorerState.setFileListLoading(true);
 
         try {
             const response = await fileExplorer.getNode(path);
             const newNode = response.data || response;
             this.currentNode = newNode;
             this.currentPath = path;
+
+            // Update state with new current node
+            fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
 
             // Update treeRoot with new data
             if (this.treeRoot) {
@@ -334,13 +404,15 @@ export class FileExplorer {
             // Auto-expand in tree if it has sub-folders
             const hasFolderChildren = newNode.children && newNode.children.some(c => c.type !== 'FILE');
             if (hasFolderChildren) {
-                if (!this.expandedNodes) this.expandedNodes = new Set();
-                this.expandedNodes.add(path);
+                fileExplorerState.expandNode(path);
             }
 
             await this.loadBreadcrumbs(path);
             this.renderFileList(this.currentNode);
             this.renderTree(this.treeRoot);
+
+            // Clear loading state
+            fileExplorerState.setFileListLoading(false);
         } catch (error) {
             // Check if this is a "not found" error (404)
             const isNotFoundError = error.message && (
@@ -363,6 +435,7 @@ export class FileExplorer {
             } else {
                 // Actual error occurred
                 console.error('Error loading node:', error);
+                fileExplorerState.setError(error.message || 'Failed to load folder');
                 showToast('Failed to load folder', 'error');
 
                 // Show error in file list using shared error state rendering
@@ -371,6 +444,9 @@ export class FileExplorer {
                     container.innerHTML = this.renderErrorState('Failed to load folder', 'Please try again');
                 }
             }
+
+            // Clear loading state
+            fileExplorerState.setFileListLoading(false);
         }
     }
 
@@ -390,16 +466,19 @@ export class FileExplorer {
         try {
             if (!path) {
                 this.breadcrumbs = [];
+                fileExplorerState.setBreadcrumbs([]);
                 this.renderBreadcrumbs();
                 return;
             }
 
             const response = await fileExplorer.getBreadcrumbs(path);
             this.breadcrumbs = response.data || response || [];
+            fileExplorerState.setBreadcrumbs(this.breadcrumbs);
             this.renderBreadcrumbs();
         } catch (error) {
             console.error('Error loading breadcrumbs:', error);
             this.breadcrumbs = [];
+            fileExplorerState.setBreadcrumbs([]);
             this.renderBreadcrumbs();
         }
     }
@@ -528,14 +607,10 @@ export class FileExplorer {
      * @returns {void}
      */
     expandPathInTree(path) {
-        if (!this.expandedNodes) {
-            this.expandedNodes = new Set();
-        }
-
         // Find all parent paths and expand them
         this.breadcrumbs.forEach(crumb => {
             if (path.startsWith(crumb.path) || crumb.path === path) {
-                this.expandedNodes.add(crumb.path);
+                fileExplorerState.expandNode(crumb.path);
             }
         });
 
@@ -567,10 +642,8 @@ export class FileExplorer {
             return;
         }
 
-        // Initialize expanded nodes set if not exists
-        if (!this.expandedNodes) {
-            this.expandedNodes = new Set();
-        }
+        // Get expanded nodes from state
+        this.expandedNodes = fileExplorerState.getExpandedNodes();
 
         // Render the tree starting from root
         const treeHtml = this.renderTreeNodes(node.children, 0);
@@ -598,34 +671,34 @@ export class FileExplorer {
         folders.forEach(node => {
             const hasChildren = node.children && node.children.length > 0;
             const isExpanded = this.expandedNodes.has(node.path);
-            const indent = level * 16;
+            const indent = level * 20;
             const isSelected = this.currentPath === node.path;
 
             html += `
                 <div class="tree-node" data-path="${this.escapeHtml(node.path)}">
-                    <div class="flex items-center py-1.5 px-2 hover:bg-gray-100 rounded cursor-pointer ${isSelected ? 'bg-blue-50 border-l-2 border-blue-500' : ''}"
-                         style="padding-left: ${indent + 8}px;">
+                    <div class="flex items-center py-2.5 px-3 hover:bg-gray-100 rounded cursor-pointer transition-colors ${isSelected ? 'bg-blue-100 border-l-4 border-blue-600' : ''}"
+                         style="padding-left: ${indent + 12}px;">
                         ${hasChildren ? `
                             <button 
-                                class="expand-toggle w-4 h-4 mr-1 flex items-center justify-center focus:outline-none"
+                                class="expand-toggle w-5 h-5 mr-2 flex items-center justify-center focus:outline-none hover:bg-gray-200 rounded transition-colors"
                                 onclick="event.stopPropagation(); window.fileExplorerInstance.toggleNode('${this.escapeHtml(node.path)}')">
-                                <svg class="w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'transform rotate-90' : ''}" 
+                                <svg class="w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'transform rotate-90' : ''}" 
                                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
                             </button>
                         ` : `
-                            <span class="w-4 h-4 mr-1"></span>
+                            <span class="w-5 h-5 mr-2"></span>
                         `}
                         <div class="flex items-center flex-1" onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(node.path)}')">
-                            <svg class="w-4 h-4 ${isExpanded ? 'text-yellow-600' : 'text-yellow-500'} mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-5 h-5 ${isExpanded ? 'text-yellow-600' : 'text-yellow-500'} mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 ${isExpanded ? `
                                     <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a2 2 0 00-2 2v5a2 2 0 01-2 2H2V6z" clip-rule="evenodd"></path>
                                 ` : `
                                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
                                 `}
                             </svg>
-                            <span class="text-sm ${isSelected ? 'text-blue-700 font-medium' : 'text-gray-700'}">${this.escapeHtml(node.name)}</span>
+                            <span class="text-base ${isSelected ? 'text-blue-800 font-semibold' : 'text-gray-800'}">${this.escapeHtml(node.name)}</span>
                         </div>
                     </div>
                     ${isExpanded && hasChildren ? `
@@ -650,12 +723,14 @@ export class FileExplorer {
      * @returns {Promise<void>}
      */
     async toggleNode(path) {
-        if (this.expandedNodes.has(path)) {
+        const isExpanded = fileExplorerState.isNodeExpanded(path);
+
+        if (isExpanded) {
             // Collapse node
-            this.expandedNodes.delete(path);
+            fileExplorerState.collapseNode(path);
         } else {
             // Expand node - lazy load if needed
-            this.expandedNodes.add(path);
+            fileExplorerState.expandNode(path);
 
             // Check if we need to load children
             const node = this.findNodeByPath(this.treeRoot, path);
@@ -674,7 +749,7 @@ export class FileExplorer {
                 } catch (error) {
                     console.error('Error loading node children:', error);
                     showToast('Failed to load folder contents', 'error');
-                    this.expandedNodes.delete(path);
+                    fileExplorerState.collapseNode(path);
                 }
             }
         }
@@ -750,14 +825,31 @@ export class FileExplorer {
         // Show folders and files
         const items = node.children || [];
         const folders = items.filter(item => item.type !== 'FILE');
-        const files = items.filter(item => item.type === 'FILE');
+        const filesFromChildren = items.filter(item => item.type === 'FILE');
+        
+        // Check for uploaded files in the files array (from Task 26 backend enhancement)
+        const uploadedFiles = node.files || [];
+        
+        // Combine files from both sources
+        const allFiles = [...filesFromChildren, ...uploadedFiles];
 
-        if (items.length === 0) {
-            container.innerHTML = this.renderEmptyState('This folder is empty', 'folder');
+        if (items.length === 0 && allFiles.length === 0) {
+            if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
+                container.innerHTML = this.renderWritableEmptyState(node);
+                this.initializeDragDrop(node);
+            } else {
+                container.innerHTML = this.renderEmptyState('This folder is empty', 'folder');
+            }
             return;
         }
 
         let html = '';
+
+        // Add upload button for writable document type folders (appears above file list)
+        if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
+            html += this.renderUploadButton(node);
+            this.initializeDragDrop(node);
+        }
 
         // Render folders first (card view)
         if (folders.length > 0) {
@@ -769,23 +861,23 @@ export class FileExplorer {
                 const roleLabels = this.generateRoleSpecificLabels(folder);
 
                 html += `
-                    <div class="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 cursor-pointer transition-all group"
+                    <div class="flex items-center justify-between p-5 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 cursor-pointer transition-all group"
                          onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')">
-                        <div class="flex items-center space-x-3 flex-1">
-                            <svg class="w-7 h-7 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <svg class="w-8 h-8 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                             </svg>
                             <div class="flex-1">
-                                <div class="flex items-center flex-wrap">
-                                    <p class="text-sm font-semibold text-gray-900">${this.escapeHtml(folder.name)}</p>
+                                <div class="flex items-center flex-wrap gap-2">
+                                    <p class="text-base font-semibold text-gray-900">${this.escapeHtml(folder.name)}</p>
                                     ${roleLabels}
                                 </div>
                                 ${folder.metadata && folder.metadata.description ? `
-                                    <p class="text-xs text-gray-500 mt-1">${this.escapeHtml(folder.metadata.description)}</p>
+                                    <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(folder.metadata.description)}</p>
                                 ` : ''}
                             </div>
                         </div>
-                        <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </div>
@@ -796,7 +888,7 @@ export class FileExplorer {
         }
 
         // Render files (table view)
-        if (files.length > 0) {
+        if (allFiles.length > 0) {
             html += '<div><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Files</h4>';
             html += `
                 <div class="overflow-x-auto">
@@ -823,71 +915,8 @@ export class FileExplorer {
                         <tbody class="bg-white divide-y divide-gray-200">
             `;
 
-            files.forEach(file => {
-                const metadata = file.metadata || {};
-                const canDownload = file.canRead !== false;
-                const canView = file.canRead !== false;
-                const fileType = metadata.fileType || '';
-                const fileIconClass = this.getFileIconClass(fileType);
-
-                html += `
-                    <tr class="hover:bg-gray-50 transition-all group">
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <div class="flex items-center">
-                                <div class="file-icon-container w-8 h-8 flex items-center justify-center bg-gray-50 rounded mr-3 flex-shrink-0">
-                                    <svg class="w-5 h-5 ${fileIconClass}" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
-                                    </svg>
-                                </div>
-                                <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">${this.escapeHtml(file.name)}</span>
-                            </div>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                                ${metadata.fileSize ? this.formatFileSize(metadata.fileSize) : '-'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                                ${metadata.uploadedAt ? formatDate(metadata.uploadedAt) : '-'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap">
-                            <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                                ${metadata.uploaderName ? this.escapeHtml(metadata.uploaderName) : '-'}
-                            </span>
-                        </td>
-                        <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-                            <div class="flex items-center justify-end space-x-2">
-                                ${canView ? `
-                                    <button 
-                                        onclick="window.fileExplorerInstance.handleFileView(${metadata.fileId})"
-                                        class="text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-all"
-                                        title="View file details"
-                                    >
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
-                                    </button>
-                                ` : ''}
-                                ${canDownload ? `
-                                    <button 
-                                        onclick="window.fileExplorerInstance.handleFileDownload(${metadata.fileId})"
-                                        class="download-button text-white bg-blue-600 hover:bg-blue-700 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
-                                        title="Download file"
-                                    >
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                        </svg>
-                                    </button>
-                                ` : `
-                                    <span class="text-gray-400 text-xs px-2 py-1 bg-gray-100 rounded">No access</span>
-                                `}
-                            </div>
-                        </td>
-                    </tr>
-                `;
+            allFiles.forEach(file => {
+                html += this.renderFileCard(file);
             });
 
             html += `
@@ -896,9 +925,116 @@ export class FileExplorer {
                 </div>
             </div>
             `;
+        } else if (folders.length > 0 && allFiles.length === 0) {
+            // Show message when there are folders but no files
+            html += `
+                <div class="text-center py-8">
+                    <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="mt-2 text-sm text-gray-500">No files in this folder</p>
+                </div>
+            `;
         }
 
         container.innerHTML = html;
+    }
+
+    /**
+     * Render a single file card/row for display in the file list
+     * 
+     * Creates HTML for a file table row with icon, metadata, and action buttons.
+     * Includes file name, size, upload date, uploader, and download/view buttons.
+     * 
+     * @param {Object} file - The file object to render
+     * @returns {string} HTML string for the file table row
+     * 
+     * @example
+     * const fileHtml = renderFileCard({
+     *   name: 'lecture1.pdf',
+     *   metadata: {
+     *     fileId: 123,
+     *     fileType: 'application/pdf',
+     *     fileSize: 2621440,
+     *     uploadedAt: '2024-01-15T10:30:00',
+     *     uploaderName: 'Dr. Smith',
+     *     notes: 'Chapter 1 lecture notes'
+     *   },
+     *   canRead: true
+     * });
+     */
+    renderFileCard(file) {
+        const metadata = file.metadata || {};
+        const canDownload = file.canRead !== false;
+        const canView = file.canRead !== false;
+        const fileType = metadata.fileType || '';
+        const fileIconClass = this.getFileIconClass(fileType);
+
+        return `
+            <tr class="hover:bg-gray-50 transition-all group">
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <div class="flex items-center">
+                        <div class="file-icon-container w-14 h-14 flex items-center justify-center bg-gray-50 rounded-lg mr-3 flex-shrink-0">
+                            <svg class="w-7 h-7 ${fileIconClass}" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">${this.escapeHtml(file.name)}</span>
+                            ${metadata.notes ? `
+                                <span class="text-xs text-gray-500 mt-1" title="${this.escapeHtml(metadata.notes)}">
+                                    ${this.escapeHtml(metadata.notes.length > 50 ? metadata.notes.substring(0, 50) + '...' : metadata.notes)}
+                                </span>
+                            ` : ''}
+                        </div>
+                    </div>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                        ${metadata.fileSize ? this.formatFileSize(metadata.fileSize) : '-'}
+                    </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                        ${metadata.uploadedAt ? formatDate(metadata.uploadedAt) : '-'}
+                    </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                        ${metadata.uploaderName ? this.escapeHtml(metadata.uploaderName) : '-'}
+                    </span>
+                </td>
+                <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
+                    <div class="flex items-center justify-end space-x-2">
+                        ${canView ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleFileView(${metadata.fileId})"
+                                class="text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-all"
+                                title="View file details"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${canDownload ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleFileDownload(${metadata.fileId})"
+                                class="download-button text-white bg-blue-600 hover:bg-blue-700 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
+                                title="Download file"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                        ` : `
+                            <span class="text-gray-400 text-xs px-2 py-1 bg-gray-100 rounded">No access</span>
+                        `}
+                    </div>
+                </td>
+            </tr>
+        `;
     }
 
     /**
@@ -1387,86 +1523,90 @@ export class FileExplorer {
     }
 
     /**
-     * Render loading state with skeleton loaders
-     * Based on Professor Dashboard design: skeleton loaders with animation
-     * Uses skeleton-line classes defined in custom.css
+     * Render loading skeleton with stable dimensions
+     * Task 7.1: Create loading skeleton rendering methods
      * 
-     * @param {string} type - Type of loading state ('folders', 'files', 'tree', 'default')
+     * Creates animated skeleton loaders that maintain the same dimensions as actual content
+     * to prevent layout shift. Uses Tailwind's animate-pulse for loading animation.
+     * 
+     * @param {string} type - Type of loading state ('folders', 'files', 'tree', 'mixed', 'default')
      * @param {number} count - Number of skeleton items to render (default: 3)
-     * @returns {string} HTML string for loading state
+     * @returns {string} HTML string for loading skeleton
      */
-    renderLoadingState(type = 'default', count = 3) {
+    renderLoadingSkeleton(type = 'default', count = 3) {
         let html = '';
 
         switch (type) {
             case 'folders':
                 // Skeleton loaders for folder cards (wide blue cards)
+                // Maintains same dimensions as actual folder cards (p-5, h-auto)
                 html = '<div class="space-y-2">';
                 for (let i = 0; i < count; i++) {
                     html += `
-            < div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200" >
-                            <div class="flex items-center space-x-3 flex-1">
-                                <div class="skeleton-line skeleton-circle h-7" style="width: 1.75rem;"></div>
+                        <div class="flex items-center justify-between p-5 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                            <div class="flex items-center space-x-4 flex-1">
+                                <div class="w-8 h-8 bg-gray-300 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="skeleton-line h-4 w-1-2"></div>
+                                    <div class="h-5 bg-gray-300 rounded" style="width: 60%;"></div>
                                 </div>
                             </div>
-                            <div class="skeleton-line h-5" style="width: 1.25rem;"></div>
-                        </div >
-            `;
+                            <div class="w-6 h-6 bg-gray-300 rounded"></div>
+                        </div>
+                    `;
                 }
                 html += '</div>';
                 break;
 
             case 'files':
                 // Skeleton loaders for file table rows
+                // Maintains same table structure and dimensions
                 html = `
-            < div class="overflow-x-auto" >
-                <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Name
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Size
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Uploaded
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Uploader
-                            </th>
-                            <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        `;
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Name
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Size
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Uploaded
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Uploader
+                                    </th>
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                `;
 
                 for (let i = 0; i < count; i++) {
                     html += `
-                        <tr>
+                        <tr class="animate-pulse">
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="skeleton-line skeleton-circle h-8 mr-3" style="width: 2rem;"></div>
-                                    <div class="skeleton-line h-4 w-1-2"></div>
+                                    <div class="w-14 h-14 bg-gray-300 rounded-lg mr-3"></div>
+                                    <div class="h-4 bg-gray-300 rounded" style="width: 50%;"></div>
                                 </div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="skeleton-line h-6" style="width: 4rem;"></div>
+                                <div class="h-6 bg-gray-300 rounded" style="width: 4rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="skeleton-line h-6" style="width: 6rem;"></div>
+                                <div class="h-6 bg-gray-300 rounded" style="width: 6rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="skeleton-line h-6" style="width: 5rem;"></div>
+                                <div class="h-6 bg-gray-300 rounded" style="width: 5rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 <div class="flex items-center justify-end space-x-2">
-                                    <div class="skeleton-line h-8" style="width: 2rem;"></div>
-                                    <div class="skeleton-line h-8" style="width: 2rem;"></div>
+                                    <div class="w-8 h-8 bg-gray-300 rounded"></div>
+                                    <div class="w-8 h-8 bg-gray-300 rounded"></div>
                                 </div>
                             </td>
                         </tr>
@@ -1474,29 +1614,31 @@ export class FileExplorer {
                 }
 
                 html += `
-                    </tbody>
-                </table>
-                    </div >
-            `;
+                            </tbody>
+                        </table>
+                    </div>
+                `;
                 break;
 
             case 'tree':
                 // Skeleton loaders for tree view
-                html = '<div class="space-y-2">';
+                // Maintains same row height (py-2.5) and structure as tree nodes
+                html = '<div class="space-y-1">';
                 for (let i = 0; i < count; i++) {
-                    const indent = (i % 2) * 16; // Alternate indentation for visual hierarchy
+                    const indent = (i % 3) * 20; // Alternate indentation for visual hierarchy
                     html += `
-            < div class="flex items-center py-1.5 px-2" style = "padding-left: ${indent + 8}px;" >
-                            <div class="skeleton-line skeleton-circle h-4 mr-2" style="width: 1rem;"></div>
-                            <div class="skeleton-line h-4 flex-1" style="max-width: 70%;"></div>
-                        </div >
-            `;
+                        <div class="flex items-center py-2.5 px-3 animate-pulse" style="padding-left: ${indent + 12}px;">
+                            <div class="w-5 h-5 bg-gray-300 rounded mr-2"></div>
+                            <div class="h-5 bg-gray-300 rounded flex-1" style="max-width: 70%;"></div>
+                        </div>
+                    `;
                 }
                 html += '</div>';
                 break;
 
             case 'mixed':
                 // Mixed loading state for folders and files together
+                // Maintains same spacing and structure as actual content
                 html = '<div class="space-y-4">';
 
                 // Folder skeletons
@@ -1504,22 +1646,22 @@ export class FileExplorer {
                 html += '<div class="space-y-2">';
                 for (let i = 0; i < Math.min(count, 2); i++) {
                     html += `
-            < div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200" >
-                            <div class="flex items-center space-x-3 flex-1">
-                                <div class="skeleton-line skeleton-circle h-7" style="width: 1.75rem;"></div>
+                        <div class="flex items-center justify-between p-5 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                            <div class="flex items-center space-x-4 flex-1">
+                                <div class="w-8 h-8 bg-gray-300 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="skeleton-line h-4 w-1-2"></div>
+                                    <div class="h-5 bg-gray-300 rounded" style="width: 60%;"></div>
                                 </div>
                             </div>
-                            <div class="skeleton-line h-5" style="width: 1.25rem;"></div>
-                        </div >
-            `;
+                            <div class="w-6 h-6 bg-gray-300 rounded"></div>
+                        </div>
+                    `;
                 }
                 html += '</div></div>';
 
                 // File skeletons
                 html += '<div><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Files</h4>';
-                html += this.renderLoadingState('files', Math.min(count, 2));
+                html += this.renderLoadingSkeleton('files', Math.min(count, 2));
                 html += '</div>';
 
                 html += '</div>';
@@ -1528,19 +1670,20 @@ export class FileExplorer {
             case 'default':
             default:
                 // Default loading state - simple skeleton cards
+                // Maintains same padding and height as actual items
                 html = '<div class="space-y-3">';
                 for (let i = 0; i < count; i++) {
                     html += `
-            < div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200" >
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
                             <div class="flex items-center space-x-3 flex-1">
-                                <div class="skeleton-line skeleton-circle h-6" style="width: 1.5rem;"></div>
+                                <div class="w-6 h-6 bg-gray-300 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="skeleton-line h-4 w-1-2"></div>
+                                    <div class="h-4 bg-gray-300 rounded" style="width: 50%;"></div>
                                 </div>
                             </div>
-                            <div class="skeleton-line h-4" style="width: 1.25rem;"></div>
-                        </div >
-            `;
+                            <div class="w-4 h-4 bg-gray-300 rounded"></div>
+                        </div>
+                    `;
                 }
                 html += '</div>';
                 break;
@@ -1550,31 +1693,233 @@ export class FileExplorer {
     }
 
     /**
-     * Show loading state in tree view
+     * Task 7.2: Implement showLoading method
+     * Show loading state in both tree and file list
      * 
-     * Displays skeleton loaders in the tree panel while data is being fetched.
+     * Renders skeleton loaders in both panels without removing or hiding containers.
+     * Maintains container dimensions during loading to prevent layout shift.
+     * 
+     * @returns {void}
+     */
+    showLoading() {
+        this.showTreeLoading();
+        this.showFileListLoading();
+    }
+
+    /**
+     * Task 7.3: Implement showTreeLoading method
+     * Show loading state in tree view only
+     * 
+     * Displays skeleton loaders in the tree panel while keeping file list visible.
      * Uses animated skeleton elements that match the tree node structure.
+     * Maintains same dimensions as actual tree nodes to prevent layout shift.
      * 
      * @returns {void}
      */
     showTreeLoading() {
         const container = document.getElementById('fileExplorerTree');
         if (container) {
-            container.innerHTML = this.renderLoadingState('tree', 5);
+            container.innerHTML = this.renderLoadingSkeleton('tree', 5);
         }
     }
 
     /**
-     * Show loading state in file list
-     * Displays skeleton loaders while file list data is being fetched
+     * Task 7.4: Implement showFileListLoading method
+     * Show loading state in file list only
+     * 
+     * Renders skeleton loaders only in file list container while keeping tree visible.
+     * Maintains container dimensions during loading to prevent layout shift.
      * 
      * @param {string} type - Type of content being loaded ('folders', 'files', 'mixed')
+     * @returns {void}
      */
     showFileListLoading(type = 'mixed') {
         const container = document.getElementById('fileExplorerFileList');
         if (container) {
-            container.innerHTML = this.renderLoadingState(type, 3);
+            container.innerHTML = this.renderLoadingSkeleton(type, 3);
         }
+    }
+
+    /**
+     * Render upload button for writable folders
+     * Shows a prominent upload button when user has write permission
+     * 
+     * @param {Object} node - The current folder node
+     * @returns {string} HTML for upload button
+     */
+    renderUploadButton(node) {
+        if (!node || !node.canWrite) {
+            return '';
+        }
+
+        const documentType = node.metadata?.documentType || '';
+        const formattedType = this.formatDocumentTypeName(documentType);
+
+        return `
+            <div class="mb-4">
+                <button 
+                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}')"
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Upload ${formattedType}
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render writable empty state with upload CTA
+     * Shows an encouraging empty state with large upload button for writable folders
+     * 
+     * @param {Object} node - The current folder node  
+     * @returns {string} HTML for writable empty state
+     */
+    renderWritableEmptyState(node) {
+        const documentType = node.metadata?.documentType || 'files';
+        const formattedType = this.formatDocumentTypeName(documentType);
+
+        return `
+            <div class="text-center py-12 upload-drop-zone" id="uploadDropZone">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 mb-2">No ${formattedType} uploaded yet</h3>
+                <p class="text-sm text-gray-500 mb-6">Upload your first ${formattedType.toLowerCase()} to get started</p>
+                <button 
+                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}')"
+                    class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    </svg>
+                    Upload ${formattedType}
+                </button>
+                <p class="text-xs text-gray-400 mt-4">Drag and drop files here or click to upload<br>Supported formats: PDF, ZIP • Max 10 files per upload</p>
+            </div>
+        `;
+    }
+
+    /**
+     * Handle upload button click
+     * Opens upload modal for the specified path by dispatching custom event
+     * 
+     * @param {string} path - The folder path to upload to
+     * @param {string} documentType - The document type
+     */
+    handleUploadClick(path, documentType) {
+        // Dispatch custom event that prof.js will listen to
+        const event = new CustomEvent('fileExplorerUpload', {
+            detail: { path, documentType }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Initialize drag and drop for writable folders
+     * Sets up event listeners for drag-drop file upload
+     * 
+     * @param {Object} node - The current folder node
+     */
+    initializeDragDrop(node) {
+        if (!node || !node.canWrite) return;
+
+        const container = document.getElementById('fileExplorerFileList');
+        if (!container) return;
+
+        // Remove existing listeners if any
+        if (this.dragDropInitialized) return;
+        this.dragDropInitialized = true;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            }, false);
+        });
+
+        // Highlight drop zone
+        ['dragenter', 'dragover'].forEach(eventName => {
+            container.addEventListener(eventName, () => {
+                const dropZone = document.getElementById('uploadDropZone');
+                if (dropZone) {
+                    dropZone.classList.add('border-4', 'border-dashed', 'border-blue-500', 'bg-blue-50');
+                }
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, () => {
+                const dropZone = document.getElementById('uploadDropZone');
+                if (dropZone) {
+                    dropZone.classList.remove('border-4', 'border-dashed', 'border-blue-500', 'bg-blue-50');
+                }
+            }, false);
+        });
+
+        // Handle drop
+        container.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files.length > 0) {
+                this.handleFileDrop(node.path, node.metadata?.documentType, files);
+            }
+        }, false);
+    }
+
+    /**
+     * Handle file drop
+     * Triggers upload modal with pre-selected files
+     * 
+     * @param {string} path - The folder path
+     * @param {string} documentType - The document type
+     * @param {FileList} files - The dropped files
+     */
+    handleFileDrop(path, documentType, files) {
+        // Trigger same upload event as button click, but with files
+        const event = new CustomEvent('fileExplorerUpload', {
+            detail: { path, documentType, files }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Format document type name for display
+     * Converts enum values to human-readable names
+     * 
+     * @param {string} documentType - The document type enum value
+     * @returns {string} Formatted document type name
+     */
+    /**
+     * Format document type name for display
+     * Converts enum values to human-readable names
+     * 
+     * @param {string} documentType - The document type enum value
+     * @returns {string} Formatted document type name
+     */
+    formatDocumentTypeName(documentType) {
+        if (!documentType) return 'Files';
+
+        const typeMap = {
+            'SYLLABUS': 'Syllabus',
+            'EXAM': 'Exams',
+            'ASSIGNMENT': 'Assignments',
+            'PROJECT_DOCS': 'Project Documents',
+            'LECTURE_NOTES': 'Lecture Notes',
+            'OTHER': 'Other Documents',
+            'syllabus': 'Syllabus',
+            'exam': 'Exams',
+            'assignment': 'Assignments',
+            'project_docs': 'Project Documents',
+            'lecture_notes': 'Lecture Notes',
+            'other': 'Other Documents'
+        };
+
+        return typeMap[documentType] || documentType;
     }
 
     /**
@@ -1591,19 +1936,235 @@ export class FileExplorer {
     }
 
     /**
-     * Escape HTML to prevent XSS attacks
+     * Render upload button for writable folders
      * 
-     * Converts special characters to HTML entities to prevent script injection.
-     * Used for all user-generated content before rendering.
-     * 
-     * @param {string} text - The text to escape
-     * @returns {string} HTML-safe escaped text
+     * @param {Object} node - The current folder node
+     * @returns {string} HTML for the upload button area
      */
-    escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    renderUploadButton(node) {
+        return `
+            <div class="flex justify-end mb-4">
+                <button 
+                    onclick="window.dispatchEvent(new CustomEvent('fileExplorerUpload', { detail: { path: '${this.escapeHtml(node.path)}', documentType: '${node.name}', files: null } }))"
+                    class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                >
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    Upload Files
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render writable empty state
+     * Shows a call-to-action to upload files when a folder is empty but writable
+     * 
+     * @param {Object} node - The current folder node
+     * @returns {string} HTML for the empty state
+     */
+    renderWritableEmptyState(node) {
+        return `
+            <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors cursor-pointer"
+                 onclick="window.dispatchEvent(new CustomEvent('fileExplorerUpload', { detail: { path: '${this.escapeHtml(node.path)}', documentType: '${node.name}', files: null } }))">
+                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                </svg>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">No files yet</h3>
+                <p class="mt-1 text-sm text-gray-500">Upload a file or drag and drop</p>
+                <div class="mt-6">
+                    <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Upload Files
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Handle upload button click
+     * Opens upload modal for the specified path by dispatching custom event
+     * 
+     * @param {string} path - The folder path to upload to
+     * @param {string} documentType - The document type
+     */
+    handleUploadClick(path, documentType) {
+        // Dispatch custom event that prof.js will listen to
+        const event = new CustomEvent('fileExplorerUpload', {
+            detail: { path, documentType }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Initialize drag and drop functionality
+     * 
+     * @param {Object} node - The current folder node
+     */
+    initializeDragDrop(node) {
+        const container = document.getElementById('fileExplorerFileList');
+        if (!container) return;
+
+        // Prevent default drag behaviors
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        // Highlight drop zone
+        ['dragenter', 'dragover'].forEach(eventName => {
+            container.addEventListener(eventName, highlight, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            container.addEventListener(eventName, unhighlight, false);
+        });
+
+        function highlight(e) {
+            container.classList.add('dragover');
+        }
+
+        function unhighlight(e) {
+            container.classList.remove('dragover');
+        }
+
+        // Handle dropped files
+        container.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+
+            if (files && files.length > 0) {
+                window.dispatchEvent(new CustomEvent('fileExplorerUpload', {
+                    detail: {
+                        path: node.path,
+                        documentType: node.name,
+                        files: files
+                    }
+                }));
+            }
+        }, false);
+    }
+
+    /**
+     * Handle file drop
+     * Triggers upload modal with pre-selected files
+     * 
+     * @param {string} path - The folder path
+     * @param {string} documentType - The document type
+     * @param {FileList} files - The dropped files
+     */
+    handleFileDrop(path, documentType, files) {
+        // Trigger same upload event as button click, but with files
+        const event = new CustomEvent('fileExplorerUpload', {
+            detail: { path, documentType, files }
+        });
+        window.dispatchEvent(event);
+    }
+
+    /**
+     * Format file size for display
+     * Converts bytes to human-readable format (B, KB, MB, GB)
+     * 
+     * @param {number} bytes - File size in bytes
+     * @returns {string} Formatted file size with 1 decimal place
+     * 
+     * @example
+     * formatFileSize(1024) // "1.0 KB"
+     * formatFileSize(2621440) // "2.5 MB"
+     */
+    formatFileSize(bytes) {
+        if (bytes === 0 || bytes === null || bytes === undefined) return '0 B';
+        
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        const size = bytes / Math.pow(k, i);
+        
+        return size.toFixed(1) + ' ' + sizes[i];
+    }
+
+    /**
+     * Get file icon class based on file type (MIME type)
+     * Returns appropriate icon identifier for different file types
+     * 
+     * @param {string} mimeType - The MIME type of the file
+     * @returns {string} Icon identifier for the file type
+     * 
+     * @example
+     * getFileIcon('application/pdf') // 'pdf'
+     * getFileIcon('image/png') // 'image'
+     */
+    getFileIcon(mimeType) {
+        if (!mimeType) return 'file';
+        
+        const type = mimeType.toLowerCase();
+        
+        // PDF files
+        if (type.includes('pdf')) return 'pdf';
+        
+        // Word documents
+        if (type.includes('word') || type.includes('msword') || 
+            type.includes('officedocument.wordprocessingml')) return 'word';
+        
+        // PowerPoint presentations
+        if (type.includes('powerpoint') || type.includes('presentation') ||
+            type.includes('officedocument.presentationml')) return 'powerpoint';
+        
+        // Excel spreadsheets
+        if (type.includes('excel') || type.includes('spreadsheet') ||
+            type.includes('officedocument.spreadsheetml')) return 'excel';
+        
+        // Images
+        if (type.includes('image')) return 'image';
+        
+        // Archives
+        if (type.includes('zip') || type.includes('rar') || type.includes('7z') ||
+            type.includes('tar') || type.includes('gz')) return 'archive';
+        
+        // Text files
+        if (type.includes('text')) return 'text';
+        
+        // Default
+        return 'file';
+    }
+
+    /**
+     * Escape HTML to prevent XSS
+     * 
+     * @param {string} str - String to escape
+     * @returns {string} Escaped string
+     */
+    escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    /**
+     * Cleanup method - unsubscribe from state changes
+     * 
+     * Call this method when destroying the FileExplorer instance
+     * to prevent memory leaks from the state subscription.
+     * 
+     * @returns {void}
+     */
+    destroy() {
+        if (this.unsubscribe) {
+            this.unsubscribe();
+            this.unsubscribe = null;
+        }
     }
 }
 

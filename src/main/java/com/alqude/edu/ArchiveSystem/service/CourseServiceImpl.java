@@ -30,6 +30,7 @@ public class CourseServiceImpl implements CourseService {
     private final SemesterRepository semesterRepository;
     private final UserRepository userRepository;
     private final DepartmentScopedFilterService departmentScopedFilterService;
+    private final FolderService folderService;
     
     // ==================== Course Management ====================
     
@@ -197,6 +198,22 @@ public class CourseServiceImpl implements CourseService {
             CourseAssignment savedAssignment = courseAssignmentRepository.save(assignment);
             log.info("Course assignment created successfully with id: {}", savedAssignment.getId());
             
+            // Auto-create course folder structure
+            try {
+                Long academicYearId = semester.getAcademicYear().getId();
+                folderService.createCourseFolderStructure(
+                    professor.getId(), 
+                    course.getId(), 
+                    academicYearId, 
+                    semester.getId()
+                );
+                log.info("Course folder structure created successfully for assignment id: {}", savedAssignment.getId());
+            } catch (Exception e) {
+                log.error("Failed to create course folder structure for assignment id: {}. Assignment creation succeeded.", 
+                         savedAssignment.getId(), e);
+                // Don't fail the assignment creation if folder creation fails
+            }
+            
             return savedAssignment;
         } catch (DataIntegrityViolationException e) {
             throw new DuplicateEntityException("Course assignment already exists for this semester, course, and professor combination");
@@ -325,6 +342,28 @@ public class CourseServiceImpl implements CourseService {
             }
         });
         return assignments;
+    }
+    
+    @Override
+    public List<Folder> createCourseFoldersForAssignment(Long assignmentId) {
+        log.info("Manually creating course folders for assignment id: {}", assignmentId);
+        
+        CourseAssignment assignment = courseAssignmentRepository.findById(assignmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Course assignment not found with id: " + assignmentId));
+        
+        // Extract required information
+        Long professorId = assignment.getProfessor().getId();
+        Long courseId = assignment.getCourse().getId();
+        Long academicYearId = assignment.getSemester().getAcademicYear().getId();
+        Long semesterId = assignment.getSemester().getId();
+        
+        // Create course folder structure
+        List<Folder> folders = folderService.createCourseFolderStructure(
+            professorId, courseId, academicYearId, semesterId
+        );
+        
+        log.info("Successfully created {} folders for assignment id: {}", folders.size(), assignmentId);
+        return folders;
     }
     
     // ==================== Required Document Type Management ====================

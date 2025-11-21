@@ -233,7 +233,7 @@ public class FileServiceImpl implements FileService {
     @Transactional(readOnly = true)
     public UploadedFile getFile(Long fileId) {
         log.debug("Fetching file with ID: {}", fileId);
-        UploadedFile file = uploadedFileRepository.findById(fileId)
+        UploadedFile file = uploadedFileRepository.findByIdWithUploader(fileId)
                 .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
 
         // Check read permission

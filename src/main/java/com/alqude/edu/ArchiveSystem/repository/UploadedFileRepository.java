@@ -2,6 +2,8 @@ package com.alqude.edu.ArchiveSystem.repository;
 
 import com.alqude.edu.ArchiveSystem.entity.UploadedFile;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -9,6 +11,15 @@ import java.util.Optional;
 
 @Repository
 public interface UploadedFileRepository extends JpaRepository<UploadedFile, Long> {
+    
+    /**
+     * Find a file by ID with uploader eagerly fetched.
+     * 
+     * @param id the ID of the file
+     * @return optional uploaded file with uploader loaded
+     */
+    @Query("SELECT f FROM UploadedFile f LEFT JOIN FETCH f.uploader WHERE f.id = :id")
+    Optional<UploadedFile> findByIdWithUploader(@Param("id") Long id);
     
     List<UploadedFile> findByDocumentSubmissionId(Long documentSubmissionId);
     

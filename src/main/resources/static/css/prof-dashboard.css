@@ -58,7 +58,7 @@ body {
 }
 
 .tab-content:not(.hidden) {
-    display: block;
+    display: block !important;
     animation: fadeIn 0.2s ease-out;
 }
 

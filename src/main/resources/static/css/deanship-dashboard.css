@@ -127,7 +127,7 @@ aside {
 }
 
 .tab-content:not(.hidden) {
-    display: block;
+    display: block !important;
     animation: fadeIn 0.2s ease-out;
 }
 
@@ -182,8 +182,7 @@ aside {
     background: #e5e7eb;
     border-radius: 0.25rem;
 }
-/
-* ===================================
+/* ===================================
    Enhanced Table Components Styles
    =================================== */
 

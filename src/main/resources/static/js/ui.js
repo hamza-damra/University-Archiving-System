@@ -8,8 +8,15 @@
  * @param {string} message - Toast message (supports multiline with \n)
  * @param {string} type - Toast type (success, error, info, warning)
  * @param {number} duration - Duration in milliseconds (default: 5000)
+ * @param {Object} options - Additional options (action, actionLabel, onAction)
  */
-export function showToast(message, type = 'info', duration = 5000) {
+export function showToast(message, type = 'info', duration = 5000, options = {}) {
+    // Try to use enhanced toast if available
+    if (typeof window.EnhancedToast !== 'undefined') {
+        return window.EnhancedToast.show(message, type, { duration, ...options });
+    }
+    
+    // Fallback to basic toast
     const toastContainer = document.getElementById('toastContainer');
     if (!toastContainer) return;
 

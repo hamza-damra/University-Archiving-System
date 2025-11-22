@@ -7,6 +7,18 @@ import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessag
 import { showToast, showModal, showConfirm, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
+import { SkeletonLoader, EmptyState, EnhancedToast, Tooltip, LoadingIndicator } from './deanship-feedback.js';
+import { dashboardNavigation } from './deanship-navigation.js';
+import { dashboardAnalytics } from './deanship-analytics.js';
+import { dashboardState } from './deanship-state.js';
+import { ErrorBoundary, safeAsync } from './deanship-error-handler.js';
+
+// Expose enhanced toast globally for backward compatibility
+window.EnhancedToast = EnhancedToast;
+window.Tooltip = Tooltip;
+window.LoadingIndicator = LoadingIndicator;
+window.EmptyState = EmptyState;
+window.SkeletonLoader = SkeletonLoader;
 
 // State
 let currentTab = 'academic-years';
@@ -26,6 +38,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Restore tab BEFORE any other initialization to prevent flicker
     restoreActiveTab();
     initializeEventListeners();
+    initializeNavigation();
     initializeFileExplorer();
     // Load initial data WITHOUT triggering tab-specific loads yet
     loadInitialDataSilent();
@@ -33,6 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Check authentication and role
+ * Verifies user is authenticated and has DEANSHIP role
+ * Redirects to login if not authenticated or unauthorized
+ * @returns {void}
  */
 function checkAuth() {
     const userInfo = getUserInfo();
@@ -55,6 +71,8 @@ function checkAuth() {
 
 /**
  * Initialize event listeners
+ * Sets up all DOM event listeners for the dashboard
+ * @returns {void}
  */
 function initializeEventListeners() {
     // Logout
@@ -92,26 +110,48 @@ function initializeEventListeners() {
     document.getElementById('addAcademicYearBtn').addEventListener('click', showAddAcademicYearModal);
 
     // Professors tab
-    document.getElementById('addProfessorBtn').addEventListener('click', showAddProfessorModal);
-    document.getElementById('professorSearch').addEventListener('input', filterProfessors);
-    document.getElementById('professorDepartmentFilter').addEventListener('change', filterProfessors);
+    const addProfessorBtn = document.getElementById('addProfessorBtn');
+    const professorSearch = document.getElementById('professorSearch');
+    const professorDepartmentFilter = document.getElementById('professorDepartmentFilter');
+
+    if (addProfessorBtn) addProfessorBtn.addEventListener('click', showAddProfessorModal);
+    if (professorSearch) professorSearch.addEventListener('input', filterProfessors);
+    if (professorDepartmentFilter) professorDepartmentFilter.addEventListener('change', filterProfessors);
 
     // Courses tab
-    document.getElementById('addCourseBtn').addEventListener('click', showAddCourseModal);
-    document.getElementById('courseSearch').addEventListener('input', filterCourses);
-    document.getElementById('courseDepartmentFilter').addEventListener('change', filterCourses);
+    const addCourseBtn = document.getElementById('addCourseBtn');
+    const courseSearch = document.getElementById('courseSearch');
+    const courseDepartmentFilter = document.getElementById('courseDepartmentFilter');
+
+    if (addCourseBtn) addCourseBtn.addEventListener('click', showAddCourseModal);
+    if (courseSearch) courseSearch.addEventListener('input', filterCourses);
+    if (courseDepartmentFilter) courseDepartmentFilter.addEventListener('change', filterCourses);
 
     // Assignments tab
-    document.getElementById('addAssignmentBtn').addEventListener('click', showAddAssignmentModal);
-    document.getElementById('assignmentProfessorFilter').addEventListener('change', loadAssignments);
-    document.getElementById('assignmentCourseFilter').addEventListener('change', loadAssignments);
+    const addAssignmentBtn = document.getElementById('addAssignmentBtn');
+    const assignmentProfessorFilter = document.getElementById('assignmentProfessorFilter');
+    const assignmentCourseFilter = document.getElementById('assignmentCourseFilter');
 
-    // Reports tab
-    document.getElementById('viewSystemReportBtn').addEventListener('click', loadSystemReport);
+    if (addAssignmentBtn) addAssignmentBtn.addEventListener('click', showAddAssignmentModal);
+    if (assignmentProfessorFilter) assignmentProfessorFilter.addEventListener('change', loadAssignments);
+    if (assignmentCourseFilter) assignmentCourseFilter.addEventListener('change', loadAssignments);
+
+    // Reports tab - now handled by ReportsDashboard component
+}
+
+/**
+ * Initialize navigation components
+ * Sets up sidebar, breadcrumbs, and navigation state
+ * @returns {void}
+ */
+function initializeNavigation() {
+    dashboardNavigation.initialize();
 }
 
 /**
  * Load initial data silently (without triggering tab-specific UI updates)
+ * Loads academic years and departments, then loads active tab data
+ * @returns {Promise<void>}
  */
 async function loadInitialDataSilent() {
     try {
@@ -167,10 +207,20 @@ function restoreActiveTab() {
             content.classList.add('hidden');
         }
     });
+
+    // Update breadcrumbs for restored tab (will be called after navigation is initialized)
+    setTimeout(() => {
+        if (typeof updateBreadcrumbsForTab === 'function') {
+            updateBreadcrumbsForTab(currentTab);
+        }
+    }, 0);
 }
 
 /**
  * Switch tab
+ * Changes active tab and loads corresponding data
+ * @param {string} tabName - Name of the tab to switch to
+ * @returns {void}
  */
 function switchTab(tabName) {
     currentTab = tabName;
@@ -193,14 +243,66 @@ function switchTab(tabName) {
     });
     document.getElementById(`${tabName}-tab`).classList.remove('hidden');
 
+    // Update breadcrumbs
+    updateBreadcrumbsForTab(tabName);
+
     // Load tab data
     loadTabData(tabName);
+}
+
+/**
+ * Update breadcrumbs based on current tab
+ * Updates navigation breadcrumbs and page title
+ * @param {string} tabName - Name of the current tab
+ * @returns {void}
+ */
+function updateBreadcrumbsForTab(tabName) {
+    const breadcrumbMap = {
+        'dashboard': [
+            { label: 'Home', path: '#' }
+        ],
+        'academic-years': [
+            { label: 'Home', path: '#' },
+            { label: 'Academic Years' }
+        ],
+        'professors': [
+            { label: 'Home', path: '#' },
+            { label: 'Professors' }
+        ],
+        'courses': [
+            { label: 'Home', path: '#' },
+            { label: 'Courses' }
+        ],
+        'assignments': [
+            { label: 'Home', path: '#' },
+            { label: 'Course Assignments' }
+        ],
+        'reports': [
+            { label: 'Home', path: '#' },
+            { label: 'Reports' }
+        ],
+        'file-explorer': [
+            { label: 'Home', path: '#' },
+            { label: 'File Explorer' }
+        ]
+    };
+
+    const breadcrumbs = breadcrumbMap[tabName] || [{ label: 'Home' }];
+    dashboardNavigation.updateBreadcrumbs(breadcrumbs);
+
+    // Update page title
+    const pageTitle = document.getElementById('pageTitle');
+    if (pageTitle && breadcrumbs.length > 0) {
+        pageTitle.textContent = breadcrumbs[breadcrumbs.length - 1].label;
+    }
 }
 
 
 
 /**
  * Handle context change (academic year or semester)
+ * Updates file explorer state and reloads relevant tab data
+ * @returns {void}
  */
 function onContextChange() {
     // Update FileExplorerState with new context
@@ -213,15 +315,26 @@ function onContextChange() {
             semester?.type || ''
         );
     }
-    
+
+    // Update dashboard state
+    if (selectedAcademicYearId) {
+        dashboardState.setSelectedAcademicYear(selectedAcademicYearId);
+    }
+    if (selectedSemesterId) {
+        dashboardState.setSelectedSemester(selectedSemesterId);
+    }
+
     // Reload tab data if needed
-    if (currentTab === 'assignments' || currentTab === 'reports' || currentTab === 'file-explorer') {
+    if (currentTab === 'assignments' || currentTab === 'reports' || currentTab === 'file-explorer' || currentTab === 'dashboard') {
         loadTabData(currentTab);
     }
 }
 
 /**
  * Load tab data
+ * Loads data for the specified tab
+ * @param {string} tabName - Name of the tab to load data for
+ * @returns {void}
  */
 function loadTabData(tabName) {
     switch (tabName) {
@@ -247,7 +360,7 @@ function loadTabData(tabName) {
             });
             break;
         case 'reports':
-            // Reports are loaded on demand
+            initializeReportsDashboard();
             break;
         case 'file-explorer':
             loadFileExplorer();
@@ -257,6 +370,8 @@ function loadTabData(tabName) {
 
 /**
  * Handle logout
+ * Logs out user and redirects to login page
+ * @returns {Promise<void>}
  */
 async function handleLogout() {
     try {
@@ -276,6 +391,8 @@ async function handleLogout() {
 
 /**
  * Load dashboard statistics
+ * Loads professors, courses, and initializes analytics
+ * @returns {Promise<void>}
  */
 async function loadDashboardData() {
     try {
@@ -287,6 +404,9 @@ async function loadDashboardData() {
 
         // Update dashboard cards
         updateDashboardStats();
+
+        // Initialize analytics components
+        await dashboardAnalytics.initialize();
     } catch (error) {
         console.error('Error loading dashboard data:', error);
     }
@@ -294,10 +414,16 @@ async function loadDashboardData() {
 
 /**
  * Load professors data only (without UI update)
+ * Fetches professors from API and updates state
+ * @returns {Promise<void>}
  */
 async function loadProfessorsData() {
     try {
         professors = await apiRequest('/deanship/professors', { method: 'GET' });
+        // Update state for analytics
+        if (typeof dashboardState !== 'undefined') {
+            dashboardState.setProfessors(professors);
+        }
     } catch (error) {
         console.error('Error loading professors data:', error);
     }
@@ -305,10 +431,16 @@ async function loadProfessorsData() {
 
 /**
  * Load courses data only (without UI update)
+ * Fetches courses from API and updates state
+ * @returns {Promise<void>}
  */
 async function loadCoursesData() {
     try {
         courses = await apiRequest('/deanship/courses', { method: 'GET' });
+        // Update state for analytics
+        if (typeof dashboardState !== 'undefined') {
+            dashboardState.setCourses(courses);
+        }
     } catch (error) {
         console.error('Error loading courses data:', error);
     }
@@ -316,6 +448,8 @@ async function loadCoursesData() {
 
 /**
  * Update dashboard statistics cards
+ * Updates stat cards with current professor and course counts
+ * @returns {void}
  */
 function updateDashboardStats() {
     // Get all stat card values
@@ -339,6 +473,8 @@ function updateDashboardStats() {
 
 /**
  * Load academic years data only (without UI update)
+ * Fetches academic years from API and updates selector
+ * @returns {Promise<void>}
  */
 async function loadAcademicYearsData() {
     try {
@@ -352,8 +488,15 @@ async function loadAcademicYearsData() {
 
 /**
  * Load academic years (full load with UI update)
+ * Fetches academic years and renders table with skeleton loader
+ * @returns {Promise<void>}
  */
 async function loadAcademicYears() {
+    const tbody = document.getElementById('academicYearsTableBody');
+
+    // Show skeleton loader
+    tbody.innerHTML = SkeletonLoader.table(5, 5);
+
     try {
         academicYears = await apiRequest('/deanship/academic-years', { method: 'GET' });
         renderAcademicYearsTable();
@@ -361,11 +504,20 @@ async function loadAcademicYears() {
     } catch (error) {
         console.error('Error loading academic years:', error);
         showToast('Failed to load academic years', 'error');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-8 text-center text-red-500">
+                    Failed to load academic years. Please try again.
+                </td>
+            </tr>
+        `;
     }
 }
 
 /**
  * Render academic years table
+ * Renders academic years in table or shows empty state
+ * @returns {void}
  */
 function renderAcademicYearsTable() {
     const tbody = document.getElementById('academicYearsTableBody');
@@ -373,11 +525,19 @@ function renderAcademicYearsTable() {
     if (academicYears.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                    No academic years found. Click "Add Academic Year" to create one.
+                <td colspan="5" class="px-6 py-4">
+                    <div id="academicYearsEmpty"></div>
                 </td>
             </tr>
         `;
+        EmptyState.render('academicYearsEmpty', {
+            title: 'No Academic Years',
+            message: 'Get started by creating your first academic year to organize semesters and courses.',
+            illustration: 'no-academic-years',
+            actionLabel: 'Add Academic Year',
+            actionId: 'addAcademicYearBtnEmpty',
+            actionCallback: showAddAcademicYearModal
+        });
         return;
     }
 
@@ -413,6 +573,8 @@ function renderAcademicYearsTable() {
 
 /**
  * Update academic year selector
+ * Updates dropdown with academic years and restores selection
+ * @returns {void}
  */
 function updateAcademicYearSelector() {
     const select = document.getElementById('academicYearSelect');
@@ -455,6 +617,9 @@ function updateAcademicYearSelector() {
 
 /**
  * Load semesters for selected academic year
+ * Loads semesters and updates selector dropdown
+ * @param {number} academicYearId - ID of the academic year
+ * @returns {Promise<void>}
  */
 async function loadSemesters(academicYearId) {
     try {
@@ -509,6 +674,8 @@ async function loadSemesters(academicYearId) {
 
 /**
  * Show add academic year modal
+ * Displays modal for creating new academic year
+ * @returns {void}
  */
 function showAddAcademicYearModal() {
     const content = `
@@ -565,6 +732,9 @@ function showAddAcademicYearModal() {
 
 /**
  * Handle create academic year
+ * Validates form and creates new academic year via API
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleCreateAcademicYear(closeModal) {
     const form = document.getElementById('academicYearForm');
@@ -662,6 +832,10 @@ window.deanship.editAcademicYear = function (yearId) {
 
 /**
  * Handle update academic year
+ * Validates form and updates academic year via API
+ * @param {number} yearId - ID of the academic year to update
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleUpdateAcademicYear(yearId, closeModal) {
     const form = document.getElementById('editAcademicYearForm');
@@ -726,6 +900,8 @@ export { loadAcademicYears };
 
 /**
  * Load departments
+ * Fetches departments from API and updates filters
+ * @returns {Promise<void>}
  */
 async function loadDepartments() {
     try {
@@ -746,6 +922,8 @@ async function loadDepartments() {
 
 /**
  * Update department filters
+ * Updates department filter dropdowns across tabs
+ * @returns {void}
  */
 function updateDepartmentFilters() {
     const filters = [
@@ -767,22 +945,58 @@ function updateDepartmentFilters() {
 
 /**
  * Load professors
+ * Fetches professors with optional department filter and renders table
+ * @returns {Promise<void>}
  */
 async function loadProfessors() {
+    const tbody = document.getElementById('professorsTableBody');
+
+    // Show skeleton loader
+    if (tbody) {
+        tbody.innerHTML = SkeletonLoader.table(5, 6);
+    }
+
     try {
-        const departmentId = document.getElementById('professorDepartmentFilter').value;
+        const departmentId = document.getElementById('professorDepartmentFilter')?.value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
         professors = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
-        renderProfessorsTable();
+
+        // Extract unique departments
+        departments = [...new Set(professors.map(p => p.department).filter(Boolean))];
+
+        // Use enhanced table if available, otherwise fallback to basic rendering
+        if (typeof tableEnhancementManager !== 'undefined') {
+            tableEnhancementManager.enhanceProfessorsTable();
+        } else {
+            renderProfessorsTable();
+        }
+
+        // Add export buttons to professors table
+        if (window.TableExportHelper) {
+            setTimeout(() => {
+                window.TableExportHelper.addToProfessorsTable();
+            }, 100);
+        }
     } catch (error) {
         console.error('Error loading professors:', error);
         showToast('Failed to load professors', 'error');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-red-500">
+                        Failed to load professors. Please try again.
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
 /**
  * Filter professors
+ * Reloads professors with current filter settings
+ * @returns {void}
  */
 function filterProfessors() {
     loadProfessors();
@@ -790,6 +1004,8 @@ function filterProfessors() {
 
 /**
  * Render professors table
+ * Renders professors in table with search filtering and empty states
+ * @returns {void}
  */
 function renderProfessorsTable() {
     const tbody = document.getElementById('professorsTableBody');
@@ -805,13 +1021,24 @@ function renderProfessorsTable() {
     }
 
     if (filteredProfessors.length === 0) {
+        const isSearching = searchTerm.length > 0;
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                    No professors found. Click "Add Professor" to create one.
+                <td colspan="6" class="px-6 py-4">
+                    <div id="professorsEmpty"></div>
                 </td>
             </tr>
         `;
+        EmptyState.render('professorsEmpty', {
+            title: isSearching ? 'No Professors Found' : 'No Professors',
+            message: isSearching
+                ? 'No professors match your search criteria. Try adjusting your filters.'
+                : 'Get started by adding professors to manage their courses and documents.',
+            illustration: isSearching ? 'no-search-results' : 'no-professors',
+            actionLabel: isSearching ? null : 'Add Professor',
+            actionId: 'addProfessorBtnEmpty',
+            actionCallback: isSearching ? null : showAddProfessorModal
+        });
         return;
     }
 
@@ -855,6 +1082,8 @@ function renderProfessorsTable() {
 
 /**
  * Show add professor modal
+ * Displays modal for creating new professor
+ * @returns {void}
  */
 function showAddProfessorModal() {
     const content = `
@@ -931,6 +1160,9 @@ function showAddProfessorModal() {
 
 /**
  * Handle create professor
+ * Validates form and creates new professor via API
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleCreateProfessor(closeModal) {
     const form = document.getElementById('professorForm');
@@ -968,7 +1200,7 @@ async function handleCreateProfessor(closeModal) {
         showToast('Professor created successfully', 'success');
         closeModal();
         loadProfessors();
-        
+
         // Refresh File Explorer if on file-explorer tab and context is set
         if (currentTab === 'file-explorer' && fileExplorerState.hasContext() && fileExplorerInstance) {
             await fileExplorerInstance.loadRoot(selectedAcademicYearId, selectedSemesterId, true);
@@ -1059,6 +1291,10 @@ window.deanship.editProfessor = function (profId) {
 
 /**
  * Handle update professor
+ * Validates form and updates professor via API
+ * @param {number} profId - ID of the professor to update
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleUpdateProfessor(profId, closeModal) {
     const form = document.getElementById('editProfessorForm');
@@ -1157,22 +1393,60 @@ window.deanship.activateProfessor = async function (profId) {
 
 /**
  * Load courses
+ * Fetches courses with optional department filter and renders table
+ * @returns {Promise<void>}
  */
 async function loadCourses() {
+    const tbody = document.getElementById('coursesTableBody');
+
+    // Show skeleton loader
+    if (tbody) {
+        tbody.innerHTML = SkeletonLoader.table(5, 6);
+    }
+
     try {
-        const departmentId = document.getElementById('courseDepartmentFilter').value;
+        const departmentId = document.getElementById('courseDepartmentFilter')?.value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
         courses = await apiRequest(`/deanship/courses${params}`, { method: 'GET' });
-        renderCoursesTable();
+
+        // Extract unique departments from courses if not already set
+        if (departments.length === 0) {
+            departments = [...new Set(courses.map(c => c.department).filter(Boolean))];
+        }
+
+        // Use enhanced table if available, otherwise fallback to basic rendering
+        if (typeof tableEnhancementManager !== 'undefined') {
+            tableEnhancementManager.enhanceCoursesTable();
+        } else {
+            renderCoursesTable();
+        }
+
+        // Add export buttons to courses table
+        if (window.TableExportHelper) {
+            setTimeout(() => {
+                window.TableExportHelper.addToCoursesTable();
+            }, 100);
+        }
     } catch (error) {
         console.error('Error loading courses:', error);
         showToast('Failed to load courses', 'error');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="px-6 py-8 text-center text-red-500">
+                        Failed to load courses. Please try again.
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
 /**
  * Filter courses
+ * Reloads courses with current filter settings
+ * @returns {void}
  */
 function filterCourses() {
     loadCourses();
@@ -1180,6 +1454,8 @@ function filterCourses() {
 
 /**
  * Render courses table
+ * Renders courses in table with search filtering and empty states
+ * @returns {void}
  */
 function renderCoursesTable() {
     const tbody = document.getElementById('coursesTableBody');
@@ -1194,13 +1470,24 @@ function renderCoursesTable() {
     }
 
     if (filteredCourses.length === 0) {
+        const isSearching = searchTerm.length > 0;
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                    No courses found. Click "Add Course" to create one.
+                <td colspan="6" class="px-6 py-4">
+                    <div id="coursesEmpty"></div>
                 </td>
             </tr>
         `;
+        EmptyState.render('coursesEmpty', {
+            title: isSearching ? 'No Courses Found' : 'No Courses',
+            message: isSearching
+                ? 'No courses match your search criteria. Try adjusting your filters.'
+                : 'Get started by adding courses that professors can teach.',
+            illustration: isSearching ? 'no-search-results' : 'no-courses',
+            actionLabel: isSearching ? null : 'Add Course',
+            actionId: 'addCourseBtnEmpty',
+            actionCallback: isSearching ? null : showAddCourseModal
+        });
         return;
     }
 
@@ -1237,6 +1524,8 @@ function renderCoursesTable() {
 
 /**
  * Show add course modal
+ * Displays modal for creating new course
+ * @returns {void}
  */
 function showAddCourseModal() {
     const content = `
@@ -1321,6 +1610,9 @@ function showAddCourseModal() {
 
 /**
  * Handle create course
+ * Validates form and creates new course via API
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleCreateCourse(closeModal) {
     const form = document.getElementById('courseForm');
@@ -1441,6 +1733,10 @@ window.deanship.editCourse = function (courseId) {
 
 /**
  * Handle update course
+ * Validates form and updates course via API
+ * @param {number} courseId - ID of the course to update
+ * @param {Function} closeModal - Function to close the modal
+ * @returns {Promise<void>}
  */
 async function handleUpdateCourse(courseId, closeModal) {
     const form = document.getElementById('editCourseForm');
@@ -1507,18 +1803,30 @@ let assignments = [];
 
 /**
  * Load assignments
+ * Fetches course assignments for selected semester and renders table
+ * @returns {Promise<void>}
  */
 async function loadAssignments() {
+    const tbody = document.getElementById('assignmentsTableBody');
+
     if (!selectedSemesterId) {
-        document.getElementById('assignmentsTableBody').innerHTML = `
+        tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                    Please select an academic year and semester
+                <td colspan="6" class="px-6 py-4">
+                    <div id="assignmentsNoContext"></div>
                 </td>
             </tr>
         `;
+        EmptyState.render('assignmentsNoContext', {
+            title: 'Select Academic Context',
+            message: 'Please select an academic year and semester to view course assignments.',
+            illustration: 'no-assignments'
+        });
         return;
     }
+
+    // Show skeleton loader
+    tbody.innerHTML = SkeletonLoader.table(5, 6);
 
     try {
         const professorId = document.getElementById('assignmentProfessorFilter').value;
@@ -1528,14 +1836,30 @@ async function loadAssignments() {
         assignments = await apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' });
         renderAssignmentsTable();
         updateAssignmentFilters();
+
+        // Add export buttons to assignments table
+        if (window.TableExportHelper) {
+            setTimeout(() => {
+                window.TableExportHelper.addToAssignmentsTable();
+            }, 100);
+        }
     } catch (error) {
         console.error('Error loading assignments:', error);
         showToast('Failed to load assignments', 'error');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="px-6 py-8 text-center text-red-500">
+                    Failed to load assignments. Please try again.
+                </td>
+            </tr>
+        `;
     }
 }
 
 /**
  * Update assignment filters
+ * Updates professor and course filter dropdowns
+ * @returns {void}
  */
 function updateAssignmentFilters() {
     // Update professor filter
@@ -1555,6 +1879,8 @@ function updateAssignmentFilters() {
 
 /**
  * Render assignments table
+ * Renders course assignments with filtering and empty states
+ * @returns {void}
  */
 function renderAssignmentsTable() {
     const tbody = document.getElementById('assignmentsTableBody');
@@ -1566,13 +1892,24 @@ function renderAssignmentsTable() {
     }
 
     if (filteredAssignments.length === 0) {
+        const isFiltering = courseFilter.length > 0;
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="px-6 py-8 text-center text-gray-500">
-                    No course assignments found. Click "Assign Course" to create one.
+                <td colspan="6" class="px-6 py-4">
+                    <div id="assignmentsEmpty"></div>
                 </td>
             </tr>
         `;
+        EmptyState.render('assignmentsEmpty', {
+            title: isFiltering ? 'No Assignments Found' : 'No Course Assignments',
+            message: isFiltering
+                ? 'No assignments match your filter criteria. Try adjusting your filters.'
+                : 'Assign courses to professors for the selected semester to get started.',
+            illustration: isFiltering ? 'no-search-results' : 'no-assignments',
+            actionLabel: isFiltering ? null : 'Assign Course',
+            actionId: 'addAssignmentBtnEmpty',
+            actionCallback: isFiltering ? null : showAddAssignmentModal
+        });
         return;
     }
 
@@ -1601,6 +1938,8 @@ function renderAssignmentsTable() {
 
 /**
  * Show add assignment modal
+ * Displays modal for creating new course assignment
+ * @returns {void}
  */
 function showAddAssignmentModal() {
     if (!selectedSemesterId) {
@@ -1696,7 +2035,7 @@ async function handleCreateAssignment(semesterId, closeModal) {
         showToast('Course assigned successfully', 'success');
         closeModal();
         loadAssignments();
-        
+
         // Refresh File Explorer if on file-explorer tab and context is set
         if (currentTab === 'file-explorer' && fileExplorerState.hasContext() && fileExplorerInstance) {
             await fileExplorerInstance.loadRoot(selectedAcademicYearId, selectedSemesterId, true);
@@ -1739,8 +2078,21 @@ window.deanship.unassignCourse = function (assignmentId) {
 // REPORTS
 // ============================================================================
 
+// Global reports dashboard instance
+let reportsDashboardInstance = null;
+
 /**
- * Load system report
+ * Initialize interactive reports dashboard
+ */
+function initializeReportsDashboard() {
+    if (!reportsDashboardInstance) {
+        reportsDashboardInstance = new window.ReportsDashboard('reports-dashboard-container');
+    }
+    reportsDashboardInstance.init();
+}
+
+/**
+ * Load system report (legacy - kept for backward compatibility)
  */
 async function loadSystemReport() {
     if (!selectedSemesterId) {
@@ -1877,17 +2229,27 @@ function initializeFileExplorer() {
  * Load file explorer for selected semester
  */
 async function loadFileExplorer() {
+    const container = document.getElementById('fileExplorerContainer');
+
     if (!selectedAcademicYearId || !selectedSemesterId || !fileExplorerInstance) {
-        const container = document.getElementById('fileExplorerContainer');
         if (container) {
             // Only show empty state if container is truly empty (no restored content)
             if (!container.innerHTML.trim()) {
                 container.innerHTML = `
-                    <div class="text-center py-12 text-gray-500">
-                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
-                        </svg>
-                        <p class="mt-2">Select an academic year and semester to browse files</p>
+                    <div class="flex flex-col items-center justify-center py-16 px-4">
+                        <div class="text-center max-w-md">
+                            <svg class="mx-auto h-20 w-20 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                            <h3 class="text-lg font-semibold text-gray-700 mb-2">No Academic Context Selected</h3>
+                            <p class="text-sm text-gray-600 mb-4">To explore files and folders, please select an <strong>Academic Year</strong> and <strong>Semester</strong> from the dropdown filters at the top of the page.</p>
+                            <div class="inline-flex items-center text-xs text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                                <svg class="w-4 h-4 mr-2 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                </svg>
+                                <span>You have read-only access to all departments</span>
+                            </div>
+                        </div>
                     </div>
                 `;
             }
@@ -1904,9 +2266,8 @@ async function loadFileExplorer() {
             selectedAcademicYear?.yearCode || '',
             semester?.type || ''
         );
-        
+
         // Check if we have existing content to decide on background update
-        const container = document.getElementById('fileExplorerContainer');
         const hasContent = container && container.querySelector('#fileExplorerTree') &&
             container.querySelector('#fileExplorerTree').children.length > 0;
 
@@ -1919,6 +2280,656 @@ async function loadFileExplorer() {
         }
     } catch (error) {
         console.error('Error loading file explorer:', error);
-        showToast('Failed to load file explorer', 'error');
+
+        // Determine error type and show appropriate message
+        let errorTitle = 'Unable to Load Files';
+        let errorMessage = 'An error occurred while loading the file explorer.';
+        let actionMessage = 'Please try selecting a different semester or refresh the page.';
+
+        if (error.message && error.message.includes('not found')) {
+            errorTitle = 'No Data Available';
+            errorMessage = 'No files or folders exist for this semester yet.';
+            actionMessage = 'Files will appear here once professors upload their documents.';
+        } else if (error.message && error.message.includes('network')) {
+            errorTitle = 'Connection Error';
+            errorMessage = 'Unable to connect to the server.';
+            actionMessage = 'Please check your internet connection and try again.';
+        } else if (error.message && error.message.includes('permission')) {
+            errorTitle = 'Access Denied';
+            errorMessage = 'You don\'t have permission to access this content.';
+            actionMessage = 'Please contact your system administrator if you believe this is an error.';
+        }
+
+        // Show user-friendly error message
+        showToast(errorMessage, 'error');
+
+        // Render error state in container
+        if (container) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-16 px-4">
+                    <div class="text-center max-w-md">
+                        <svg class="mx-auto h-20 w-20 text-red-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <h3 class="text-lg font-semibold text-gray-800 mb-2">${errorTitle}</h3>
+                        <p class="text-sm text-gray-600 mb-3">${errorMessage}</p>
+                        <p class="text-xs text-gray-500 mb-4">${actionMessage}</p>
+                        <button onclick="window.location.reload()" class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            Refresh Page
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
     }
+}
+
+
+// ===================================
+// Enhanced Table Features Integration
+// ===================================
+
+/**
+ * Table Enhancement Manager
+ * Manages advanced table features like filtering, bulk actions, and visual enhancements
+ */
+class TableEnhancementManager {
+    constructor() {
+        this.selectedRows = new Map(); // Map of table -> Set of selected IDs
+        this.filters = new Map(); // Map of table -> filter values
+        this.bulkToolbars = new Map(); // Map of table -> BulkActionsToolbar instance
+    }
+
+    /**
+     * Enhance professors table with advanced features
+     */
+    enhanceProfessorsTable() {
+        const tableContainer = document.getElementById('professorsTableContainer');
+        if (!tableContainer) return;
+
+        // Add filters container
+        const filtersHtml = `
+            <div class="enhanced-table-container">
+                <div class="table-filters">
+                    <div id="professorDepartmentFilter"></div>
+                </div>
+                <div id="professorBulkToolbar"></div>
+                <div id="professorsTableWrapper"></div>
+            </div>
+        `;
+
+        tableContainer.innerHTML = filtersHtml;
+
+        // Initialize department filter
+        if (departments.length > 0) {
+            const deptFilter = new MultiSelectFilter();
+            const deptOptions = departments.map(d => ({ value: d, label: d }));
+            deptFilter.render(
+                document.getElementById('professorDepartmentFilter'),
+                'Department',
+                deptOptions,
+                (selected) => this.applyProfessorFilters()
+            );
+            this.filters.set('professors-department', deptFilter);
+        }
+
+        // Initialize bulk actions toolbar
+        const bulkToolbar = new BulkActionsToolbar();
+        bulkToolbar.render(
+            document.getElementById('professorBulkToolbar'),
+            (action) => this.handleProfessorBulkAction(action)
+        );
+        this.bulkToolbars.set('professors', bulkToolbar);
+
+        // Re-render table with enhancements
+        this.renderEnhancedProfessorsTable();
+    }
+
+    /**
+     * Render enhanced professors table with selection and avatars
+     */
+    renderEnhancedProfessorsTable() {
+        const wrapper = document.getElementById('professorsTableWrapper');
+        if (!wrapper) return;
+
+        const filteredProfessors = this.getFilteredProfessors();
+
+        if (filteredProfessors.length === 0) {
+            wrapper.innerHTML = EmptyState.generate(
+                'No professors found',
+                'Try adjusting your filters or add a new professor',
+                'Add Professor',
+                () => showAddProfessorModal()
+            );
+            return;
+        }
+
+        const tableHtml = `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left">
+                                <input type="checkbox" id="selectAllProfessors" class="table-row-checkbox" />
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${filteredProfessors.map(prof => this.renderProfessorRow(prof)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        wrapper.innerHTML = tableHtml;
+        this.attachProfessorTableListeners();
+    }
+
+    /**
+     * Render a single professor row with avatar and selection
+     */
+    renderProfessorRow(professor) {
+        const isSelected = this.isRowSelected('professors', professor.id);
+        const avatar = UserAvatar.generate(professor.name, 'md');
+        const statusClass = professor.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
+        const statusText = professor.isActive ? 'Active' : 'Inactive';
+
+        return `
+            <tr class="table-row-selectable ${isSelected ? 'selected' : ''}" data-id="${professor.id}">
+                <td class="px-6 py-4">
+                    <input type="checkbox" class="row-checkbox table-row-checkbox" 
+                           data-id="${professor.id}" ${isSelected ? 'checked' : ''} />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="flex items-center gap-3">
+                        ${avatar}
+                        <div>
+                            <div class="text-sm font-medium text-gray-900">${professor.name}</div>
+                        </div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${professor.email}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${professor.department?.name || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}">
+                        ${statusText}
+                    </span>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editProfessor(${professor.id})" title="Edit professor">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-900" onclick="deleteProfessor(${professor.id})" title="Delete professor">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    /**
+     * Attach event listeners to professor table
+     */
+    attachProfessorTableListeners() {
+        // Select all checkbox
+        const selectAll = document.getElementById('selectAllProfessors');
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('.row-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = e.target.checked;
+                    const id = parseInt(cb.dataset.id);
+                    if (e.target.checked) {
+                        this.selectRow('professors', id);
+                    } else {
+                        this.deselectRow('professors', id);
+                    }
+                });
+                this.updateBulkToolbar('professors');
+            });
+        }
+
+        // Individual checkboxes
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                if (e.target.checked) {
+                    this.selectRow('professors', id);
+                } else {
+                    this.deselectRow('professors', id);
+                }
+                this.updateBulkToolbar('professors');
+            });
+        });
+
+        // Row click (excluding checkbox and action buttons)
+        document.querySelectorAll('.table-row-selectable').forEach(row => {
+            row.addEventListener('click', (e) => {
+                if (e.target.type === 'checkbox' || e.target.closest('button')) return;
+                const checkbox = row.querySelector('.row-checkbox');
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            });
+        });
+    }
+
+    /**
+     * Enhance courses table with progress bars and bulk actions
+     */
+    enhanceCoursesTable() {
+        const tableContainer = document.getElementById('coursesTableContainer');
+        if (!tableContainer) return;
+
+        const filtersHtml = `
+            <div class="enhanced-table-container">
+                <div class="table-filters">
+                    <div id="courseDepartmentFilter"></div>
+                </div>
+                <div id="courseBulkToolbar"></div>
+                <div id="coursesTableWrapper"></div>
+            </div>
+        `;
+
+        tableContainer.innerHTML = filtersHtml;
+
+        // Initialize department filter
+        if (departments.length > 0) {
+            const deptFilter = new MultiSelectFilter();
+            const deptOptions = departments.map(d => ({ value: d, label: d }));
+            deptFilter.render(
+                document.getElementById('courseDepartmentFilter'),
+                'Department',
+                deptOptions,
+                (selected) => this.applyCoursesFilters()
+            );
+            this.filters.set('courses-department', deptFilter);
+        }
+
+        // Initialize bulk actions toolbar
+        const bulkToolbar = new BulkActionsToolbar();
+        bulkToolbar.render(
+            document.getElementById('courseBulkToolbar'),
+            (action) => this.handleCourseBulkAction(action)
+        );
+        this.bulkToolbars.set('courses', bulkToolbar);
+
+        this.renderEnhancedCoursesTable();
+    }
+
+    /**
+     * Render enhanced courses table with progress bars
+     */
+    renderEnhancedCoursesTable() {
+        const wrapper = document.getElementById('coursesTableWrapper');
+        if (!wrapper) return;
+
+        const filteredCourses = this.getFilteredCourses();
+
+        if (filteredCourses.length === 0) {
+            wrapper.innerHTML = EmptyState.generate(
+                'No courses found',
+                'Try adjusting your filters or add a new course'
+            );
+            return;
+        }
+
+        const tableHtml = `
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left">
+                                <input type="checkbox" id="selectAllCourses" class="table-row-checkbox" />
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        ${filteredCourses.map(course => this.renderCourseRow(course)).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        wrapper.innerHTML = tableHtml;
+        this.attachCourseTableListeners();
+        this.animateProgressBars();
+    }
+
+    /**
+     * Render a single course row with progress bar
+     */
+    renderCourseRow(course) {
+        const isSelected = this.isRowSelected('courses', course.id);
+        const progress = this.calculateCourseProgress(course);
+        const progressBar = TableProgressBar.generate(
+            progress,
+            `${progress}% of documents submitted`
+        );
+
+        return `
+            <tr class="table-row-selectable ${isSelected ? 'selected' : ''}" data-id="${course.id}">
+                <td class="px-6 py-4">
+                    <input type="checkbox" class="row-checkbox table-row-checkbox" 
+                           data-id="${course.id}" ${isSelected ? 'checked' : ''} />
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm font-medium text-gray-900">${course.courseName}</div>
+                    <div class="text-sm text-gray-500">${course.courseCode}</div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${course.professor?.name || course.professorName || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${course.department?.name || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap">
+                    ${progressBar}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editCourse(${course.id})" title="Edit course">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="text-red-600 hover:text-red-900" onclick="deleteCourse(${course.id})" title="Delete course">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    /**
+     * Attach event listeners to course table
+     */
+    attachCourseTableListeners() {
+        const selectAll = document.getElementById('selectAllCourses');
+        if (selectAll) {
+            selectAll.addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('.row-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = e.target.checked;
+                    const id = parseInt(cb.dataset.id);
+                    if (e.target.checked) {
+                        this.selectRow('courses', id);
+                    } else {
+                        this.deselectRow('courses', id);
+                    }
+                });
+                this.updateBulkToolbar('courses');
+            });
+        }
+
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', (e) => {
+                const id = parseInt(e.target.dataset.id);
+                if (e.target.checked) {
+                    this.selectRow('courses', id);
+                } else {
+                    this.deselectRow('courses', id);
+                }
+                this.updateBulkToolbar('courses');
+            });
+        });
+
+        document.querySelectorAll('.table-row-selectable').forEach(row => {
+            row.addEventListener('click', (e) => {
+                if (e.target.type === 'checkbox' || e.target.closest('button')) return;
+                const checkbox = row.querySelector('.row-checkbox');
+                checkbox.checked = !checkbox.checked;
+                checkbox.dispatchEvent(new Event('change'));
+            });
+        });
+    }
+
+    /**
+     * Enhance assignments table with progress indicators
+     */
+    enhanceAssignmentsTable() {
+        // This will be called when rendering assignments
+        // Add progress bars to assignment rows
+        const assignmentRows = document.querySelectorAll('#assignmentsTable tbody tr');
+        assignmentRows.forEach(row => {
+            const progressCell = row.querySelector('.assignment-progress');
+            if (progressCell) {
+                const percentage = parseInt(progressCell.dataset.progress || 0);
+                const progressBar = TableProgressBar.generate(
+                    percentage,
+                    `${percentage}% completed`
+                );
+                progressCell.innerHTML = progressBar;
+            }
+        });
+        this.animateProgressBars();
+    }
+
+    /**
+     * Animate all progress bars in the current view
+     */
+    animateProgressBars() {
+        setTimeout(() => {
+            document.querySelectorAll('.table-progress-bar').forEach(bar => {
+                TableProgressBar.animate(bar);
+            });
+        }, 100);
+    }
+
+    /**
+     * Calculate course progress based on document submissions
+     */
+    calculateCourseProgress(course) {
+        // Mock calculation - replace with actual logic
+        if (course.documentsSubmitted && course.totalDocuments) {
+            return Math.round((course.documentsSubmitted / course.totalDocuments) * 100);
+        }
+        // Random for demo purposes
+        return Math.floor(Math.random() * 100);
+    }
+
+    /**
+     * Get filtered professors based on active filters
+     */
+    getFilteredProfessors() {
+        let filtered = [...professors];
+
+        // Apply department filter
+        const deptFilter = this.filters.get('professors-department');
+        if (deptFilter) {
+            const selectedDepts = deptFilter.getSelectedValues();
+            if (selectedDepts.length > 0) {
+                filtered = filtered.filter(p => selectedDepts.includes(p.department));
+            }
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Get filtered courses based on active filters
+     */
+    getFilteredCourses() {
+        let filtered = [...courses];
+
+        const deptFilter = this.filters.get('courses-department');
+        if (deptFilter) {
+            const selectedDepts = deptFilter.getSelectedValues();
+            if (selectedDepts.length > 0) {
+                filtered = filtered.filter(c => selectedDepts.includes(c.department));
+            }
+        }
+
+        return filtered;
+    }
+
+    /**
+     * Apply professor filters and re-render table
+     */
+    applyProfessorFilters() {
+        this.renderEnhancedProfessorsTable();
+    }
+
+    /**
+     * Apply course filters and re-render table
+     */
+    applyCoursesFilters() {
+        this.renderEnhancedCoursesTable();
+    }
+
+    /**
+     * Handle bulk actions for professors
+     */
+    async handleProfessorBulkAction(action) {
+        const selectedIds = this.getSelectedRows('professors');
+
+        if (action === 'clear') {
+            this.clearSelection('professors');
+            this.renderEnhancedProfessorsTable();
+            return;
+        }
+
+        if (selectedIds.length === 0) {
+            showToast('No professors selected', 'warning');
+            return;
+        }
+
+        try {
+            switch (action) {
+                case 'activate':
+                    await this.bulkUpdateProfessorStatus(selectedIds, true);
+                    showToast(`${selectedIds.length} professor(s) activated`, 'success');
+                    break;
+                case 'deactivate':
+                    await this.bulkUpdateProfessorStatus(selectedIds, false);
+                    showToast(`${selectedIds.length} professor(s) deactivated`, 'success');
+                    break;
+                case 'delete':
+                    await this.bulkDeleteProfessors(selectedIds);
+                    showToast(`${selectedIds.length} professor(s) deleted`, 'success');
+                    break;
+            }
+
+            this.clearSelection('professors');
+            await loadProfessors();
+            this.renderEnhancedProfessorsTable();
+        } catch (error) {
+            showToast(`Bulk action failed: ${getErrorMessage(error)}`, 'error');
+        }
+    }
+
+    /**
+     * Handle bulk actions for courses
+     */
+    async handleCourseBulkAction(action) {
+        const selectedIds = this.getSelectedRows('courses');
+
+        if (action === 'clear') {
+            this.clearSelection('courses');
+            this.renderEnhancedCoursesTable();
+            return;
+        }
+
+        if (selectedIds.length === 0) {
+            showToast('No courses selected', 'warning');
+            return;
+        }
+
+        try {
+            switch (action) {
+                case 'delete':
+                    await this.bulkDeleteCourses(selectedIds);
+                    showToast(`${selectedIds.length} course(s) deleted`, 'success');
+                    break;
+            }
+
+            this.clearSelection('courses');
+            await loadCourses();
+            this.renderEnhancedCoursesTable();
+        } catch (error) {
+            showToast(`Bulk action failed: ${getErrorMessage(error)}`, 'error');
+        }
+    }
+
+    /**
+     * Bulk update professor status
+     */
+    async bulkUpdateProfessorStatus(ids, active) {
+        const promises = ids.map(id =>
+            apiRequest(`/api/deanship/professors/${id}/status`, {
+                method: 'PUT',
+                body: JSON.stringify({ active })
+            })
+        );
+        await Promise.all(promises);
+    }
+
+    /**
+     * Bulk delete professors
+     */
+    async bulkDeleteProfessors(ids) {
+        const promises = ids.map(id =>
+            apiRequest(`/api/deanship/professors/${id}`, { method: 'DELETE' })
+        );
+        await Promise.all(promises);
+    }
+
+    /**
+     * Bulk delete courses
+     */
+    async bulkDeleteCourses(ids) {
+        const promises = ids.map(id =>
+            apiRequest(`/api/deanship/courses/${id}`, { method: 'DELETE' })
+        );
+        await Promise.all(promises);
+    }
+
+    // Selection management methods
+    selectRow(table, id) {
+        if (!this.selectedRows.has(table)) {
+            this.selectedRows.set(table, new Set());
+        }
+        this.selectedRows.get(table).add(id);
+    }
+
+    deselectRow(table, id) {
+        if (this.selectedRows.has(table)) {
+            this.selectedRows.get(table).delete(id);
+        }
+    }
+
+    isRowSelected(table, id) {
+        return this.selectedRows.has(table) && this.selectedRows.get(table).has(id);
+    }
+
+    getSelectedRows(table) {
+        return this.selectedRows.has(table) ? Array.from(this.selectedRows.get(table)) : [];
+    }
+
+    clearSelection(table) {
+        if (this.selectedRows.has(table)) {
+            this.selectedRows.get(table).clear();
+        }
+    }
+
+    updateBulkToolbar(table) {
+        const toolbar = this.bulkToolbars.get(table);
+        if (toolbar) {
+            const count = this.getSelectedRows(table).length;
+            toolbar.show(count);
+        }
+    }
+}
+
+// Initialize table enhancement manager
+const tableEnhancementManager = new TableEnhancementManager();
+
+// Export for use in other modules
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { tableEnhancementManager };
 }

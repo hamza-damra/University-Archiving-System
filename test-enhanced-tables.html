@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Tables Test</title>
+    <link rel="stylesheet" href="src/main/resources/static/css/deanship-dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            padding: 20px;
+            background: #f3f4f6;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        h2 {
+            margin-top: 0;
+            color: #111827;
+        }
+        .demo-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .demo-table th,
+        .demo-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .demo-table th {
+            background: #f9fafb;
+            font-weight: 600;
+            color: #374151;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Table Components Test</h1>
+
+    <!-- Multi-Select Filter Test -->
+    <div class="test-section">
+        <h2>1. Multi-Select Filter</h2>
+        <div id="multiSelectTest"></div>
+        <p id="multiSelectResult" style="margin-top: 10px; color: #6b7280;"></p>
+    </div>
+
+    <!-- Date Range Filter Test -->
+    <div class="test-section">
+        <h2>2. Date Range Filter</h2>
+        <div id="dateRangeTest"></div>
+        <p id="dateRangeResult" style="margin-top: 10px; color: #6b7280;"></p>
+    </div>
+
+    <!-- User Avatar Test -->
+    <div class="test-section">
+        <h2>3. User Avatars</h2>
+        <div style="display: flex; gap: 20px; align-items: center;">
+            <div>
+                <p>Small:</p>
+                <div id="avatarSmall"></div>
+            </div>
+            <div>
+                <p>Medium:</p>
+                <div id="avatarMedium"></div>
+            </div>
+            <div>
+                <p>Large:</p>
+                <div id="avatarLarge"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Bar Test -->
+    <div class="test-section">
+        <h2>4. Progress Bars</h2>
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            <div>
+                <p>Low Progress (30%):</p>
+                <div id="progressLow"></div>
+            </div>
+            <div>
+                <p>Medium Progress (65%):</p>
+                <div id="progressMedium"></div>
+            </div>
+            <div>
+                <p>High Progress (90%):</p>
+                <div id="progressHigh"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Toolbar Test -->
+    <div class="test-section">
+        <h2>5. Bulk Actions Toolbar</h2>
+        <button onclick="showBulkToolbar()" style="padding: 8px 16px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            Show Toolbar (3 items selected)
+        </button>
+        <div id="bulkToolbarTest"></div>
+    </div>
+
+    <!-- Enhanced Table Test -->
+    <div class="test-section">
+        <h2>6. Enhanced Table with All Features</h2>
+        <table class="demo-table">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" class="table-row-checkbox" /></th>
+                    <th>Professor</th>
+                    <th>Department</th>
+                    <th>Progress</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="table-row-selectable">
+                    <td><input type="checkbox" class="table-row-checkbox" /></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="avatar1"></div>
+                            <span>Dr. John Smith</span>
+                        </div>
+                    </td>
+                    <td>Computer Science</td>
+                    <td><div id="progress1"></div></td>
+                </tr>
+                <tr class="table-row-selectable">
+                    <td><input type="checkbox" class="table-row-checkbox" /></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="avatar2"></div>
+                            <span>Dr. Sarah Johnson</span>
+                        </div>
+                    </td>
+                    <td>Mathematics</td>
+                    <td><div id="progress2"></div></td>
+                </tr>
+                <tr class="table-row-selectable">
+                    <td><input type="checkbox" class="table-row-checkbox" /></td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <div id="avatar3"></div>
+                            <span>Dr. Ahmed Hassan</span>
+                        </div>
+                    </td>
+                    <td>Physics</td>
+                    <td><div id="progress3"></div></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="src/main/resources/static/js/deanship-tables.js"></script>
+    <script>
+        // Test Multi-Select Filter
+        const multiSelect = new MultiSelectFilter();
+        const departments = [
+            { value: 'cs', label: 'Computer Science' },
+            { value: 'math', label: 'Mathematics' },
+            { value: 'physics', label: 'Physics' },
+            { value: 'chemistry', label: 'Chemistry' }
+        ];
+        multiSelect.render(
+            document.getElementById('multiSelectTest'),
+            'Department',
+            departments,
+            (selected) => {
+                document.getElementById('multiSelectResult').textContent = 
+                    `Selected: ${selected.join(', ') || 'None'}`;
+            }
+        );
+
+        // Test Date Range Filter
+        const dateRange = new DateRangeFilter();
+        dateRange.render(
+            document.getElementById('dateRangeTest'),
+            (start, end) => {
+                document.getElementById('dateRangeResult').textContent = 
+                    start && end ? `Range: ${start} to ${end}` : 'No date range selected';
+            }
+        );
+
+        // Test User Avatars
+        document.getElementById('avatarSmall').innerHTML = UserAvatar.generate('John Smith', 'sm');
+        document.getElementById('avatarMedium').innerHTML = UserAvatar.generate('Sarah Johnson', 'md');
+        document.getElementById('avatarLarge').innerHTML = UserAvatar.generate('Ahmed Hassan', 'lg');
+
+        // Test Progress Bars
+        document.getElementById('progressLow').innerHTML = TableProgressBar.generate(30, '30% completed');
+        document.getElementById('progressMedium').innerHTML = TableProgressBar.generate(65, '65% completed');
+        document.getElementById('progressHigh').innerHTML = TableProgressBar.generate(90, '90% completed');
+
+        // Animate progress bars
+        setTimeout(() => {
+            document.querySelectorAll('.table-progress-bar').forEach(bar => {
+                TableProgressBar.animate(bar);
+            });
+        }, 100);
+
+        // Test Bulk Actions Toolbar
+        const bulkToolbar = new BulkActionsToolbar();
+        bulkToolbar.render(
+            document.getElementById('bulkToolbarTest'),
+            (action) => {
+                alert(`Bulk action: ${action}`);
+                if (action === 'clear') {
+                    bulkToolbar.hide();
+                }
+            }
+        );
+
+        function showBulkToolbar() {
+            bulkToolbar.show(3);
+        }
+
+        // Test Enhanced Table
+        document.getElementById('avatar1').innerHTML = UserAvatar.generate('John Smith', 'md');
+        document.getElementById('avatar2').innerHTML = UserAvatar.generate('Sarah Johnson', 'md');
+        document.getElementById('avatar3').innerHTML = UserAvatar.generate('Ahmed Hassan', 'md');
+
+        document.getElementById('progress1').innerHTML = TableProgressBar.generate(85, '85% completed');
+        document.getElementById('progress2').innerHTML = TableProgressBar.generate(45, '45% completed');
+        document.getElementById('progress3').innerHTML = TableProgressBar.generate(70, '70% completed');
+
+        // Animate table progress bars
+        setTimeout(() => {
+            document.querySelectorAll('#progress1 .table-progress-bar, #progress2 .table-progress-bar, #progress3 .table-progress-bar').forEach(bar => {
+                TableProgressBar.animate(bar);
+            });
+        }, 200);
+    </script>
+</body>
+</html>

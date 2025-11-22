@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer Enhancements Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">File Explorer Enhancements Test</h1>
+
+        <!-- Test Section 1: Bulk Download -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">1. Bulk Download Service</h2>
+            <p class="text-gray-600 mb-4">Test downloading multiple files as a ZIP archive with progress tracking.</p>
+            <button 
+                onclick="testBulkDownload()"
+                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Test Bulk Download (3 Mock Files)
+            </button>
+        </div>
+
+        <!-- Test Section 2: File Preview -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">2. File Preview Pane</h2>
+            <p class="text-gray-600 mb-4">Test in-browser file preview with different file types.</p>
+            <div class="space-x-2">
+                <button 
+                    onclick="testPdfPreview()"
+                    class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Test PDF Preview
+                </button>
+                <button 
+                    onclick="testImagePreview()"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Test Image Preview
+                </button>
+                <button 
+                    onclick="testUnsupportedPreview()"
+                    class="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors">
+                    Test Unsupported Type
+                </button>
+            </div>
+        </div>
+
+        <!-- Test Section 3: File Metadata Tooltips -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">3. File Metadata Tooltips</h2>
+            <p class="text-gray-600 mb-4">Hover over the file rows below to see metadata tooltips.</p>
+            
+            <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">File Name</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded</th>
+                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploader</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    <tr class="hover:bg-gray-50 cursor-pointer"
+                        data-file-id="1"
+                        data-file-name="lecture_notes.pdf"
+                        data-file-size="2621440"
+                        data-upload-date="2025-11-20T10:30:00"
+                        data-uploader-name="Dr. Smith">
+                        <td class="px-4 py-3">lecture_notes.pdf</td>
+                        <td class="px-4 py-3">2.5 MB</td>
+                        <td class="px-4 py-3">Nov 20, 2025</td>
+                        <td class="px-4 py-3">Dr. Smith</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50 cursor-pointer"
+                        data-file-id="2"
+                        data-file-name="assignment.docx"
+                        data-file-size="524288"
+                        data-upload-date="2025-11-21T14:15:00"
+                        data-uploader-name="Prof. Johnson">
+                        <td class="px-4 py-3">assignment.docx</td>
+                        <td class="px-4 py-3">512 KB</td>
+                        <td class="px-4 py-3">Nov 21, 2025</td>
+                        <td class="px-4 py-3">Prof. Johnson</td>
+                    </tr>
+                    <tr class="hover:bg-gray-50 cursor-pointer"
+                        data-file-id="3"
+                        data-file-name="diagram.png"
+                        data-file-size="1048576"
+                        data-upload-date="2025-11-22T09:00:00"
+                        data-uploader-name="Dr. Williams">
+                        <td class="px-4 py-3">diagram.png</td>
+                        <td class="px-4 py-3">1.0 MB</td>
+                        <td class="px-4 py-3">Nov 22, 2025</td>
+                        <td class="px-4 py-3">Dr. Williams</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Feature Summary -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h2 class="text-xl font-semibold text-blue-900 mb-4">✅ Task 7 Completed</h2>
+            <div class="space-y-2 text-blue-800">
+                <p>✅ <strong>7.1:</strong> BulkDownloadService - ZIP downloads with progress tracking</p>
+                <p>✅ <strong>7.2:</strong> FilePreviewPane - In-browser file preview (PDF, images, text)</p>
+                <p>✅ <strong>7.3:</strong> FileMetadataTooltip - Hover tooltips with file metadata</p>
+                <p>✅ <strong>7.4:</strong> File Explorer Integration - All features integrated</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the enhancement module -->
+    <script type="module">
+        import { BulkDownloadService, FilePreviewPane, FileMetadataTooltip } from './src/main/resources/static/js/deanship-file-explorer-enhanced.js';
+
+        // Initialize services
+        window.bulkDownloadService = new BulkDownloadService();
+        window.filePreviewPane = new FilePreviewPane();
+        window.fileMetadataTooltip = new FileMetadataTooltip();
+        window.fileMetadataTooltip.initialize();
+
+        // Test functions
+        window.testBulkDownload = function() {
+            // Mock files for testing
+            const mockFiles = [
+                { id: 1, originalFilename: 'document1.pdf', name: 'document1.pdf' },
+                { id: 2, originalFilename: 'document2.pdf', name: 'document2.pdf' },
+                { id: 3, originalFilename: 'document3.pdf', name: 'document3.pdf' }
+            ];
+
+            // Note: This will fail in test because we don't have actual file API
+            // But it demonstrates the UI and progress modal
+            alert('Bulk download would start here. In production, this downloads files from the server and creates a ZIP.');
+            
+            // Show the progress modal for demonstration
+            window.bulkDownloadService.showProgressModal(mockFiles.length);
+            
+            // Simulate progress
+            let current = 0;
+            const interval = setInterval(() => {
+                current++;
+                window.bulkDownloadService.updateProgress(
+                    current, 
+                    mockFiles.length, 
+                    `Downloading ${mockFiles[current - 1]?.originalFilename || 'file'}...`
+                );
+                
+                if (current >= mockFiles.length) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        window.bulkDownloadService.hideProgressModal();
+                        alert('Download complete! (This is a demo - no actual files were downloaded)');
+                    }, 500);
+                }
+            }, 1000);
+        };
+
+        window.testPdfPreview = function() {
+            alert('PDF preview would open here. In production, this loads the PDF from the server.');
+            // In production: window.filePreviewPane.open(fileId, 'document.pdf', 'application/pdf');
+        };
+
+        window.testImagePreview = function() {
+            alert('Image preview would open here. In production, this loads the image from the server.');
+            // In production: window.filePreviewPane.open(fileId, 'image.png', 'image/png');
+        };
+
+        window.testUnsupportedPreview = function() {
+            alert('Unsupported file type preview would show a download option.');
+            // In production: window.filePreviewPane.open(fileId, 'file.zip', 'application/zip');
+        };
+    </script>
+</body>
+</html>

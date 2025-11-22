@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breadcrumb Navigation Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="src/main/resources/static/css/common.css">
+    <link rel="stylesheet" href="src/main/resources/static/css/deanship-dashboard.css">
+</head>
+<body class="bg-gray-50 min-h-screen p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h1 class="text-2xl font-bold mb-4">Breadcrumb Navigation Test</h1>
+            
+            <!-- Breadcrumb Container -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 class="text-sm font-semibold text-gray-700 mb-2">Breadcrumb Display:</h3>
+                <div id="breadcrumbContainer"></div>
+            </div>
+            
+            <!-- Test Controls -->
+            <div class="space-y-4">
+                <h3 class="text-lg font-semibold">Test Scenarios:</h3>
+                
+                <button onclick="testSimpleBreadcrumb()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mr-2">
+                    Test: Simple (Home)
+                </button>
+                
+                <button onclick="testTwoLevelBreadcrumb()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mr-2">
+                    Test: Two Levels (Home > Professors)
+                </button>
+                
+                <button onclick="testThreeLevelBreadcrumb()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mr-2">
+                    Test: Three Levels (Home > Professors > Details)
+                </button>
+                
+                <button onclick="testWithIcons()" 
+                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 mr-2">
+                    Test: With Icons
+                </button>
+                
+                <button onclick="testClear()" 
+                    class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 mr-2">
+                    Clear Breadcrumbs
+                </button>
+            </div>
+            
+            <!-- Event Log -->
+            <div class="mt-6">
+                <h3 class="text-lg font-semibold mb-2">Event Log:</h3>
+                <div id="eventLog" class="bg-gray-100 p-4 rounded-lg h-48 overflow-y-auto font-mono text-sm">
+                    <div class="text-gray-500">Events will appear here...</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Expected Behavior -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-blue-900 mb-3">Expected Behavior:</h3>
+            <ul class="list-disc list-inside space-y-2 text-blue-800">
+                <li>Breadcrumbs should display with chevron separators between items</li>
+                <li>Last breadcrumb item should be non-clickable and bold</li>
+                <li>Previous items should be clickable links</li>
+                <li>Clicking a breadcrumb should log the navigation event</li>
+                <li>Breadcrumbs should have smooth fade-in animation</li>
+                <li>Links should have hover effect (color change)</li>
+                <li>Container should hide when no breadcrumbs are present</li>
+            </ul>
+        </div>
+    </div>
+
+    <script type="module">
+        import { BreadcrumbNavigation } from './src/main/resources/static/js/deanship-navigation.js';
+
+        let breadcrumbNav;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('breadcrumbContainer');
+            breadcrumbNav = new BreadcrumbNavigation(container);
+            
+            // Set up navigation callback
+            breadcrumbNav.onNavigate((item, index) => {
+                logEvent(`Navigated to: ${item.label} (index: ${index})`);
+            });
+            
+            logEvent('Breadcrumb navigation initialized');
+        });
+        
+        // Test functions
+        window.testSimpleBreadcrumb = () => {
+            breadcrumbNav.setBreadcrumbs([
+                { label: 'Home' }
+            ]);
+            logEvent('Set simple breadcrumb: Home');
+        };
+        
+        window.testTwoLevelBreadcrumb = () => {
+            breadcrumbNav.setBreadcrumbs([
+                { label: 'Home', path: '#home' },
+                { label: 'Professors' }
+            ]);
+            logEvent('Set two-level breadcrumb: Home > Professors');
+        };
+        
+        window.testThreeLevelBreadcrumb = () => {
+            breadcrumbNav.setBreadcrumbs([
+                { label: 'Home', path: '#home' },
+                { label: 'Professors', path: '#professors' },
+                { label: 'Professor Details' }
+            ]);
+            logEvent('Set three-level breadcrumb: Home > Professors > Details');
+        };
+        
+        window.testWithIcons = () => {
+            breadcrumbNav.setBreadcrumbs([
+                { 
+                    label: 'Dashboard', 
+                    path: '#dashboard',
+                    icon: '<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path></svg>'
+                },
+                { 
+                    label: 'Reports', 
+                    path: '#reports',
+                    icon: '<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>'
+                },
+                { 
+                    label: 'Annual Report 2024',
+                    icon: '<svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>'
+                }
+            ]);
+            logEvent('Set breadcrumb with icons');
+        };
+        
+        window.testClear = () => {
+            breadcrumbNav.clear();
+            logEvent('Cleared all breadcrumbs');
+        };
+        
+        // Event logging
+        function logEvent(message) {
+            const log = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'text-gray-800 mb-1';
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            // Remove placeholder if exists
+            const placeholder = log.querySelector('.text-gray-500');
+            if (placeholder) {
+                placeholder.remove();
+            }
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Toast Notifications Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/css/deanship-dashboard.css">
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+        }
+        .demo-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .demo-button {
+            margin: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .demo-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-2">Enhanced Toast Notifications</h1>
+        <p class="text-gray-600 mb-8">Task 8: Enhanced feedback system with stacking, progress bars, and action buttons</p>
+
+        <!-- Basic Toasts -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Basic Toast Types</h2>
+            <button onclick="showSuccessToast()" class="demo-button bg-green-600 text-white hover:bg-green-700">
+                Success Toast
+            </button>
+            <button onclick="showErrorToast()" class="demo-button bg-red-600 text-white hover:bg-red-700">
+                Error Toast
+            </button>
+            <button onclick="showWarningToast()" class="demo-button bg-yellow-500 text-white hover:bg-yellow-600">
+                Warning Toast
+            </button>
+            <button onclick="showInfoToast()" class="demo-button bg-blue-600 text-white hover:bg-blue-700">
+                Info Toast
+            </button>
+        </div>
+
+        <!-- Toast with Action Button -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Toast with Action Button</h2>
+            <button onclick="showActionToast()" class="demo-button bg-purple-600 text-white hover:bg-purple-700">
+                Show Toast with Action
+            </button>
+            <p class="text-sm text-gray-600 mt-2">Click the action button in the toast to see the callback</p>
+        </div>
+
+        <!-- Multiple Toasts (Stacking) -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Toast Stacking</h2>
+            <button onclick="showMultipleToasts()" class="demo-button bg-indigo-600 text-white hover:bg-indigo-700">
+                Show 5 Toasts (Stacking Demo)
+            </button>
+            <p class="text-sm text-gray-600 mt-2">Maximum 5 toasts will be shown at once</p>
+        </div>
+
+        <!-- Long Duration Toast -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Custom Duration</h2>
+            <button onclick="showLongToast()" class="demo-button bg-teal-600 text-white hover:bg-teal-700">
+                Show 10 Second Toast
+            </button>
+            <p class="text-sm text-gray-600 mt-2">Hover over the toast to pause the countdown</p>
+        </div>
+
+        <!-- Multiline Toast -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Multiline Message</h2>
+            <button onclick="showMultilineToast()" class="demo-button bg-pink-600 text-white hover:bg-pink-700">
+                Show Multiline Toast
+            </button>
+        </div>
+
+        <!-- Clear All Toasts -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Clear All Toasts</h2>
+            <button onclick="clearAllToasts()" class="demo-button bg-gray-600 text-white hover:bg-gray-700">
+                Clear All Toasts
+            </button>
+        </div>
+
+        <!-- Tooltips Demo -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Tooltips on Buttons</h2>
+            <button data-tooltip="This is a helpful tooltip!" class="demo-button bg-orange-600 text-white hover:bg-orange-700">
+                Hover for Tooltip
+            </button>
+            <button data-tooltip="Edit this item" class="demo-button bg-blue-600 text-white hover:bg-blue-700">
+                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+            </button>
+            <button data-tooltip="Delete this item" class="demo-button bg-red-600 text-white hover:bg-red-700">
+                <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+            </button>
+            <p class="text-sm text-gray-600 mt-2">Hover over the buttons to see tooltips</p>
+        </div>
+
+        <!-- Loading Indicator Demo -->
+        <div class="demo-section">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Loading Indicator</h2>
+            <button onclick="showLoadingDemo()" class="demo-button bg-cyan-600 text-white hover:bg-cyan-700">
+                Show Loading Indicator
+            </button>
+            <div id="loadingDemoContainer" class="mt-4 min-h-[100px] bg-gray-50 rounded-lg"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <!-- Scripts -->
+    <script type="module">
+        // Import the enhanced toast system
+        import { EnhancedToast, Tooltip, LoadingIndicator } from '/js/deanship-feedback.js';
+        
+        // Make them globally available for onclick handlers
+        window.EnhancedToast = EnhancedToast;
+        window.Tooltip = Tooltip;
+        window.LoadingIndicator = LoadingIndicator;
+        
+        // Initialize tooltips
+        Tooltip.init();
+        
+        console.log('Enhanced Toast System Loaded');
+    </script>
+
+    <script>
+        function showSuccessToast() {
+            EnhancedToast.show('Operation completed successfully!', 'success');
+        }
+
+        function showErrorToast() {
+            EnhancedToast.show('An error occurred while processing your request.', 'error');
+        }
+
+        function showWarningToast() {
+            EnhancedToast.show('Please review your changes before saving.', 'warning');
+        }
+
+        function showInfoToast() {
+            EnhancedToast.show('New updates are available for your dashboard.', 'info');
+        }
+
+        function showActionToast() {
+            EnhancedToast.show(
+                'Your file has been uploaded successfully.',
+                'success',
+                {
+                    duration: 8000,
+                    action: 'view',
+                    actionLabel: 'View File',
+                    onAction: () => {
+                        alert('Action button clicked! This would navigate to the file.');
+                    }
+                }
+            );
+        }
+
+        function showMultipleToasts() {
+            const messages = [
+                { msg: 'First toast notification', type: 'info' },
+                { msg: 'Second toast notification', type: 'success' },
+                { msg: 'Third toast notification', type: 'warning' },
+                { msg: 'Fourth toast notification', type: 'error' },
+                { msg: 'Fifth toast notification', type: 'info' },
+                { msg: 'Sixth toast (this will replace the first)', type: 'success' }
+            ];
+
+            messages.forEach((item, index) => {
+                setTimeout(() => {
+                    EnhancedToast.show(item.msg, item.type);
+                }, index * 500);
+            });
+        }
+
+        function showLongToast() {
+            EnhancedToast.show(
+                'This toast will stay for 10 seconds. Hover over it to pause the countdown!',
+                'info',
+                { duration: 10000 }
+            );
+        }
+
+        function showMultilineToast() {
+            EnhancedToast.show(
+                'This is a multiline toast message.\nIt can contain multiple lines of text.\nVery useful for detailed error messages!',
+                'warning',
+                { duration: 7000 }
+            );
+        }
+
+        function clearAllToasts() {
+            EnhancedToast.clearAll();
+        }
+
+        async function showLoadingDemo() {
+            const container = document.getElementById('loadingDemoContainer');
+            const loader = new LoadingIndicator('loadingDemoContainer', {
+                message: 'Loading data...',
+                minDisplayTime: 500
+            });
+
+            loader.show();
+
+            // Simulate async operation
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            await loader.hide();
+            container.innerHTML = '<div class="p-4 text-center text-green-600 font-medium">Data loaded successfully!</div>';
+
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

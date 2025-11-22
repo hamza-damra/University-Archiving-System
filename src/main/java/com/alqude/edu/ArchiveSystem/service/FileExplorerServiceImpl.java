@@ -453,9 +453,9 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         if (pathSegment == null) {
             return null;
         }
-        
+
         String normalized = pathSegment.toLowerCase().replace("-", "_");
-        
+
         switch (normalized) {
             case "syllabus":
                 return DocumentTypeEnum.SYLLABUS;
@@ -497,9 +497,14 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      * Get course children for a professor node
      */
     private List<FileExplorerNode> getCourseChildren(PathInfo pathInfo, User currentUser) {
+        log.debug("=== Getting course children for professor path: {} ===", pathInfo.getPath());
+
         // Find professor
         User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
                 .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+
+        log.debug("Found professor: ID={}, Name={} {}, ProfessorId={}",
+                professor.getId(), professor.getFirstName(), professor.getLastName(), professor.getProfessorId());
 
         // Find semester
         AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
@@ -508,9 +513,21 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
                 .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
 
+        log.debug("Found semester: ID={}, Type={}, AcademicYear={}",
+                semester.getId(), semesterType, academicYear.getYearCode());
+
         // Get course assignments for this professor in this semester
         List<CourseAssignment> assignments = courseAssignmentRepository
                 .findByProfessorIdAndSemesterId(professor.getId(), semester.getId());
+
+        log.debug("Found {} course assignments for professor {} in semester {}",
+                assignments.size(), professor.getId(), semester.getId());
+
+        if (assignments.isEmpty()) {
+            log.warn("No course assignments found for professor {} (ID: {}) in semester {} (ID: {}). " +
+                    "Please verify that course assignments exist in the database for this professor and semester.",
+                    professor.getProfessorId(), professor.getId(), semesterType, semester.getId());
+        }
 
         String parentPath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() + "/"
                 + pathInfo.getProfessorId();
@@ -546,7 +563,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
     /**
      * Get document type children for a course node
-     * Returns folders created by FolderService (Syllabus, Exams, Course Notes, Assignments)
+     * Returns folders created by FolderService (Syllabus, Exams, Course Notes,
+     * Assignments)
      */
     private List<FileExplorerNode> getDocumentTypeChildren(PathInfo pathInfo, User currentUser) {
         // Find professor
@@ -568,7 +586,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
         // Find course folder in Folder table
         Optional<Folder> courseFolderOpt = folderRepository.findCourseFolder(
-                professor.getId(), assignment.getCourse().getId(), 
+                professor.getId(), assignment.getCourse().getId(),
                 academicYear.getId(), semester.getId(), FolderType.COURSE);
 
         if (!courseFolderOpt.isPresent()) {
@@ -594,7 +612,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 .map(subfolder -> {
                     // Map folder name to document type enum for URL-safe path
                     DocumentTypeEnum docType = mapFolderNameToDocumentType(subfolder.getName());
-                    String pathSegment = docType != null ? docType.name().toLowerCase() : subfolder.getName().toLowerCase().replace(" ", "-");
+                    String pathSegment = docType != null ? docType.name().toLowerCase()
+                            : subfolder.getName().toLowerCase().replace(" ", "-");
                     String docTypePath = parentPath + "/" + pathSegment;
 
                     FileExplorerNode node = FileExplorerNode.builder()
@@ -637,7 +656,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         if (folderName == null) {
             return null;
         }
-        
+
         switch (folderName.toLowerCase()) {
             case "syllabus":
                 return DocumentTypeEnum.SYLLABUS;
@@ -1024,11 +1043,13 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         try {
             // Find professor
             User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                    .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
 
             // Find semester
             AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
-                    .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+                    .orElseThrow(
+                            () -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
             SemesterType semesterType = SemesterType.valueOf(pathInfo.getSemesterType().toUpperCase());
             Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
                     .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
@@ -1041,7 +1062,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
             // Find course folder in Folder table
             Optional<Folder> courseFolderOpt = folderRepository.findCourseFolder(
-                    professor.getId(), assignment.getCourse().getId(), 
+                    professor.getId(), assignment.getCourse().getId(),
                     academicYear.getId(), semester.getId(), FolderType.COURSE);
 
             if (!courseFolderOpt.isPresent()) {

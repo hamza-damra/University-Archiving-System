@@ -21,7 +21,7 @@ window.EmptyState = EmptyState;
 window.SkeletonLoader = SkeletonLoader;
 
 // State
-let currentTab = 'academic-years';
+let currentTab = 'dashboard'; // Default to dashboard
 let selectedAcademicYear = null;
 let selectedAcademicYearId = null;
 let selectedSemesterId = null;
@@ -34,14 +34,18 @@ let fileExplorerInstance = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('=== Deanship Dashboard Initializing ===');
+    console.log('Current tab on load:', currentTab);
     checkAuth();
     // Restore tab BEFORE any other initialization to prevent flicker
     restoreActiveTab();
+    console.log('Current tab after restore:', currentTab);
     initializeEventListeners();
     initializeNavigation();
     initializeFileExplorer();
     // Load initial data WITHOUT triggering tab-specific loads yet
     loadInitialDataSilent();
+    console.log('=== Initialization Complete ===');
 });
 
 /**
@@ -92,11 +96,12 @@ function initializeEventListeners() {
         if (selectedAcademicYearId) {
             selectedAcademicYear = academicYears.find(y => y.id === selectedAcademicYearId);
             await loadSemesters(selectedAcademicYearId);
+            onContextChange(); // Called AFTER loadSemesters completes
         } else {
             selectedAcademicYear = null;
             document.getElementById('semesterSelect').innerHTML = '<option value="">Select academic year first</option>';
+            onContextChange(); // Also called for the empty state
         }
-        onContextChange();
     });
 
     // Semester selector
@@ -159,7 +164,7 @@ async function loadInitialDataSilent() {
             loadAcademicYearsData(),
             loadDepartments()
         ]);
-        // After loading initial data, load the active tab's data
+        // After loading initial data, load the active tab's data immediately
         loadTabData(currentTab);
     } catch (error) {
         console.error('Error loading initial data:', error);
@@ -208,6 +213,16 @@ function restoreActiveTab() {
         }
     });
 
+    // Toggle context bar visibility
+    const contextBar = document.getElementById('contextBar');
+    if (contextBar) {
+        if (currentTab === 'professors') {
+            contextBar.classList.add('hidden');
+        } else {
+            contextBar.classList.remove('hidden');
+        }
+    }
+
     // Update breadcrumbs for restored tab (will be called after navigation is initialized)
     setTimeout(() => {
         if (typeof updateBreadcrumbsForTab === 'function') {
@@ -242,6 +257,16 @@ function switchTab(tabName) {
         content.classList.add('hidden');
     });
     document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+
+    // Toggle context bar visibility
+    const contextBar = document.getElementById('contextBar');
+    if (contextBar) {
+        if (tabName === 'professors') {
+            contextBar.classList.add('hidden');
+        } else {
+            contextBar.classList.remove('hidden');
+        }
+    }
 
     // Update breadcrumbs
     updateBreadcrumbsForTab(tabName);
@@ -322,6 +347,11 @@ function onContextChange() {
     }
     if (selectedSemesterId) {
         dashboardState.setSelectedSemester(selectedSemesterId);
+    }
+
+    // Refresh analytics charts if on dashboard tab
+    if (currentTab === 'dashboard' && dashboardAnalytics.initialized) {
+        dashboardAnalytics.refreshAllCharts();
     }
 
     // Reload tab data if needed
@@ -891,11 +921,8 @@ window.deanship.activateAcademicYear = async function (yearId) {
     }
 };
 
-// Export for global access
-export { loadAcademicYears };
-
 // ============================================================================
-// PROFESSORS MANAGEMENT
+// COURSES MANAGEMENT
 // ============================================================================
 
 /**
@@ -1217,7 +1244,7 @@ async function handleCreateProfessor(closeModal) {
  * Edit professor
  */
 window.deanship.editProfessor = function (profId) {
-    const prof = professors.find(p => p.id === profId);
+    const prof = professors.find(p => p.id == profId);
     if (!prof) return;
 
     const content = `
@@ -1346,14 +1373,18 @@ async function handleUpdateProfessor(profId, closeModal) {
 /**
  * Deactivate professor
  */
-window.deanship.deactivateProfessor = function (profId) {
-    const prof = professors.find(p => p.id === profId);
+window.deanship.deactivateProfessor = function (profId, btnElement) {
+    const prof = professors.find(p => p.id == profId);
     if (!prof) return;
 
     showConfirm(
         'Deactivate Professor',
         `Are you sure you want to deactivate ${prof.name}? They will no longer be able to log in.`,
         async () => {
+            if (btnElement) {
+                btnElement.disabled = true;
+                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
             try {
                 await apiRequest(`/deanship/professors/${profId}/deactivate`, {
                     method: 'PUT'
@@ -1364,6 +1395,10 @@ window.deanship.deactivateProfessor = function (profId) {
             } catch (error) {
                 console.error('Error deactivating professor:', error);
                 showToast(getErrorMessage(error), 'error');
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = '<i class="fas fa-ban"></i>';
+                }
             }
         },
         { danger: true }
@@ -1373,7 +1408,11 @@ window.deanship.deactivateProfessor = function (profId) {
 /**
  * Activate professor
  */
-window.deanship.activateProfessor = async function (profId) {
+window.deanship.activateProfessor = async function (profId, btnElement) {
+    if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
     try {
         await apiRequest(`/deanship/professors/${profId}/activate`, {
             method: 'PUT'
@@ -1384,7 +1423,46 @@ window.deanship.activateProfessor = async function (profId) {
     } catch (error) {
         console.error('Error activating professor:', error);
         showToast(getErrorMessage(error), 'error');
+        if (btnElement) {
+            btnElement.disabled = false;
+            btnElement.innerHTML = '<i class="fas fa-check"></i>';
+        }
     }
+};
+
+/**
+ * Delete professor
+ */
+window.deanship.deleteProfessor = function (profId, btnElement) {
+    const prof = professors.find(p => p.id == profId);
+    if (!prof) return;
+
+    showConfirm(
+        'Delete Professor',
+        `Are you sure you want to delete ${prof.name}? This action cannot be undone.`,
+        async () => {
+            if (btnElement) {
+                btnElement.disabled = true;
+                btnElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            }
+            try {
+                await apiRequest(`/deanship/professors/${profId}`, {
+                    method: 'DELETE'
+                });
+
+                showToast('Professor deleted successfully', 'success');
+                loadProfessors();
+            } catch (error) {
+                console.error('Error deleting professor:', error);
+                showToast(getErrorMessage(error), 'error');
+                if (btnElement) {
+                    btnElement.disabled = false;
+                    btnElement.innerHTML = '<i class="fas fa-trash"></i>';
+                }
+            }
+        },
+        { danger: true }
+    );
 };
 
 // ============================================================================
@@ -1793,6 +1871,23 @@ window.deanship.deactivateCourse = function (courseId) {
         },
         { danger: true }
     );
+};
+
+/**
+ * Activate course
+ */
+window.deanship.activateCourse = async function (courseId) {
+    try {
+        await apiRequest(`/deanship/courses/${courseId}/activate`, {
+            method: 'PUT'
+        });
+
+        showToast('Course activated successfully', 'success');
+        loadCourses();
+    } catch (error) {
+        console.error('Error activating course:', error);
+        showToast(getErrorMessage(error), 'error');
+    }
 };
 
 // ============================================================================
@@ -2258,6 +2353,12 @@ async function loadFileExplorer() {
     }
 
     try {
+        // Ensure the file explorer structure exists
+        if (container && !container.querySelector('#fileExplorerTree')) {
+            console.log('Restoring file explorer structure...');
+            fileExplorerInstance.render();
+        }
+
         // Update FileExplorerState context
         const semester = semesters.find(s => s.id === selectedSemesterId);
         fileExplorerState.setContext(
@@ -2356,7 +2457,6 @@ class TableEnhancementManager {
                 <div class="table-filters">
                     <div id="professorDepartmentFilter"></div>
                 </div>
-                <div id="professorBulkToolbar"></div>
                 <div id="professorsTableWrapper"></div>
             </div>
         `;
@@ -2375,14 +2475,6 @@ class TableEnhancementManager {
             );
             this.filters.set('professors-department', deptFilter);
         }
-
-        // Initialize bulk actions toolbar
-        const bulkToolbar = new BulkActionsToolbar();
-        bulkToolbar.render(
-            document.getElementById('professorBulkToolbar'),
-            (action) => this.handleProfessorBulkAction(action)
-        );
-        this.bulkToolbars.set('professors', bulkToolbar);
 
         // Re-render table with enhancements
         this.renderEnhancedProfessorsTable();
@@ -2412,9 +2504,6 @@ class TableEnhancementManager {
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left">
-                                <input type="checkbox" id="selectAllProfessors" class="table-row-checkbox" />
-                            </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professor</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
@@ -2430,24 +2519,18 @@ class TableEnhancementManager {
         `;
 
         wrapper.innerHTML = tableHtml;
-        this.attachProfessorTableListeners();
     }
 
     /**
      * Render a single professor row with avatar and selection
      */
     renderProfessorRow(professor) {
-        const isSelected = this.isRowSelected('professors', professor.id);
         const avatar = UserAvatar.generate(professor.name, 'md');
         const statusClass = professor.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800';
         const statusText = professor.isActive ? 'Active' : 'Inactive';
 
         return `
-            <tr class="table-row-selectable ${isSelected ? 'selected' : ''}" data-id="${professor.id}">
-                <td class="px-6 py-4">
-                    <input type="checkbox" class="row-checkbox table-row-checkbox" 
-                           data-id="${professor.id}" ${isSelected ? 'checked' : ''} />
-                </td>
+            <tr data-id="${professor.id}">
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-3">
                         ${avatar}
@@ -2463,11 +2546,20 @@ class TableEnhancementManager {
                         ${statusText}
                     </span>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <button class="text-blue-600 hover:text-blue-900 mr-3" onclick="editProfessor(${professor.id})" title="Edit professor">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <button class="text-blue-600 hover:text-blue-900" onclick="window.deanship.editProfessor('${professor.id}')" title="Edit professor">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="text-red-600 hover:text-red-900" onclick="deleteProfessor(${professor.id})" title="Delete professor">
+                    ${professor.isActive ? `
+                        <button class="text-red-600 hover:text-red-900" onclick="window.deanship.deactivateProfessor('${professor.id}', this)" title="Deactivate professor">
+                            <i class="fas fa-ban"></i>
+                        </button>
+                    ` : `
+                        <button class="text-green-600 hover:text-green-900" onclick="window.deanship.activateProfessor('${professor.id}', this)" title="Activate professor">
+                            <i class="fas fa-check"></i>
+                        </button>
+                    `}
+                    <button class="text-red-600 hover:text-red-900" onclick="window.deanship.deleteProfessor('${professor.id}', this)" title="Delete professor">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -2475,51 +2567,7 @@ class TableEnhancementManager {
         `;
     }
 
-    /**
-     * Attach event listeners to professor table
-     */
-    attachProfessorTableListeners() {
-        // Select all checkbox
-        const selectAll = document.getElementById('selectAllProfessors');
-        if (selectAll) {
-            selectAll.addEventListener('change', (e) => {
-                const checkboxes = document.querySelectorAll('.row-checkbox');
-                checkboxes.forEach(cb => {
-                    cb.checked = e.target.checked;
-                    const id = parseInt(cb.dataset.id);
-                    if (e.target.checked) {
-                        this.selectRow('professors', id);
-                    } else {
-                        this.deselectRow('professors', id);
-                    }
-                });
-                this.updateBulkToolbar('professors');
-            });
-        }
 
-        // Individual checkboxes
-        document.querySelectorAll('.row-checkbox').forEach(cb => {
-            cb.addEventListener('change', (e) => {
-                const id = parseInt(e.target.dataset.id);
-                if (e.target.checked) {
-                    this.selectRow('professors', id);
-                } else {
-                    this.deselectRow('professors', id);
-                }
-                this.updateBulkToolbar('professors');
-            });
-        });
-
-        // Row click (excluding checkbox and action buttons)
-        document.querySelectorAll('.table-row-selectable').forEach(row => {
-            row.addEventListener('click', (e) => {
-                if (e.target.type === 'checkbox' || e.target.closest('button')) return;
-                const checkbox = row.querySelector('.row-checkbox');
-                checkbox.checked = !checkbox.checked;
-                checkbox.dispatchEvent(new Event('change'));
-            });
-        });
-    }
 
     /**
      * Enhance courses table with progress bars and bulk actions
@@ -2782,46 +2830,7 @@ class TableEnhancementManager {
         this.renderEnhancedCoursesTable();
     }
 
-    /**
-     * Handle bulk actions for professors
-     */
-    async handleProfessorBulkAction(action) {
-        const selectedIds = this.getSelectedRows('professors');
 
-        if (action === 'clear') {
-            this.clearSelection('professors');
-            this.renderEnhancedProfessorsTable();
-            return;
-        }
-
-        if (selectedIds.length === 0) {
-            showToast('No professors selected', 'warning');
-            return;
-        }
-
-        try {
-            switch (action) {
-                case 'activate':
-                    await this.bulkUpdateProfessorStatus(selectedIds, true);
-                    showToast(`${selectedIds.length} professor(s) activated`, 'success');
-                    break;
-                case 'deactivate':
-                    await this.bulkUpdateProfessorStatus(selectedIds, false);
-                    showToast(`${selectedIds.length} professor(s) deactivated`, 'success');
-                    break;
-                case 'delete':
-                    await this.bulkDeleteProfessors(selectedIds);
-                    showToast(`${selectedIds.length} professor(s) deleted`, 'success');
-                    break;
-            }
-
-            this.clearSelection('professors');
-            await loadProfessors();
-            this.renderEnhancedProfessorsTable();
-        } catch (error) {
-            showToast(`Bulk action failed: ${getErrorMessage(error)}`, 'error');
-        }
-    }
 
     /**
      * Handle bulk actions for courses
@@ -2856,28 +2865,7 @@ class TableEnhancementManager {
         }
     }
 
-    /**
-     * Bulk update professor status
-     */
-    async bulkUpdateProfessorStatus(ids, active) {
-        const promises = ids.map(id =>
-            apiRequest(`/api/deanship/professors/${id}/status`, {
-                method: 'PUT',
-                body: JSON.stringify({ active })
-            })
-        );
-        await Promise.all(promises);
-    }
 
-    /**
-     * Bulk delete professors
-     */
-    async bulkDeleteProfessors(ids) {
-        const promises = ids.map(id =>
-            apiRequest(`/api/deanship/professors/${id}`, { method: 'DELETE' })
-        );
-        await Promise.all(promises);
-    }
 
     /**
      * Bulk delete courses

@@ -11,31 +11,37 @@ import java.util.Optional;
 
 @Repository
 public interface CourseAssignmentRepository extends JpaRepository<CourseAssignment, Long> {
-    
-    List<CourseAssignment> findBySemesterId(Long semesterId);
-    
-    @Query("SELECT ca FROM CourseAssignment ca " +
-           "JOIN FETCH ca.course c " +
-           "JOIN FETCH c.department " +
-           "JOIN FETCH ca.semester s " +
-           "JOIN FETCH s.academicYear " +
-           "JOIN FETCH ca.professor " +
-           "WHERE ca.professor.id = :professorId AND ca.semester.id = :semesterId")
-    List<CourseAssignment> findByProfessorIdAndSemesterId(
-            @Param("professorId") Long professorId, 
-            @Param("semesterId") Long semesterId);
-    
-    Optional<CourseAssignment> findBySemesterIdAndCourseId(Long semesterId, Long courseId);
-    
-    @Query("SELECT ca FROM CourseAssignment ca " +
-           "JOIN FETCH ca.course c " +
-           "JOIN FETCH ca.professor " +
-           "WHERE ca.semester.id = :semesterId AND c.courseCode = :courseCode AND ca.professor.id = :professorId")
-    Optional<CourseAssignment> findBySemesterIdAndCourseCodeAndProfessorId(
-            @Param("semesterId") Long semesterId, 
-            @Param("courseCode") String courseCode, 
-            @Param("professorId") Long professorId);
-    
-    Optional<CourseAssignment> findBySemesterIdAndCourseIdAndProfessorId(
-            Long semesterId, Long courseId, Long professorId);
+
+        @Query("SELECT ca FROM CourseAssignment ca " +
+                        "WHERE ca.semester.id = :semesterId AND ca.isActive = true")
+        List<CourseAssignment> findBySemesterId(@Param("semesterId") Long semesterId);
+
+        @Query("SELECT ca FROM CourseAssignment ca " +
+                        "JOIN FETCH ca.course c " +
+                        "JOIN FETCH c.department " +
+                        "JOIN FETCH ca.semester s " +
+                        "JOIN FETCH s.academicYear " +
+                        "JOIN FETCH ca.professor " +
+                        "WHERE ca.professor.id = :professorId AND ca.semester.id = :semesterId AND ca.isActive = true")
+        List<CourseAssignment> findByProfessorIdAndSemesterId(
+                        @Param("professorId") Long professorId,
+                        @Param("semesterId") Long semesterId);
+
+        Optional<CourseAssignment> findBySemesterIdAndCourseId(Long semesterId, Long courseId);
+
+        @Query("SELECT ca FROM CourseAssignment ca " +
+                        "JOIN FETCH ca.course c " +
+                        "JOIN FETCH ca.professor " +
+                        "WHERE ca.semester.id = :semesterId AND c.courseCode = :courseCode AND ca.professor.id = :professorId AND ca.isActive = true")
+        Optional<CourseAssignment> findBySemesterIdAndCourseCodeAndProfessorId(
+                        @Param("semesterId") Long semesterId,
+                        @Param("courseCode") String courseCode,
+                        @Param("professorId") Long professorId);
+
+        @Query("SELECT ca FROM CourseAssignment ca " +
+                        "WHERE ca.semester.id = :semesterId AND ca.course.id = :courseId AND ca.professor.id = :professorId AND ca.isActive = true")
+        Optional<CourseAssignment> findBySemesterIdAndCourseIdAndProfessorId(
+                        @Param("semesterId") Long semesterId,
+                        @Param("courseId") Long courseId,
+                        @Param("professorId") Long professorId);
 }

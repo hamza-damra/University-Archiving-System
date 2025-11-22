@@ -193,7 +193,7 @@ export class FileExplorer {
      */
     onStateChange(state) {
         // Update local properties from state
-        const hasChanges = 
+        const hasChanges =
             this.currentPath !== state.currentPath ||
             this.treeRoot !== state.treeRoot ||
             this.currentNode !== state.currentNode;
@@ -309,6 +309,12 @@ export class FileExplorer {
      * await fileExplorer.loadRoot(1, 1);
      */
     async loadRoot(academicYearId, semesterId, isBackground = false) {
+        // Clear files section immediately to avoid showing stale content
+        const fileListContainer = document.getElementById('fileExplorerFileList');
+        if (fileListContainer) {
+            fileListContainer.innerHTML = this.renderEmptyState('Loading...', 'info');
+        }
+
         // Show loading state only if not a background update
         if (!isBackground) {
             fileExplorerState.setLoading(true);
@@ -826,21 +832,42 @@ export class FileExplorer {
         const items = node.children || [];
         const folders = items.filter(item => item.type !== 'FILE');
         const filesFromChildren = items.filter(item => item.type === 'FILE');
-        
+
         // Check for uploaded files in the files array (from Task 26 backend enhancement)
         const uploadedFiles = node.files || [];
-        
+
         // Debug: Log file data structure
         if (uploadedFiles.length > 0) {
             console.log('📁 Files found:', uploadedFiles.length);
             console.log('📄 First file structure:', uploadedFiles[0]);
         }
-        
+
         // Combine files from both sources
         const allFiles = [...filesFromChildren, ...uploadedFiles];
 
         if (items.length === 0 && allFiles.length === 0) {
-            if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
+            // Check if this is a professor folder (node.type === 'PROFESSOR')
+            if (node.type === 'PROFESSOR') {
+                container.innerHTML = `
+                    <div class="text-center py-12">
+                        <svg class="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
+                        </svg>
+                        <h3 class="text-lg font-medium text-gray-900 mb-2">No Course Assignments</h3>
+                        <p class="text-sm text-gray-500">This professor has no course assignments in the selected semester.</p>
+                        ${this.options.role === 'DEANSHIP' ? `
+                            <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg inline-block">
+                                <p class="text-xs text-blue-700">
+                                    <svg class="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    Use the Assignments tab to assign courses to this professor
+                                </p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
                 container.innerHTML = this.renderWritableEmptyState(node);
                 this.initializeDragDrop(node);
             } else {
@@ -978,7 +1005,7 @@ export class FileExplorer {
         const uploaderName = file.uploaderName || (file.metadata && file.metadata.uploaderName);
         const notes = file.notes || (file.metadata && file.metadata.notes);
         const fileType = file.fileType || (file.metadata && file.metadata.fileType) || '';
-        
+
         // Debug: Log extracted values
         console.log('🔍 Rendering file card:', {
             fileId,
@@ -988,7 +1015,7 @@ export class FileExplorer {
             uploaderName,
             rawFile: file
         });
-        
+
         const canDownload = file.canRead !== false;
         const canView = file.canRead !== false;
         const fileIconClass = this.getFileIconClass(fileType);
@@ -1077,10 +1104,10 @@ export class FileExplorer {
             const file = response.data || response;
 
             // Extract uploader name from nested uploader object
-            const uploaderName = file.uploader ? 
-                ((file.uploader.firstName && file.uploader.lastName) ? 
-                    `${file.uploader.firstName} ${file.uploader.lastName}` : 
-                    (file.uploader.email || 'Unknown')) : 
+            const uploaderName = file.uploader ?
+                ((file.uploader.firstName && file.uploader.lastName) ?
+                    `${file.uploader.firstName} ${file.uploader.lastName}` :
+                    (file.uploader.email || 'Unknown')) :
                 'Unknown';
 
             const content = `
@@ -1172,16 +1199,16 @@ export class FileExplorer {
 
             if (contentDisposition) {
                 console.log('Content-Disposition header:', contentDisposition);
-                
+
                 // Try multiple patterns to extract filename from Content-Disposition header
                 // Pattern 1: filename="example.pdf"
                 let filenameMatch = /filename="([^"]+)"/.exec(contentDisposition);
-                
+
                 // Pattern 2: filename=example.pdf (without quotes)
                 if (!filenameMatch) {
                     filenameMatch = /filename=([^;]+)/.exec(contentDisposition);
                 }
-                
+
                 // Pattern 3: filename*=UTF-8''example.pdf (RFC 5987)
                 if (!filenameMatch) {
                     filenameMatch = /filename\*=UTF-8''([^;]+)/.exec(contentDisposition);
@@ -1190,7 +1217,7 @@ export class FileExplorer {
                 if (filenameMatch && filenameMatch[1]) {
                     filename = filenameMatch[1].trim().replace(/['"]/g, '');
                     console.log('Extracted filename:', filename);
-                    
+
                     // Decode URI component if needed (for RFC 5987 format)
                     try {
                         filename = decodeURIComponent(filename);
@@ -2123,12 +2150,12 @@ export class FileExplorer {
      */
     formatFileSize(bytes) {
         if (bytes === 0 || bytes === null || bytes === undefined) return '0 B';
-        
+
         const k = 1024;
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         const size = bytes / Math.pow(k, i);
-        
+
         return size.toFixed(1) + ' ' + sizes[i];
     }
 
@@ -2145,34 +2172,34 @@ export class FileExplorer {
      */
     getFileIcon(mimeType) {
         if (!mimeType) return 'file';
-        
+
         const type = mimeType.toLowerCase();
-        
+
         // PDF files
         if (type.includes('pdf')) return 'pdf';
-        
+
         // Word documents
-        if (type.includes('word') || type.includes('msword') || 
+        if (type.includes('word') || type.includes('msword') ||
             type.includes('officedocument.wordprocessingml')) return 'word';
-        
+
         // PowerPoint presentations
         if (type.includes('powerpoint') || type.includes('presentation') ||
             type.includes('officedocument.presentationml')) return 'powerpoint';
-        
+
         // Excel spreadsheets
         if (type.includes('excel') || type.includes('spreadsheet') ||
             type.includes('officedocument.spreadsheetml')) return 'excel';
-        
+
         // Images
         if (type.includes('image')) return 'image';
-        
+
         // Archives
         if (type.includes('zip') || type.includes('rar') || type.includes('7z') ||
             type.includes('tar') || type.includes('gz')) return 'archive';
-        
+
         // Text files
         if (type.includes('text')) return 'text';
-        
+
         // Default
         return 'file';
     }

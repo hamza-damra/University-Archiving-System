@@ -676,13 +676,13 @@ export class FileExplorer {
 
             html += `
                 <div class="tree-node" data-path="${this.escapeHtml(node.path)}">
-                    <div class="flex items-center py-2.5 px-3 hover:bg-gray-100 rounded cursor-pointer transition-colors ${isSelected ? 'bg-blue-100 border-l-4 border-blue-600' : ''}"
+                    <div class="flex items-center py-2.5 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer transition-colors ${isSelected ? 'bg-blue-100 dark:bg-blue-900 border-l-4 border-blue-600 dark:border-blue-400' : ''}"
                          style="padding-left: ${indent + 12}px;">
                         ${hasChildren ? `
                             <button 
-                                class="expand-toggle w-5 h-5 mr-2 flex items-center justify-center focus:outline-none hover:bg-gray-200 rounded transition-colors"
+                                class="expand-toggle w-5 h-5 mr-2 flex items-center justify-center focus:outline-none hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
                                 onclick="event.stopPropagation(); window.fileExplorerInstance.toggleNode('${this.escapeHtml(node.path)}')">
-                                <svg class="w-5 h-5 text-gray-600 transition-transform ${isExpanded ? 'transform rotate-90' : ''}" 
+                                <svg class="w-5 h-5 text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'transform rotate-90' : ''}" 
                                      fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
@@ -698,7 +698,7 @@ export class FileExplorer {
                                     <path d="M2 6a2 2 0 012-2h5l2 2h5a2 2 0 012 2v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"></path>
                                 `}
                             </svg>
-                            <span class="text-base ${isSelected ? 'text-blue-800 font-semibold' : 'text-gray-800'}">${this.escapeHtml(node.name)}</span>
+                            <span class="text-base ${isSelected ? 'text-blue-800 dark:text-blue-100 font-semibold' : 'text-gray-800 dark:text-gray-200'}">${this.escapeHtml(node.name)}</span>
                         </div>
                     </div>
                     ${isExpanded && hasChildren ? `
@@ -859,7 +859,7 @@ export class FileExplorer {
 
         // Render folders first (card view)
         if (folders.length > 0) {
-            html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Folders</h4>';
+            html += '<div class="mb-4"><h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Folders</h4>';
             html += '<div class="grid grid-cols-1 gap-2">';
 
             folders.forEach(folder => {
@@ -867,23 +867,23 @@ export class FileExplorer {
                 const roleLabels = this.generateRoleSpecificLabels(folder);
 
                 html += `
-                    <div class="flex items-center justify-between p-5 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 cursor-pointer transition-all group"
+                    <div class="flex items-center justify-between p-5 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-700 hover:bg-blue-100 dark:hover:bg-gray-700 cursor-pointer transition-all group"
                          onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')">
                         <div class="flex items-center space-x-4 flex-1">
-                            <svg class="w-8 h-8 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                             </svg>
                             <div class="flex-1">
                                 <div class="flex items-center flex-wrap gap-2">
-                                    <p class="text-base font-semibold text-gray-900">${this.escapeHtml(folder.name)}</p>
+                                    <p class="text-base font-semibold text-gray-900 dark:text-gray-100">${this.escapeHtml(folder.name)}</p>
                                     ${roleLabels}
                                 </div>
                                 ${folder.metadata && folder.metadata.description ? `
-                                    <p class="text-sm text-gray-500 mt-1">${this.escapeHtml(folder.metadata.description)}</p>
+                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${this.escapeHtml(folder.metadata.description)}</p>
                                 ` : ''}
                             </div>
                         </div>
-                        <svg class="w-6 h-6 text-gray-400 group-hover:text-gray-700 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="w-6 h-6 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </div>
@@ -895,30 +895,30 @@ export class FileExplorer {
 
         // Render files (table view)
         if (allFiles.length > 0) {
-            html += '<div><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Files</h4>';
+            html += '<div><h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Files</h4>';
             html += `
                 <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                        <thead class="bg-gray-50">
+                    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <thead class="bg-gray-50 dark:bg-gray-800">
                             <tr>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Name
                                 </th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Size
                                 </th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Uploaded
                                 </th>
-                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Uploader
                                 </th>
-                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                     Actions
                                 </th>
                             </tr>
                         </thead>
-                        <tbody class="bg-white divide-y divide-gray-200">
+                        <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
             `;
 
             allFiles.forEach(file => {
@@ -994,18 +994,18 @@ export class FileExplorer {
         const fileIconClass = this.getFileIconClass(fileType);
 
         return `
-            <tr class="hover:bg-gray-50 transition-all group">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group">
                 <td class="px-4 py-3 whitespace-nowrap">
                     <div class="flex items-center">
-                        <div class="file-icon-container w-14 h-14 flex items-center justify-center bg-gray-50 rounded-lg mr-3 flex-shrink-0">
+                        <div class="file-icon-container w-14 h-14 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg mr-3 flex-shrink-0">
                             <svg class="w-7 h-7 ${fileIconClass}" fill="currentColor" viewBox="0 0 20 20">
                                 <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"></path>
                             </svg>
                         </div>
                         <div class="flex flex-col">
-                            <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600 transition-colors">${this.escapeHtml(fileName)}</span>
+                            <span class="text-sm font-medium text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">${this.escapeHtml(fileName)}</span>
                             ${notes ? `
-                                <span class="text-xs text-gray-500 mt-1" title="${this.escapeHtml(notes)}">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 mt-1" title="${this.escapeHtml(notes)}">
                                     ${this.escapeHtml(notes.length > 50 ? notes.substring(0, 50) + '...' : notes)}
                                 </span>
                             ` : ''}
@@ -1013,17 +1013,17 @@ export class FileExplorer {
                     </div>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         ${fileSize ? this.formatFileSize(fileSize) : '-'}
                     </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         ${uploadedAt ? formatDate(uploadedAt) : '-'}
                     </span>
                 </td>
                 <td class="px-4 py-3 whitespace-nowrap">
-                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                    <span class="file-metadata-badge inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                         ${uploaderName ? this.escapeHtml(uploaderName) : '-'}
                     </span>
                 </td>
@@ -1032,7 +1032,7 @@ export class FileExplorer {
                         ${canView && fileId ? `
                             <button 
                                 onclick="window.fileExplorerInstance.handleFileView(${fileId})"
-                                class="text-gray-600 hover:text-gray-900 p-1.5 rounded hover:bg-gray-100 transition-all"
+                                class="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 p-1.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
                                 title="View file details"
                             >
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1053,7 +1053,7 @@ export class FileExplorer {
                             </button>
                         ` : ''}
                         ${!fileId ? `
-                            <span class="text-gray-400 text-xs px-2 py-1 bg-gray-100 rounded">No access</span>
+                            <span class="text-gray-400 dark:text-gray-500 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">No access</span>
                         ` : ''}
                     </div>
                 </td>

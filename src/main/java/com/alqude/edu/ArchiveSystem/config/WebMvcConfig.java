@@ -39,15 +39,30 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
      * Configure resource handlers to serve static resources.
-     * Ensures static resources are properly served from classpath.
+     * Ensures static resources are properly served from classpath with correct MIME types.
      * 
      * @param registry ResourceHandlerRegistry to add resource handlers to
      */
     @Override
     public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
-        // Ensure static resources are served from classpath:/static/
+        // Serve static resources from classpath:/static/ with proper caching
         registry.addResourceHandler("/**")
-                .addResourceLocations("classpath:/static/");
+                .addResourceLocations("classpath:/static/")
+                .setCachePeriod(0); // Disable cache for development
+    }
+
+    /**
+     * Configure content negotiation to ensure proper MIME types for static resources.
+     * 
+     * @param configurer ContentNegotiationConfigurer to configure
+     */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void configureContentNegotiation(@NonNull org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer configurer) {
+        configurer.favorPathExtension(false)
+                .favorParameter(false)
+                .ignoreAcceptHeader(false)
+                .defaultContentType(org.springframework.http.MediaType.APPLICATION_JSON);
     }
 
     /**

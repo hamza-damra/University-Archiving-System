@@ -8,6 +8,18 @@
     <!-- NOTE: Tailwind CSS CDN is used for development only. 
          For production, install Tailwind CSS as a PostCSS plugin: 
          https://tailwindcss.com/docs/installation -->
+    <script>
+        // Suppress Tailwind CSS production warning for development environment
+        (function() {
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
+                    return;
+                }
+                originalWarn.apply(console, args);
+            };
+        })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -21,7 +33,7 @@
 
 </head>
 
-<body class="bg-gray-50 min-h-screen flex overflow-hidden">
+<body class="bg-gray-50 h-screen flex overflow-hidden">
     <!-- Sidebar -->
     <aside
         class="w-[260px] bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto hidden md:flex flex-col z-20" id="mainSidebar">
@@ -370,7 +382,6 @@
                     </div>
                 </div>
             </div>
-        </div>
 
             <!-- Courses Tab -->
             <div id="courses-tab" class="tab-content hidden">
@@ -422,7 +433,6 @@
                     </div>
                 </div>
             </div>
-        </div>
 
             <!-- Course Assignments Tab -->
             <div id="assignments-tab" class="tab-content hidden">

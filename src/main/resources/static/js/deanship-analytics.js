@@ -67,7 +67,7 @@ async function loadChartJS() {
 
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js';
+        script.src = '/js/lib/chart.umd.min.js';
         script.onload = () => resolve();
         script.onerror = () => {
             console.error('Failed to load Chart.js library');
@@ -116,6 +116,30 @@ export class DashboardAnalytics {
         } catch (error) {
             console.error('Error initializing analytics:', error);
             showToast('Failed to initialize analytics', 'error');
+        }
+    }
+
+    /**
+     * Refresh all charts and statistics
+     */
+    async refreshAllCharts() {
+        if (!this.initialized) {
+            return;
+        }
+        
+        try {
+            // Clear cache to ensure fresh data
+            this.clearCache();
+            
+            // Reload stats
+            await this.loadDashboardStats();
+            
+            // Reload charts
+            await this.initializeCharts();
+            
+        } catch (error) {
+            console.error('Error refreshing analytics:', error);
+            showToast('Failed to refresh analytics', 'error');
         }
     }
     

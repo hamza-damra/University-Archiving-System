@@ -187,23 +187,9 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Academic year selection
-academicYearSelect.addEventListener('change', async (e) => {
-    selectedAcademicYearId = e.target.value ? parseInt(e.target.value) : null;
-    selectedSemesterId = null;
-
-    if (selectedAcademicYearId) {
-        await loadSemesters(selectedAcademicYearId);
-    } else {
-        semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
-        courses = [];
-        renderCourses();
-    }
-});
-
-// Semester selection
-semesterSelect.addEventListener('change', async (e) => {
-    selectedSemesterId = e.target.value ? parseInt(e.target.value) : null;
+// Handle semester change logic
+async function handleSemesterChange(semesterId) {
+    selectedSemesterId = semesterId;
 
     if (selectedSemesterId) {
         // Update FileExplorerState with new context
@@ -224,12 +210,47 @@ semesterSelect.addEventListener('change', async (e) => {
         // Trigger File Explorer reload if on file-explorer tab
         const fileExplorerTab = document.getElementById('fileExplorerTabContent');
         if (fileExplorerTab && !fileExplorerTab.classList.contains('hidden')) {
+            // Clear the file explorer state before loading new data
+            fileExplorerState.resetData();
+            
+            // Update breadcrumbs
+            if (selectedYear && selectedSemester && breadcrumbs) {
+                const semesterText = `${selectedYear.yearCode} - ${selectedSemester.type} Semester`;
+                breadcrumbs.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    <span class="text-gray-700 font-medium">${semesterText}</span>
+                `;
+            }
             loadFileExplorer();
         }
     } else {
+        // Clear the file explorer when no semester is selected
+        fileExplorerState.resetData();
         courses = [];
         renderCourses();
     }
+}
+
+// Academic year selection
+academicYearSelect.addEventListener('change', async (e) => {
+    selectedAcademicYearId = e.target.value ? parseInt(e.target.value) : null;
+    selectedSemesterId = null;
+
+    if (selectedAcademicYearId) {
+        await loadSemesters(selectedAcademicYearId);
+    } else {
+        semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
+        courses = [];
+        renderCourses();
+    }
+});
+
+// Semester selection
+semesterSelect.addEventListener('change', async (e) => {
+    const semesterId = e.target.value ? parseInt(e.target.value) : null;
+    await handleSemesterChange(semesterId);
 });
 
 // Load academic years
@@ -294,9 +315,8 @@ async function loadSemesters(academicYearId) {
 
         // Auto-select first semester if available
         if (semesters.length > 0) {
-            selectedSemesterId = semesters[0].id;
-            semesterSelect.value = selectedSemesterId;
-            await loadCourses(selectedSemesterId);
+            semesterSelect.value = semesters[0].id;
+            await handleSemesterChange(semesters[0].id);
         }
     } catch (error) {
         console.error('Error loading semesters:', error);
@@ -1630,6 +1650,11 @@ function initializeFileExplorer() {
  */
 async function loadFileExplorer(path = '') {
     try {
+        if (!selectedAcademicYearId || !selectedSemesterId) {
+            console.warn('Cannot load file explorer: No semester selected');
+            return;
+        }
+
         if (!fileExplorerInstance) {
             initializeFileExplorer();
         }

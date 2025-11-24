@@ -26,33 +26,48 @@ class CourseAssignmentsPage {
      */
     async initialize() {
         try {
+            console.log('[CourseAssignments] Starting initialization...');
+            
             // Initialize shared layout
             await this.layout.initialize();
+            console.log('[CourseAssignments] Layout initialized');
             
             // Load professors and courses for filters
             await this.loadProfessors();
+            console.log('[CourseAssignments] Professors loaded:', this.professors.length);
+            
             await this.loadCourses();
+            console.log('[CourseAssignments] Courses loaded:', this.courses.length);
             
             // Set up event listeners
             this.setupEventListeners();
+            console.log('[CourseAssignments] Event listeners set up');
             
             // Register callback for context changes
             this.layout.onContextChange((context) => {
+                console.log('[CourseAssignments] Context changed:', context);
                 this.handleContextChange(context);
             });
             
             // Check if context is available and load assignments
-            if (this.layout.hasContext()) {
+            const hasContext = this.layout.hasContext();
+            console.log('[CourseAssignments] Has context:', hasContext);
+            
+            if (hasContext) {
                 await this.loadAssignments();
                 this.showContent(true);
+                this.showContextMessage(false);
             } else {
+                console.log('[CourseAssignments] No context, showing context message');
                 this.showContextMessage(true);
+                this.showContent(false);
             }
             
             console.log('[CourseAssignments] Initialized successfully');
         } catch (error) {
             console.error('[CourseAssignments] Initialization error:', error);
-            showToast('Failed to initialize course assignments page', 'error');
+            console.error('[CourseAssignments] Error stack:', error.stack);
+            showToast('Failed to initialize course assignments page: ' + error.message, 'error');
         }
     }
 

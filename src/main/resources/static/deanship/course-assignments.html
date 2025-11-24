@@ -7,6 +7,12 @@
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/deanship-layout.css">
     <style>
+        /* CRITICAL FIX: Ensure page content is visible */
+        #page-content {
+            background-color: #f5f5f5 !important;
+            min-height: calc(100vh - 200px) !important;
+        }
+        
         /* Page-specific styles */
         .page-header {
             display: flex;
@@ -15,27 +21,59 @@
             margin-bottom: var(--spacing-lg);
         }
         
+        .page-title {
+            color: #333 !important;
+        }
+        
+        .page-subtitle {
+            color: #666 !important;
+        }
+        
+        /* Ensure buttons are visible */
+        .btn, .btn-primary {
+            background-color: #3b82f6 !important;
+            color: white !important;
+            border: none !important;
+            padding: 10px 20px !important;
+            border-radius: 6px !important;
+            font-size: 14px !important;
+            font-weight: 500 !important;
+            cursor: pointer !important;
+            min-height: 40px !important;
+        }
+        
+        .btn:hover, .btn-primary:hover {
+            background-color: #2563eb !important;
+        }
+        
         .filters-row {
-            display: flex;
-            gap: var(--spacing-md);
-            margin-bottom: var(--spacing-lg);
-            align-items: flex-end;
+            display: flex !important;
+            gap: 16px !important;
+            margin-bottom: 24px !important;
+            align-items: flex-end !important;
         }
         
         .filter-group {
-            flex: 1;
-            min-width: 200px;
+            flex: 1 !important;
+            min-width: 200px !important;
         }
         
         .filter-group label {
-            display: block;
-            margin-bottom: var(--spacing-xs);
-            font-weight: var(--font-weight-medium);
-            font-size: var(--font-size-sm);
+            display: block !important;
+            margin-bottom: 4px !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+            color: #333 !important;
         }
         
         .filter-group select {
-            width: 100%;
+            width: 100% !important;
+            padding: 8px 12px !important;
+            border: 1px solid #ddd !important;
+            border-radius: 4px !important;
+            background-color: white !important;
+            color: #333 !important;
+            min-height: 40px !important;
         }
         
         .actions-cell {
@@ -60,12 +98,12 @@
         }
         
         .context-message {
-            background-color: #fef3c7;
-            border: 1px solid #f59e0b;
-            border-radius: var(--radius-md);
-            padding: var(--spacing-lg);
-            margin-bottom: var(--spacing-lg);
-            text-align: center;
+            background-color: #fef3c7 !important;
+            border: 1px solid #f59e0b !important;
+            border-radius: 8px !important;
+            padding: 24px !important;
+            margin-bottom: 24px !important;
+            text-align: center !important;
         }
         
         .context-message-icon {
@@ -83,6 +121,44 @@
         .context-message-text {
             font-size: var(--font-size-md);
             color: #78350f;
+        }
+        
+        /* Ensure table and empty state are visible */
+        .table-wrapper {
+            background-color: white !important;
+            border: 1px solid #ddd !important;
+        }
+        
+        .empty-state {
+            background-color: white !important;
+            border: 1px solid #ddd !important;
+            border-radius: 8px !important;
+            padding: 48px !important;
+            text-align: center !important;
+            margin: 20px 0 !important;
+            min-height: 200px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
+        
+        .empty-state-icon {
+            font-size: 48px !important;
+            margin-bottom: 16px !important;
+            opacity: 0.5 !important;
+        }
+        
+        .empty-state-title {
+            color: #333 !important;
+            font-size: 20px !important;
+            font-weight: 600 !important;
+            margin-bottom: 8px !important;
+        }
+        
+        .empty-state-message {
+            color: #666 !important;
+            font-size: 16px !important;
         }
     </style>
 </head>

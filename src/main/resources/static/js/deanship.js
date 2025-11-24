@@ -31,6 +31,7 @@ let professors = [];
 let courses = [];
 let departments = [];
 let fileExplorerInstance = null;
+let reportsDashboardInstance = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -160,12 +161,15 @@ function initializeNavigation() {
  */
 async function loadInitialDataSilent() {
     try {
+        console.log('Loading initial data silently...');
         await Promise.all([
             loadAcademicYearsData(),
             loadDepartments()
         ]);
-        // After loading initial data, load the active tab's data immediately
-        loadTabData(currentTab);
+        console.log('Initial data loaded (Academic Years & Departments).');
+        // Note: loadTabData is NOT called here because:
+        // 1. restoreActiveTab() calls it on startup.
+        // 2. loadAcademicYearsData() -> updateAcademicYearSelector() -> onContextChange() calls it when context is ready.
     } catch (error) {
         console.error('Error loading initial data:', error);
         showToast('Failed to load initial data', 'error');
@@ -238,41 +242,55 @@ function restoreActiveTab() {
  * @returns {void}
  */
 function switchTab(tabName) {
-    currentTab = tabName;
+    try {
+        console.log(`Switching to tab: ${tabName}`);
+        currentTab = tabName;
 
-    // Save active tab to localStorage
-    localStorage.setItem('deanship-active-tab', tabName);
+        // Save active tab to localStorage
+        localStorage.setItem('deanship-active-tab', tabName);
 
-    // Update tab buttons
-    document.querySelectorAll('.nav-tab').forEach(tab => {
-        if (tab.dataset.tab === tabName) {
-            tab.classList.add('active');
+        // Update tab buttons
+        document.querySelectorAll('.nav-tab').forEach(tab => {
+            if (tab.dataset.tab === tabName) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        // Show/hide tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.add('hidden');
+        });
+        
+        const tabContent = document.getElementById(`${tabName}-tab`);
+        if (tabContent) {
+            tabContent.classList.remove('hidden');
         } else {
-            tab.classList.remove('active');
+            console.error(`Tab content element not found: ${tabName}-tab`);
+            showToast(`Error: Tab content for ${tabName} not found`, 'error');
+            return;
         }
-    });
 
-    // Show/hide tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.add('hidden');
-    });
-    document.getElementById(`${tabName}-tab`).classList.remove('hidden');
-
-    // Toggle context bar visibility
-    const contextBar = document.getElementById('contextBar');
-    if (contextBar) {
-        if (tabName === 'professors') {
-            contextBar.classList.add('hidden');
-        } else {
-            contextBar.classList.remove('hidden');
+        // Toggle context bar visibility
+        const contextBar = document.getElementById('contextBar');
+        if (contextBar) {
+            if (tabName === 'professors') {
+                contextBar.classList.add('hidden');
+            } else {
+                contextBar.classList.remove('hidden');
+            }
         }
+
+        // Update breadcrumbs
+        updateBreadcrumbsForTab(tabName);
+
+        // Load tab data
+        loadTabData(tabName);
+    } catch (error) {
+        console.error(`Error switching to tab ${tabName}:`, error);
+        showToast('Error switching tabs', 'error');
     }
-
-    // Update breadcrumbs
-    updateBreadcrumbsForTab(tabName);
-
-    // Load tab data
-    loadTabData(tabName);
 }
 
 /**
@@ -367,34 +385,54 @@ function onContextChange() {
  * @returns {void}
  */
 function loadTabData(tabName) {
-    switch (tabName) {
-        case 'dashboard':
-            loadDashboardData();
-            break;
-        case 'academic-years':
-            loadAcademicYears();
-            break;
-        case 'professors':
-            loadProfessors();
-            break;
-        case 'courses':
-            loadCourses();
-            break;
-        case 'assignments':
-            // Load professors and courses first if not already loaded
-            Promise.all([
-                professors.length === 0 ? loadProfessors() : Promise.resolve(),
-                courses.length === 0 ? loadCourses() : Promise.resolve()
-            ]).then(() => {
-                loadAssignments();
-            });
-            break;
-        case 'reports':
-            initializeReportsDashboard();
-            break;
-        case 'file-explorer':
-            loadFileExplorer();
-            break;
+    console.log(`Loading data for tab: ${tabName}`);
+    try {
+        switch (tabName) {
+            case 'dashboard':
+                loadDashboardData();
+                break;
+            case 'academic-years':
+                loadAcademicYears();
+                break;
+            case 'professors':
+                loadProfessors();
+                break;
+            case 'courses':
+                loadCourses();
+                break;
+            case 'assignments':
+                // Load professors and courses first if not already loaded
+                Promise.all([
+                    professors.length === 0 ? loadProfessors() : Promise.resolve(),
+                    courses.length === 0 ? loadCourses() : Promise.resolve()
+                ]).then(() => {
+                    loadAssignments();
+                }).catch(err => {
+                    console.error('Error loading dependencies for assignments:', err);
+                    loadAssignments(); // Try loading anyway
+                });
+                break;
+            case 'reports':
+                if (typeof initializeReportsDashboard === 'function') {
+                    initializeReportsDashboard();
+                } else {
+                    console.warn('initializeReportsDashboard function not found');
+                    showToast('Reports module not loaded', 'warning');
+                }
+                break;
+            case 'file-explorer':
+                if (!selectedAcademicYearId || !selectedSemesterId) {
+                    // Initialize file explorer even without context to show empty state
+                    if (!fileExplorerInstance) {
+                        initializeFileExplorer();
+                    }
+                }
+                loadFileExplorer();
+                break;
+        }
+    } catch (error) {
+        console.error(`Error loading data for tab ${tabName}:`, error);
+        showToast(`Failed to load ${tabName} data`, 'error');
     }
 }
 
@@ -449,13 +487,15 @@ async function loadDashboardData() {
  */
 async function loadProfessorsData() {
     try {
-        professors = await apiRequest('/deanship/professors', { method: 'GET' });
+        const response = await apiRequest('/deanship/professors', { method: 'GET' });
+        professors = Array.isArray(response) ? response : (response?.content || []);
         // Update state for analytics
         if (typeof dashboardState !== 'undefined') {
             dashboardState.setProfessors(professors);
         }
     } catch (error) {
         console.error('Error loading professors data:', error);
+        professors = [];
     }
 }
 
@@ -466,13 +506,15 @@ async function loadProfessorsData() {
  */
 async function loadCoursesData() {
     try {
-        courses = await apiRequest('/deanship/courses', { method: 'GET' });
+        const response = await apiRequest('/deanship/courses', { method: 'GET' });
+        courses = Array.isArray(response) ? response : (response?.content || []);
         // Update state for analytics
         if (typeof dashboardState !== 'undefined') {
             dashboardState.setCourses(courses);
         }
     } catch (error) {
         console.error('Error loading courses data:', error);
+        courses = [];
     }
 }
 
@@ -508,11 +550,13 @@ function updateDashboardStats() {
  */
 async function loadAcademicYearsData() {
     try {
-        academicYears = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        const response = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        academicYears = Array.isArray(response) ? response : (response?.content || []);
         updateAcademicYearSelector();
     } catch (error) {
         console.error('Error loading academic years:', error);
         showToast('Failed to load academic years', 'error');
+        academicYears = []; // Ensure it's an array
     }
 }
 
@@ -525,22 +569,26 @@ async function loadAcademicYears() {
     const tbody = document.getElementById('academicYearsTableBody');
 
     // Show skeleton loader
-    tbody.innerHTML = SkeletonLoader.table(5, 5);
+    if (tbody) tbody.innerHTML = SkeletonLoader.table(5, 5);
 
     try {
-        academicYears = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        const response = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        academicYears = Array.isArray(response) ? response : (response?.content || []);
         renderAcademicYearsTable();
         updateAcademicYearSelector();
     } catch (error) {
         console.error('Error loading academic years:', error);
         showToast('Failed to load academic years', 'error');
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="5" class="px-6 py-8 text-center text-red-500">
-                    Failed to load academic years. Please try again.
-                </td>
-            </tr>
-        `;
+        academicYears = [];
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="px-6 py-8 text-center text-red-500">
+                        Failed to load academic years. Please try again.
+                    </td>
+                </tr>
+            `;
+        }
     }
 }
 
@@ -987,7 +1035,8 @@ async function loadProfessors() {
         const departmentId = document.getElementById('professorDepartmentFilter')?.value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
-        professors = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
+        const response = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
+        professors = Array.isArray(response) ? response : (response?.content || []);
 
         // Extract unique departments
         departments = [...new Set(professors.map(p => p.department).filter(Boolean))];
@@ -1036,13 +1085,22 @@ function filterProfessors() {
  */
 function renderProfessorsTable() {
     const tbody = document.getElementById('professorsTableBody');
-    const searchTerm = document.getElementById('professorSearch').value.toLowerCase();
+    if (!tbody) return;
+
+    const searchInput = document.getElementById('professorSearch');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+    // Ensure professors is an array
+    if (!Array.isArray(professors)) {
+        console.error('Professors data is not an array:', professors);
+        professors = [];
+    }
 
     let filteredProfessors = professors;
     if (searchTerm) {
         filteredProfessors = professors.filter(prof =>
-            prof.name.toLowerCase().includes(searchTerm) ||
-            prof.email.toLowerCase().includes(searchTerm) ||
+            (prof.name && prof.name.toLowerCase().includes(searchTerm)) ||
+            (prof.email && prof.email.toLowerCase().includes(searchTerm)) ||
             (prof.professorId && prof.professorId.toLowerCase().includes(searchTerm))
         );
     }
@@ -1475,18 +1533,27 @@ window.deanship.deleteProfessor = function (profId, btnElement) {
  * @returns {Promise<void>}
  */
 async function loadCourses() {
+    console.log('loadCourses: Starting...');
     const tbody = document.getElementById('coursesTableBody');
 
     // Show skeleton loader
     if (tbody) {
         tbody.innerHTML = SkeletonLoader.table(5, 6);
+    } else {
+        console.error('loadCourses: coursesTableBody not found!');
+        return;
     }
 
     try {
         const departmentId = document.getElementById('courseDepartmentFilter')?.value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
-        courses = await apiRequest(`/deanship/courses${params}`, { method: 'GET' });
+        console.log(`loadCourses: Fetching from /deanship/courses${params}`);
+        const response = await apiRequest(`/deanship/courses${params}`, { method: 'GET' });
+        console.log('loadCourses: Response received', response);
+        
+        courses = Array.isArray(response) ? response : (response?.content || []);
+        console.log(`loadCourses: Parsed courses array. Length: ${courses.length}`);
 
         // Extract unique departments from courses if not already set
         if (departments.length === 0) {
@@ -1495,8 +1562,10 @@ async function loadCourses() {
 
         // Use enhanced table if available, otherwise fallback to basic rendering
         if (typeof tableEnhancementManager !== 'undefined') {
+            console.log('loadCourses: Using tableEnhancementManager');
             tableEnhancementManager.enhanceCoursesTable();
         } else {
+            console.log('loadCourses: Using renderCoursesTable');
             renderCoursesTable();
         }
 
@@ -1536,18 +1605,34 @@ function filterCourses() {
  * @returns {void}
  */
 function renderCoursesTable() {
+    console.log('renderCoursesTable: Starting...');
     const tbody = document.getElementById('coursesTableBody');
-    const searchTerm = document.getElementById('courseSearch').value.toLowerCase();
+    if (!tbody) {
+        console.error('coursesTableBody element not found');
+        return;
+    }
+    
+    const searchInput = document.getElementById('courseSearch');
+    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+
+    // Ensure courses is an array
+    if (!Array.isArray(courses)) {
+        console.error('Courses data is not an array:', courses);
+        courses = [];
+    }
 
     let filteredCourses = courses;
     if (searchTerm) {
         filteredCourses = courses.filter(course =>
-            course.courseCode.toLowerCase().includes(searchTerm) ||
-            course.courseName.toLowerCase().includes(searchTerm)
+            (course.courseCode && course.courseCode.toLowerCase().includes(searchTerm)) ||
+            (course.courseName && course.courseName.toLowerCase().includes(searchTerm))
         );
     }
+    
+    console.log(`renderCoursesTable: Rendering ${filteredCourses.length} courses (Total: ${courses.length})`);
 
     if (filteredCourses.length === 0) {
+        console.log('renderCoursesTable: Rendering empty state');
         const isSearching = searchTerm.length > 0;
         tbody.innerHTML = `
             <tr>
@@ -1571,8 +1656,8 @@ function renderCoursesTable() {
 
     tbody.innerHTML = filteredCourses.map(course => `
         <tr>
-            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${course.courseCode}</td>
-            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${course.courseName}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${course.courseCode || ''}</td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${course.courseName || ''}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${course.department?.name || 'N/A'}</td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${course.level || 'N/A'}</td>
             <td class="px-6 py-4 whitespace-nowrap">
@@ -1598,6 +1683,7 @@ function renderCoursesTable() {
             </td>
         </tr>
     `).join('');
+    console.log('renderCoursesTable: Render complete');
 }
 
 /**
@@ -1902,9 +1988,11 @@ let assignments = [];
  * @returns {Promise<void>}
  */
 async function loadAssignments() {
+    console.log('loadAssignments: Starting...');
     const tbody = document.getElementById('assignmentsTableBody');
 
     if (!selectedSemesterId) {
+        console.log('loadAssignments: No semester selected');
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="px-6 py-4">
@@ -1928,7 +2016,13 @@ async function loadAssignments() {
         const params = new URLSearchParams({ semesterId: selectedSemesterId });
         if (professorId) params.append('professorId', professorId);
 
-        assignments = await apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' });
+        console.log(`loadAssignments: Fetching from /deanship/course-assignments?${params}`);
+        const response = await apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' });
+        console.log('loadAssignments: Response received', response);
+        
+        assignments = Array.isArray(response) ? response : (response?.content || []);
+        console.log(`loadAssignments: Parsed assignments array. Length: ${assignments.length}`);
+        
         renderAssignmentsTable();
         updateAssignmentFilters();
 
@@ -1978,15 +2072,31 @@ function updateAssignmentFilters() {
  * @returns {void}
  */
 function renderAssignmentsTable() {
+    console.log('renderAssignmentsTable: Starting...');
     const tbody = document.getElementById('assignmentsTableBody');
-    const courseFilter = document.getElementById('assignmentCourseFilter').value;
+    if (!tbody) {
+        console.error('assignmentsTableBody element not found');
+        return;
+    }
+
+    const courseFilterEl = document.getElementById('assignmentCourseFilter');
+    const courseFilter = courseFilterEl ? courseFilterEl.value : '';
+
+    // Ensure assignments is an array
+    if (!Array.isArray(assignments)) {
+        console.error('Assignments data is not an array:', assignments);
+        assignments = [];
+    }
 
     let filteredAssignments = assignments;
     if (courseFilter) {
-        filteredAssignments = assignments.filter(a => a.course.id === parseInt(courseFilter));
+        filteredAssignments = assignments.filter(a => a.course && a.course.id === parseInt(courseFilter));
     }
+    
+    console.log(`renderAssignmentsTable: Rendering ${filteredAssignments.length} assignments (Total: ${assignments.length})`);
 
     if (filteredAssignments.length === 0) {
+        console.log('renderAssignmentsTable: Rendering empty state');
         const isFiltering = courseFilter.length > 0;
         tbody.innerHTML = `
             <tr>
@@ -2029,6 +2139,7 @@ function renderAssignmentsTable() {
             </td>
         </tr>
     `).join('');
+    console.log('renderAssignmentsTable: Render complete');
 }
 
 /**
@@ -2173,17 +2284,25 @@ window.deanship.unassignCourse = function (assignmentId) {
 // REPORTS
 // ============================================================================
 
-// Global reports dashboard instance
-let reportsDashboardInstance = null;
-
 /**
  * Initialize interactive reports dashboard
  */
 function initializeReportsDashboard() {
-    if (!reportsDashboardInstance) {
-        reportsDashboardInstance = new window.ReportsDashboard('reports-dashboard-container');
+    try {
+        if (typeof window.ReportsDashboard === 'undefined') {
+            console.warn('ReportsDashboard class not found. Reports module may not be loaded.');
+            showToast('Reports module unavailable', 'warning');
+            return;
+        }
+
+        if (!reportsDashboardInstance) {
+            reportsDashboardInstance = new window.ReportsDashboard('reports-dashboard-container');
+        }
+        reportsDashboardInstance.init();
+    } catch (error) {
+        console.error('Error initializing reports dashboard:', error);
+        showToast('Failed to initialize reports', 'error');
     }
-    reportsDashboardInstance.init();
 }
 
 /**
@@ -2448,36 +2567,49 @@ class TableEnhancementManager {
      * Enhance professors table with advanced features
      */
     enhanceProfessorsTable() {
+        // Check for required dependencies
+        if (typeof MultiSelectFilter === 'undefined' || typeof UserAvatar === 'undefined') {
+            console.warn('Enhanced table components (MultiSelectFilter, UserAvatar) not found. Falling back to standard table.');
+            renderProfessorsTable();
+            return;
+        }
+
         const tableContainer = document.getElementById('professorsTableContainer');
         if (!tableContainer) return;
 
-        // Add filters container
-        const filtersHtml = `
-            <div class="enhanced-table-container">
-                <div class="table-filters">
-                    <div id="professorDepartmentFilter"></div>
+        try {
+            // Add filters container
+            const filtersHtml = `
+                <div class="enhanced-table-container">
+                    <div class="table-filters">
+                        <div id="professorDepartmentFilter"></div>
+                    </div>
+                    <div id="professorsTableWrapper"></div>
                 </div>
-                <div id="professorsTableWrapper"></div>
-            </div>
-        `;
+            `;
 
-        tableContainer.innerHTML = filtersHtml;
+            tableContainer.innerHTML = filtersHtml;
 
-        // Initialize department filter
-        if (departments.length > 0) {
-            const deptFilter = new MultiSelectFilter();
-            const deptOptions = departments.map(d => ({ value: d, label: d }));
-            deptFilter.render(
-                document.getElementById('professorDepartmentFilter'),
-                'Department',
-                deptOptions,
-                (selected) => this.applyProfessorFilters()
-            );
-            this.filters.set('professors-department', deptFilter);
+            // Initialize department filter
+            if (departments.length > 0) {
+                const deptFilter = new MultiSelectFilter();
+                const deptOptions = departments.map(d => ({ value: d, label: d }));
+                deptFilter.render(
+                    document.getElementById('professorDepartmentFilter'),
+                    'Department',
+                    deptOptions,
+                    (selected) => this.applyProfessorFilters()
+                );
+                this.filters.set('professors-department', deptFilter);
+            }
+
+            // Re-render table with enhancements
+            this.renderEnhancedProfessorsTable();
+        } catch (error) {
+            console.error('Error enhancing professors table:', error);
+            // Fallback
+            renderProfessorsTable();
         }
-
-        // Re-render table with enhancements
-        this.renderEnhancedProfessorsTable();
     }
 
     /**
@@ -2573,43 +2705,55 @@ class TableEnhancementManager {
      * Enhance courses table with progress bars and bulk actions
      */
     enhanceCoursesTable() {
+        // Check for required dependencies
+        if (typeof MultiSelectFilter === 'undefined' || typeof BulkActionsToolbar === 'undefined' || typeof TableProgressBar === 'undefined') {
+            console.warn('Enhanced table components not found. Falling back to standard table.');
+            renderCoursesTable();
+            return;
+        }
+
         const tableContainer = document.getElementById('coursesTableContainer');
         if (!tableContainer) return;
 
-        const filtersHtml = `
-            <div class="enhanced-table-container">
-                <div class="table-filters">
-                    <div id="courseDepartmentFilter"></div>
+        try {
+            const filtersHtml = `
+                <div class="enhanced-table-container">
+                    <div class="table-filters">
+                        <div id="courseDepartmentFilter"></div>
+                    </div>
+                    <div id="courseBulkToolbar"></div>
+                    <div id="coursesTableWrapper"></div>
                 </div>
-                <div id="courseBulkToolbar"></div>
-                <div id="coursesTableWrapper"></div>
-            </div>
-        `;
+            `;
 
-        tableContainer.innerHTML = filtersHtml;
+            tableContainer.innerHTML = filtersHtml;
 
-        // Initialize department filter
-        if (departments.length > 0) {
-            const deptFilter = new MultiSelectFilter();
-            const deptOptions = departments.map(d => ({ value: d, label: d }));
-            deptFilter.render(
-                document.getElementById('courseDepartmentFilter'),
-                'Department',
-                deptOptions,
-                (selected) => this.applyCoursesFilters()
+            // Initialize department filter
+            if (departments.length > 0) {
+                const deptFilter = new MultiSelectFilter();
+                const deptOptions = departments.map(d => ({ value: d, label: d }));
+                deptFilter.render(
+                    document.getElementById('courseDepartmentFilter'),
+                    'Department',
+                    deptOptions,
+                    (selected) => this.applyCoursesFilters()
+                );
+                this.filters.set('courses-department', deptFilter);
+            }
+
+            // Initialize bulk actions toolbar
+            const bulkToolbar = new BulkActionsToolbar();
+            bulkToolbar.render(
+                document.getElementById('courseBulkToolbar'),
+                (action) => this.handleCourseBulkAction(action)
             );
-            this.filters.set('courses-department', deptFilter);
+            this.bulkToolbars.set('courses', bulkToolbar);
+
+            this.renderEnhancedCoursesTable();
+        } catch (error) {
+            console.error('Error enhancing courses table:', error);
+            renderCoursesTable();
         }
-
-        // Initialize bulk actions toolbar
-        const bulkToolbar = new BulkActionsToolbar();
-        bulkToolbar.render(
-            document.getElementById('courseBulkToolbar'),
-            (action) => this.handleCourseBulkAction(action)
-        );
-        this.bulkToolbars.set('courses', bulkToolbar);
-
-        this.renderEnhancedCoursesTable();
     }
 
     /**

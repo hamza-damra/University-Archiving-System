@@ -22,29 +22,39 @@ class ReportsPage {
      */
     async initialize() {
         try {
+            console.log('[Reports] Starting initialization...');
+            
             // Initialize shared layout
             await this.layout.initialize();
+            console.log('[Reports] Layout initialized');
             
             // Check if context is available
             this.updateContextMessage();
+            console.log('[Reports] Context message updated');
             
             // Set up event listeners
             this.setupEventListeners();
+            console.log('[Reports] Event listeners set up');
             
             // Register context change listener
-            this.layout.onContextChange(() => {
+            this.layout.onContextChange((context) => {
+                console.log('[Reports] Context changed:', context);
                 this.handleContextChange();
             });
             
             // Load report if context is available
-            if (this.layout.hasContext()) {
+            const hasContext = this.layout.hasContext();
+            console.log('[Reports] Has context:', hasContext);
+            
+            if (hasContext) {
                 await this.loadSubmissionReport();
             }
             
             console.log('[Reports] Initialized successfully');
         } catch (error) {
             console.error('[Reports] Initialization error:', error);
-            showToast('Failed to initialize reports page', 'error');
+            console.error('[Reports] Error stack:', error.stack);
+            showToast('Failed to initialize reports page: ' + error.message, 'error');
         }
     }
 

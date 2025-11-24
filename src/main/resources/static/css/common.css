@@ -45,6 +45,11 @@
     --gemini-text-titles: #C4C7C5;
     --gemini-text-nav: #C1C4C2;
 
+    /* Login page specific */
+    --login-card-bg: #ffffff;
+    --login-input-bg: #ffffff;
+    --login-button-bg: #3b82f6;
+    --login-button-hover: #2563eb;
 
     /* Scrollbar colors */
     --scrollbar-track: #f1f1f1;
@@ -96,6 +101,12 @@
     --status-danger-text: #fca5a5;
     --status-info-bg: #4c1d95;
     --status-info-text: #c4b5fd;
+
+    /* Login page specific - dark theme */
+    --login-card-bg: #1E1F20;
+    --login-input-bg: #2D2E30;
+    --login-button-bg: #a855f7;
+    --login-button-hover: #9333ea;
 
     /* Scrollbar colors */
     --scrollbar-track: #1e1e1e;
@@ -766,14 +777,6 @@ tbody tr:hover {
     color: #10b981;
 }
 
-.file-icon-default {
-    color: #6b7280;
-}
-
-/* ===================================
-   DARK THEME OVERRIDES
-   =================================== */
-
 /* Tailwind color overrides for dark mode */
 .dark .bg-blue-50,
 .dark .bg-blue-100 {
@@ -787,6 +790,30 @@ tbody tr:hover {
 .dark .text-blue-700,
 .dark .text-blue-900 {
     color: var(--text-primary) !important;
+}
+
+.dark .text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+.dark .text-red-600,
+.dark .text-red-700 {
+    color: var(--status-danger-text) !important;
+}
+
+.dark .bg-red-50 {
+    background-color: var(--status-danger-bg) !important;
+    border-color: var(--status-danger-text) !important;
+}
+
+.dark .border-red-200 {
+    border-color: var(--status-danger-text) !important;
+}
+
+/* Invert logo in dark mode */
+.dark img[src*="logo"] {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
 }
 
 .dark .text-blue-600 {
@@ -816,29 +843,6 @@ tbody tr:hover {
 
 .dark .text-red-600 {
     color: #f87171 !important;
-}
-
-/* ===================================
-   SIDEBAR DARK MODE OVERRIDES
-   =================================== */
-
-/* Sidebar Container */
-.dark aside.bg-white {
-    background-color: var(--bg-primary) !important;
-    border-color: var(--border-primary) !important;
-}
-
-/* Sidebar Header */
-.dark aside .border-gray-100 {
-    border-color: var(--border-primary) !important;
-}
-
-.dark aside .text-gray-900 {
-    color: var(--text-primary) !important;
-}
-
-.dark aside .text-gray-500 {
-    color: var(--text-secondary) !important;
 }
 
 /* ===================================
@@ -935,7 +939,8 @@ tbody tr:hover {
 .dark .modal-body input:focus,
 .dark .modal-body textarea:focus {
     border-color: var(--accent-blue) !important;
-    ring-color: var(--accent-blue) !important;
+    outline: 2px solid var(--accent-blue) !important;
+    outline-offset: 2px !important;
 }
 
 .dark #uploadModal p.text-gray-500,
@@ -1023,7 +1028,8 @@ tbody tr:hover {
 .dark main input:focus,
 .dark main textarea:focus {
     border-color: var(--accent-blue) !important;
-    ring-color: var(--accent-blue) !important;
+    outline: 2px solid var(--accent-blue) !important;
+    outline-offset: 2px !important;
 }
 
 /* Stat Cards Specifics */
@@ -1106,4 +1112,130 @@ tbody tr:hover {
 .dark header .bg-blue-100 {
     background-color: var(--accent-blue) !important;
     color: #ffffff !important;
+}
+
+/* ===================================
+   LOGIN PAGE DARK MODE OVERRIDES
+   =================================== */
+
+/* Login page body background */
+.dark body.bg-gray-50 {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* Login card */
+.dark .bg-white.rounded-lg.shadow-md {
+    background-color: var(--login-card-bg) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Login page headings */
+.dark h1.text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+.dark h2.text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+/* Login page subtitle */
+.dark p.text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+/* Login form labels */
+.dark label.text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+/* Login form inputs */
+.dark input[type="email"],
+.dark input[type="password"] {
+    background-color: var(--login-input-bg) !important;
+    border-color: var(--border-primary) !important;
+    color: var(--text-primary) !important;
+}
+
+.dark input[type="email"]::placeholder,
+.dark input[type="password"]::placeholder {
+    color: var(--text-tertiary) !important;
+}
+
+.dark input[type="email"]:focus,
+.dark input[type="password"]:focus {
+    border-color: var(--border-focus) !important;
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Login button */
+.dark button[type="submit"].bg-blue-600 {
+    background-color: var(--login-button-bg) !important;
+}
+
+.dark button[type="submit"].bg-blue-600:hover {
+    background-color: var(--login-button-hover) !important;
+}
+
+/* Error messages */
+.dark .text-red-600 {
+    color: #fca5a5 !important;
+}
+
+.dark .bg-red-50 {
+    background-color: var(--status-danger-bg) !important;
+}
+
+.dark .border-red-200 {
+    border-color: #7f1d1d !important;
+}
+
+.dark .text-red-700 {
+    color: var(--status-danger-text) !important;
+}
+
+/* Loading overlay */
+.dark #loadingOverlay .bg-white {
+    background-color: var(--bg-elevated) !important;
+}
+
+.dark #loadingOverlay .text-gray-700 {
+    color: var(--text-primary) !important;
+}
+
+/* Footer text */
+.dark footer.text-gray-600 {
+    color: var(--text-tertiary) !important;
+}
+
+/* Theme toggle button */
+.dark .theme-toggle {
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.theme-toggle {
+    color: var(--text-secondary);
+    background-color: transparent;
+    border: 1px solid var(--border-primary);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dark .theme-toggle:hover {
+    background-color: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+    color: var(--accent-blue);
+}
+
+/* Logo filter for dark mode - Invert black logo to white */
+.dark img[alt*="logo"] {
+    filter: brightness(0) invert(1);
+    opacity: 0.9;
 }

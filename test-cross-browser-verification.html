@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cross-Browser Testing - Dean File Explorer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .test-pass { color: #10b981; }
+        .test-fail { color: #ef4444; }
+        .test-pending { color: #6b7280; }
+        .browser-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="browser-info rounded-lg shadow-lg p-6 mb-8">
+            <h1 class="text-3xl font-bold mb-2">Cross-Browser Testing Suite</h1>
+            <p class="text-lg opacity-90">Dean File Explorer - Filter Fix & Tree View Removal</p>
+        </div>
+
+        <!-- Browser Detection -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Browser Information</h2>
+            <div id="browserInfo" class="space-y-2 font-mono text-sm"></div>
+        </div>
+
+        <!-- Test Controls -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Test Controls</h2>
+            <div class="flex gap-4">
+                <button onclick="runAllTests()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                    Run All Tests
+                </button>
+                <button onclick="clearResults()" class="bg-gray-600 text-white px-6 py-2 rounded-lg hover:bg-gray-700">
+                    Clear Results
+                </button>
+                <button onclick="exportResults()" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                    Export Results
+                </button>
+            </div>
+        </div>
+
+        <!-- Test Results -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Test Results</h2>
+            <div id="testResults" class="space-y-4"></div>
+        </div>
+
+        <!-- Manual Test Checklist -->
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-semibold mb-4">Manual Test Checklist</h2>
+            <div class="space-y-4">
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">1. Filter Change - Academic Year</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Select Academic Year → File Explorer should clear</li>
+                        <li>Semester dropdown should reset</li>
+                        <li>Context message should appear</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-1">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">2. Filter Change - Semester</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Change Semester → File Explorer should reload</li>
+                        <li>New data should be displayed</li>
+                        <li>Loading indicator should appear briefly</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-2">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">3. Tree View Removal</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>No tree panel visible on left side</li>
+                        <li>Single-column layout used</li>
+                        <li>Folder cards displayed in main area</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-3">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">4. Folder Navigation</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Click folder card → Navigate into folder</li>
+                        <li>Breadcrumbs update correctly</li>
+                        <li>Back navigation works</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-4">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">5. Breadcrumb Navigation</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Navigate to nested folder</li>
+                        <li>Click breadcrumb segment → Navigate to that level</li>
+                        <li>Content updates correctly</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-5">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">6. Loading Indicators</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Loading indicator appears during data load</li>
+                        <li>Interactions disabled during load</li>
+                        <li>Indicator removed after load completes</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-6">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">7. Empty State</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Context message when no filters selected</li>
+                        <li>Prompt to select semester when only year selected</li>
+                        <li>No folders/files shown in empty state</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-7">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+
+                <div class="border-l-4 border-blue-500 pl-4">
+                    <h3 class="font-semibold mb-2">8. Error Handling</h3>
+                    <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>Error message displayed on API failure</li>
+                        <li>Loading indicator removed on error</li>
+                        <li>Can retry after error</li>
+                    </ul>
+                    <label class="flex items-center mt-2">
+                        <input type="checkbox" class="mr-2" data-test="manual-8">
+                        <span class="text-sm">Verified</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-6 border-t">
+                <button onclick="generateManualReport()" class="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700">
+                    Generate Manual Test Report
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Browser Detection
+        function detectBrowser() {
+            const ua = navigator.userAgent;
+            let browserName = 'Unknown';
+            let browserVersion = 'Unknown';
+
+            if (ua.indexOf('Chrome') > -1 && ua.indexOf('Edg') === -1) {
+                browserName = 'Chrome';
+                browserVersion = ua.match(/Chrome\/(\d+)/)[1];
+            } else if (ua.indexOf('Firefox') > -1) {
+                browserName = 'Firefox';
+                browserVersion = ua.match(/Firefox\/(\d+)/)[1];
+            } else if (ua.indexOf('Edg') > -1) {
+                browserName = 'Edge';
+                browserVersion = ua.match(/Edg\/(\d+)/)[1];
+            } else if (ua.indexOf('Safari') > -1) {
+                browserName = 'Safari';
+                browserVersion = ua.match(/Version\/(\d+)/)[1];
+            }
+
+            return { browserName, browserVersion, userAgent: ua };
+        }
+
+        // Display Browser Info
+        function displayBrowserInfo() {
+            const info = detectBrowser();
+            const browserInfoDiv = document.getElementById('browserInfo');
+            browserInfoDiv.innerHTML = `
+                <p><strong>Browser:</strong> ${info.browserName}</p>
+                <p><strong>Version:</strong> ${info.browserVersion}</p>
+                <p><strong>Platform:</strong> ${navigator.platform}</p>
+                <p><strong>User Agent:</strong> ${info.userAgent}</p>
+                <p><strong>Screen Resolution:</strong> ${window.screen.width}x${window.screen.height}</p>
+                <p><strong>Viewport:</strong> ${window.innerWidth}x${window.innerHeight}</p>
+            `;
+        }
+
+        // Test Suite
+        const tests = [
+            {
+                name: 'DOM API Support',
+                test: () => {
+                    return typeof document.querySelector === 'function' &&
+                           typeof document.querySelectorAll === 'function' &&
+                           typeof document.getElementById === 'function';
+                }
+            },
+            {
+                name: 'ES6 Features Support',
+                test: () => {
+                    try {
+                        eval('const x = () => {}; class Y {}; let z = `template`;');
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+            },
+            {
+                name: 'Fetch API Support',
+                test: () => {
+                    return typeof fetch === 'function';
+                }
+            },
+            {
+                name: 'LocalStorage Support',
+                test: () => {
+                    try {
+                        localStorage.setItem('test', 'test');
+                        localStorage.removeItem('test');
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+            },
+            {
+                name: 'CSS Grid Support',
+                test: () => {
+                    const div = document.createElement('div');
+                    return typeof div.style.grid !== 'undefined';
+                }
+            },
+            {
+                name: 'CSS Flexbox Support',
+                test: () => {
+                    const div = document.createElement('div');
+                    return typeof div.style.flex !== 'undefined';
+                }
+            },
+            {
+                name: 'Event Listener Support',
+                test: () => {
+                    return typeof document.addEventListener === 'function';
+                }
+            },
+            {
+                name: 'Promise Support',
+                test: () => {
+                    return typeof Promise === 'function';
+                }
+            },
+            {
+                name: 'Async/Await Support',
+                test: () => {
+                    try {
+                        eval('(async () => {})');
+                        return true;
+                    } catch (e) {
+                        return false;
+                    }
+                }
+            },
+            {
+                name: 'Module Import Support',
+                test: () => {
+                    return 'noModule' in document.createElement('script');
+                }
+            }
+        ];
+
+        function runAllTests() {
+            const resultsDiv = document.getElementById('testResults');
+            resultsDiv.innerHTML = '<p class="text-gray-500">Running tests...</p>';
+            
+            setTimeout(() => {
+                let html = '';
+                let passed = 0;
+                let failed = 0;
+
+                tests.forEach(test => {
+                    try {
+                        const result = test.test();
+                        if (result) {
+                            passed++;
+                            html += `
+                                <div class="flex items-center justify-between p-3 bg-green-50 rounded">
+                                    <span class="font-medium">${test.name}</span>
+                                    <span class="test-pass font-bold">✓ PASS</span>
+                                </div>
+                            `;
+                        } else {
+                            failed++;
+                            html += `
+                                <div class="flex items-center justify-between p-3 bg-red-50 rounded">
+                                    <span class="font-medium">${test.name}</span>
+                                    <span class="test-fail font-bold">✗ FAIL</span>
+                                </div>
+                            `;
+                        }
+                    } catch (e) {
+                        failed++;
+                        html += `
+                            <div class="flex items-center justify-between p-3 bg-red-50 rounded">
+                                <span class="font-medium">${test.name}</span>
+                                <span class="test-fail font-bold">✗ ERROR: ${e.message}</span>
+                            </div>
+                        `;
+                    }
+                });
+
+                html = `
+                    <div class="mb-4 p-4 bg-gray-100 rounded">
+                        <p class="font-semibold">Summary: ${passed} passed, ${failed} failed</p>
+                    </div>
+                ` + html;
+
+                resultsDiv.innerHTML = html;
+            }, 100);
+        }
+
+        function clearResults() {
+            document.getElementById('testResults').innerHTML = '<p class="text-gray-500">No tests run yet.</p>';
+        }
+
+        function exportResults() {
+            const info = detectBrowser();
+            const timestamp = new Date().toISOString();
+            
+            let report = `Cross-Browser Test Report\n`;
+            report += `=========================\n\n`;
+            report += `Browser: ${info.browserName} ${info.browserVersion}\n`;
+            report += `Platform: ${navigator.platform}\n`;
+            report += `Date: ${timestamp}\n\n`;
+            report += `Automated Tests:\n`;
+            report += `----------------\n`;
+
+            tests.forEach(test => {
+                try {
+                    const result = test.test();
+                    report += `${test.name}: ${result ? 'PASS' : 'FAIL'}\n`;
+                } catch (e) {
+                    report += `${test.name}: ERROR - ${e.message}\n`;
+                }
+            });
+
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `cross-browser-test-${info.browserName}-${timestamp}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateManualReport() {
+            const info = detectBrowser();
+            const timestamp = new Date().toISOString();
+            const checkboxes = document.querySelectorAll('[data-test]');
+            
+            let report = `Manual Test Report\n`;
+            report += `==================\n\n`;
+            report += `Browser: ${info.browserName} ${info.browserVersion}\n`;
+            report += `Platform: ${navigator.platform}\n`;
+            report += `Date: ${timestamp}\n\n`;
+            report += `Test Results:\n`;
+            report += `-------------\n`;
+
+            checkboxes.forEach((checkbox, index) => {
+                const testNum = index + 1;
+                const status = checkbox.checked ? 'PASS' : 'NOT TESTED';
+                report += `Test ${testNum}: ${status}\n`;
+            });
+
+            const blob = new Blob([report], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `manual-test-${info.browserName}-${timestamp}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+
+            alert('Manual test report exported!');
+        }
+
+        // Initialize
+        displayBrowserInfo();
+        clearResults();
+    </script>
+</body>
+</html>

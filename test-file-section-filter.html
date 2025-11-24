@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Section Filter Fix - Test Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <div class="bg-white rounded-lg shadow-lg p-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">File Section Filter Fix - Test Guide</h1>
+            <p class="text-gray-600 mb-8">Verify that the files section updates correctly when filters change</p>
+
+            <!-- Issue Description -->
+            <div class="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-red-900 mb-2">🐛 Original Issue</h2>
+                <p class="text-red-800">When changing Academic Year or Semester filters, the folder structure updated correctly, but the <strong>files section</strong> showed old files from the previous selection, creating confusion about which filter was active.</p>
+            </div>
+
+            <!-- Fix Applied -->
+            <div class="bg-green-50 border-l-4 border-green-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-green-900 mb-2">✅ Fix Applied</h2>
+                <p class="text-green-800">After filter changes, the files section now shows an <strong>empty state</strong> with the message "Select a folder to view its contents". Users must click on a folder to see its files, making it clear that filters have been applied.</p>
+            </div>
+
+            <!-- Test Steps -->
+            <div class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-blue-900 mb-3">🧪 Test Steps</h2>
+                <ol class="list-decimal list-inside space-y-3 text-blue-900">
+                    <li class="font-medium">
+                        Open Dean Dashboard
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Navigate to: <code class="bg-blue-100 px-2 py-0.5 rounded">http://localhost:8080/dean-dashboard.html</code></p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Select Initial Filters
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Choose an Academic Year (e.g., "2024-2025") and Semester (e.g., "First Semester")</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Navigate to File Explorer Tab
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Click on the "File Explorer" tab in the dashboard</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Navigate to a Folder with Files
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Click through folders until you reach a folder that contains files (e.g., Department → Professor → Course → Document Type)</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Note the Current Files
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Observe which files are displayed in the "Files" section</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Change the Semester Filter
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Select a different semester from the dropdown (e.g., change from "First Semester" to "Second Semester")</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Verify Folder Structure Updates
+                        <p class="text-sm text-blue-700 ml-6 mt-1">
+                            <strong>Expected:</strong> Folder structure should reload with folders for the NEW semester
+                        </p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Verify Files Section Shows Empty State
+                        <p class="text-sm text-blue-700 ml-6 mt-1">
+                            <strong>Expected:</strong> Files section should display: "Select a folder to view its contents"
+                        </p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Click on a Folder
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Click on any folder card to navigate into it</p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Verify Files Display
+                        <p class="text-sm text-blue-700 ml-6 mt-1">
+                            <strong>Expected:</strong> Files for the selected folder should now be displayed
+                        </p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Verify No Stale Files
+                        <p class="text-sm text-blue-700 ml-6 mt-1">
+                            <strong>Expected:</strong> The files from the previous semester should NEVER be visible at any point
+                        </p>
+                    </li>
+                    
+                    <li class="font-medium">
+                        Test Academic Year Change
+                        <p class="text-sm text-blue-700 ml-6 mt-1">Repeat steps 6-9 but change the Academic Year filter instead</p>
+                    </li>
+                </ol>
+            </div>
+
+            <!-- Expected Behavior -->
+            <div class="bg-purple-50 border-l-4 border-purple-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-purple-900 mb-3">✨ Expected Behavior</h2>
+                <div class="space-y-2 text-purple-900">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span><strong>Empty State After Filter:</strong> Files section shows "Select a folder to view its contents"</span>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span><strong>Explicit Navigation:</strong> User must click on a folder to see files</span>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span><strong>Clear Visual Feedback:</strong> Makes it obvious that filters have been applied</span>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span><strong>No Stale Content:</strong> Old files are never visible after filter change</span>
+                    </div>
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-purple-600 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path>
+                        </svg>
+                        <span><strong>Correct Data:</strong> Only files matching the selected filters are displayed</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Common Issues -->
+            <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-yellow-900 mb-3">⚠️ If Issues Persist</h2>
+                <div class="space-y-2 text-yellow-900 text-sm">
+                    <p><strong>1. Clear Browser Cache:</strong> Press <code class="bg-yellow-100 px-2 py-0.5 rounded">Ctrl+Shift+R</code> (Windows/Linux) or <code class="bg-yellow-100 px-2 py-0.5 rounded">Cmd+Shift+R</code> (Mac) to hard refresh</p>
+                    <p><strong>2. Check Console:</strong> Open browser DevTools (F12) and check for JavaScript errors in the Console tab</p>
+                    <p><strong>3. Verify Files:</strong> Ensure the modified files are deployed:
+                        <ul class="list-disc list-inside ml-4 mt-1">
+                            <li><code>src/main/resources/static/js/file-explorer.js</code></li>
+                            <li><code>src/main/resources/static/js/file-explorer-page.js</code></li>
+                        </ul>
+                    </p>
+                    <p><strong>4. Restart Server:</strong> Stop and restart the Spring Boot application</p>
+                </div>
+            </div>
+
+            <!-- Browser Console Checks -->
+            <div class="bg-indigo-50 border-l-4 border-indigo-500 p-4 mb-6">
+                <h2 class="text-lg font-semibold text-indigo-900 mb-3">🔍 Browser Console Checks</h2>
+                <p class="text-indigo-900 mb-2">Open DevTools (F12) and look for these console messages when changing filters:</p>
+                <div class="bg-indigo-100 rounded p-3 font-mono text-xs text-indigo-900 space-y-1">
+                    <div>[FileExplorerPage] Context changed: {academicYearId: X, semesterId: Y}</div>
+                    <div>[FileExplorerPage] Context selected, showing file explorer</div>
+                    <div>📁 Files found: N</div>
+                    <div>🔍 Rendering file card: {fileId: X, fileName: "..."}</div>
+                </div>
+            </div>
+
+            <!-- Success Criteria -->
+            <div class="bg-green-50 border-l-4 border-green-500 p-4">
+                <h2 class="text-lg font-semibold text-green-900 mb-3">🎯 Success Criteria</h2>
+                <div class="space-y-2 text-green-900">
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>Files section shows empty state after filter change</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>Empty state message reads "Select a folder to view its contents"</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>Folder structure updates with new filtered data</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>Clicking a folder displays its files correctly</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>No old files are visible at any point after filter change</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>Behavior is consistent across multiple filter changes</span>
+                    </div>
+                    <div class="flex items-center">
+                        <input type="checkbox" class="w-5 h-5 text-green-600 mr-3">
+                        <span>No JavaScript errors in browser console</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center mt-8 text-gray-600 text-sm">
+            <p>For detailed technical information, see <code class="bg-gray-200 px-2 py-0.5 rounded">FILE_SECTION_FILTER_FIX.md</code></p>
+        </div>
+    </div>
+</body>
+</html>

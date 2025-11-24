@@ -297,7 +297,7 @@ class FileExplorerState {
         this.state.isTreeLoading = false;
         this.state.isFileListLoading = false;
         this.state.error = null;
-        this.state.lastUpdated = null;
+        this.state.lastUpdated = Date.now();
         this.notify();
     }
     

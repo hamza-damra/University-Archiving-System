@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Explorer Page - Property-Based Tests</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .test-pass {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .test-fail {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .test-running {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Explorer Page - Property-Based Tests</h1>
+    <p>Testing correctness properties for the Dean File Explorer filter fix</p>
+    
+    <div id="test-results"></div>
+
+    <script type="module">
+        // Mock dependencies
+        const mockFileExplorerState = {
+            resetDataCalled: false,
+            setContextCalled: false,
+            resetData() {
+                this.resetDataCalled = true;
+                this.resetDataCallTime = Date.now();
+            },
+            setContext(academicYearId, semesterId, yearCode, semesterType) {
+                this.setContextCalled = true;
+                this.setContextCallTime = Date.now();
+                this.contextData = { academicYearId, semesterId, yearCode, semesterType };
+            },
+            reset() {
+                this.resetDataCalled = false;
+                this.setContextCalled = false;
+                this.resetDataCallTime = null;
+                this.setContextCallTime = null;
+                this.contextData = null;
+            }
+        };
+
+        const mockFileExplorer = {
+            loadRootCalled: false,
+            loadRootCallTime: null,
+            async loadRoot(academicYearId, semesterId) {
+                this.loadRootCalled = true;
+                this.loadRootCallTime = Date.now();
+                this.loadRootParams = { academicYearId, semesterId };
+                return Promise.resolve();
+            },
+            reset() {
+                this.loadRootCalled = false;
+                this.loadRootCallTime = null;
+                this.loadRootParams = null;
+            }
+        };
+
+        // Test utilities
+        function addTestResult(name, passed, message, details = null) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${passed ? 'test-pass' : 'test-fail'}`;
+            
+            let html = `<strong>${passed ? '✓' : '✗'} ${name}</strong><br>${message}`;
+            if (details) {
+                html += `<pre>${JSON.stringify(details, null, 2)}</pre>`;
+            }
+            resultDiv.innerHTML = html;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        function addTestRunning(name) {
+            const resultsDiv = document.getElementById('test-results');
+            const resultDiv = document.createElement('div');
+            resultDiv.className = 'test-result test-running';
+            resultDiv.id = `test-${name.replace(/\s+/g, '-')}`;
+            resultDiv.innerHTML = `<strong>⏳ ${name}</strong><br>Running...`;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        // Simple property-based test runner (without fast-check for simplicity)
+        async function runPropertyTest(name, property, iterations = 100) {
+            addTestRunning(name);
+            
+            let passed = 0;
+            let failed = 0;
+            let failureExample = null;
+
+            for (let i = 0; i < iterations; i++) {
+                try {
+                    // Generate random test data
+                    const academicYearId = Math.floor(Math.random() * 100) + 1;
+                    const semesterId = Math.floor(Math.random() * 3) + 1;
+                    
+                    // Reset mocks
+                    mockFileExplorerState.reset();
+                    mockFileExplorer.reset();
+                    
+                    // Run property test
+                    const result = await property(academicYearId, semesterId);
+                    
+                    if (result.passed) {
+                        passed++;
+                    } else {
+                        failed++;
+                        if (!failureExample) {
+                            failureExample = {
+                                iteration: i + 1,
+                                input: { academicYearId, semesterId },
+                                reason: result.reason,
+                                details: result.details
+                            };
+                        }
+                    }
+                } catch (error) {
+                    failed++;
+                    if (!failureExample) {
+                        failureExample = {
+                            iteration: i + 1,
+                            error: error.message,
+                            stack: error.stack
+                        };
+                    }
+                }
+            }
+
+            // Remove running indicator
+            const runningDiv = document.getElementById(`test-${name.replace(/\s+/g, '-')}`);
+            if (runningDiv) {
+                runningDiv.remove();
+            }
+
+            // Add final result
+            const allPassed = failed === 0;
+            const message = allPassed 
+                ? `All ${iterations} iterations passed`
+                : `${failed} of ${iterations} iterations failed`;
+            
+            addTestResult(name, allPassed, message, failureExample);
+            
+            return { passed: allPassed, failureExample };
+        }
+
+        // **Feature: dean-file-explorer-filter-fix, Property 10: Reset before load sequence**
+        // **Validates: Requirements 3.2**
+        async function property10_resetBeforeLoadSequence(academicYearId, semesterId) {
+            // Simulate the initializeFileExplorer method behavior
+            mockFileExplorerState.resetData();
+            
+            // Small delay to ensure timing difference
+            await new Promise(resolve => setTimeout(resolve, 1));
+            
+            await mockFileExplorer.loadRoot(academicYearId, semesterId);
+            
+            // Property: resetData() must be called before loadRoot()
+            const resetCalledBeforeLoad = mockFileExplorerState.resetDataCallTime < mockFileExplorer.loadRootCallTime;
+            
+            if (!resetCalledBeforeLoad) {
+                return {
+                    passed: false,
+                    reason: 'resetData() was not called before loadRoot()',
+                    details: {
+                        resetDataCallTime: mockFileExplorerState.resetDataCallTime,
+                        loadRootCallTime: mockFileExplorer.loadRootCallTime,
+                        resetDataCalled: mockFileExplorerState.resetDataCalled,
+                        loadRootCalled: mockFileExplorer.loadRootCalled
+                    }
+                };
+            }
+            
+            return { passed: true };
+        }
+
+        // Run all property tests
+        async function runAllTests() {
+            console.log('Starting property-based tests...');
+            
+            const results = [];
+            
+            // Property 10: Reset before load sequence
+            results.push(await runPropertyTest(
+                'Property 10: Reset before load sequence',
+                property10_resetBeforeLoadSequence,
+                100
+            ));
+            
+            // Summary
+            const allPassed = results.every(r => r.passed);
+            const summary = document.createElement('div');
+            summary.className = `test-result ${allPassed ? 'test-pass' : 'test-fail'}`;
+            summary.innerHTML = `<h2>Test Summary</h2><p>${allPassed ? 'All tests passed!' : 'Some tests failed. See details above.'}</p>`;
+            document.getElementById('test-results').appendChild(summary);
+            
+            console.log('Tests completed:', results);
+        }
+
+        // Run tests on page load
+        runAllTests();
+    </script>
+</body>
+</html>

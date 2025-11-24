@@ -24,22 +24,33 @@ class CoursesPage {
      */
     async initialize() {
         try {
+            console.log('[Courses] Starting initialization...');
+            
             // Initialize shared layout
             await this.layout.initialize();
+            console.log('[Courses] Layout initialized');
             
             // Load departments
             await this.loadDepartments();
+            console.log('[Courses] Departments loaded:', this.departments.length);
             
             // Load courses
             await this.loadCourses();
+            console.log('[Courses] Courses loaded:', this.courses.length);
             
             // Set up event listeners
             this.setupEventListeners();
+            console.log('[Courses] Event listeners set up');
             
             console.log('[Courses] Initialized successfully');
         } catch (error) {
             console.error('[Courses] Initialization error:', error);
-            showToast('Failed to initialize courses page', 'error');
+            console.error('[Courses] Error stack:', error.stack);
+            showToast('Failed to initialize courses page: ' + error.message, 'error');
+            
+            // Show error state
+            this.showLoading(false);
+            this.showEmptyState(true);
         }
     }
 
@@ -110,6 +121,8 @@ class CoursesPage {
      */
     async loadCourses() {
         try {
+            console.log('[Courses] Loading courses...');
+            
             // Show loading state
             this.showLoading(true);
             
@@ -119,10 +132,14 @@ class CoursesPage {
                 url += `?departmentId=${this.selectedDepartmentId}`;
             }
             
+            console.log('[Courses] Fetching from URL:', url);
+            
             // Fetch courses
             this.courses = await apiRequest(url, {
                 method: 'GET',
             });
+            
+            console.log('[Courses] Received courses:', this.courses);
             
             // Store unfiltered list for search
             this.allCourses = [...this.courses];
@@ -132,9 +149,11 @@ class CoursesPage {
             
             // Render table
             this.renderCoursesTable();
+            console.log('[Courses] Table rendered');
             
         } catch (error) {
             console.error('[Courses] Failed to load courses:', error);
+            console.error('[Courses] Error details:', error.message, error.stack);
             this.showLoading(false);
             this.handleApiError(error, 'load courses');
             this.showEmptyState(true);
@@ -167,25 +186,43 @@ class CoursesPage {
      * Render courses table
      */
     renderCoursesTable() {
+        console.log('[Courses] Rendering table with', this.courses.length, 'courses');
+        
         const tbody = document.getElementById('coursesTableBody');
         const tableContainer = document.getElementById('tableContainer');
         const emptyState = document.getElementById('emptyState');
         
-        if (!tbody) return;
+        if (!tbody) {
+            console.error('[Courses] Table body element not found!');
+            return;
+        }
+        
+        if (!tableContainer) {
+            console.error('[Courses] Table container element not found!');
+            return;
+        }
+        
+        if (!emptyState) {
+            console.error('[Courses] Empty state element not found!');
+            return;
+        }
         
         // Check if there are any courses
         if (this.courses.length === 0) {
+            console.log('[Courses] No courses to display, showing empty state');
             tableContainer.style.display = 'none';
             emptyState.style.display = 'block';
             return;
         }
         
         // Show table, hide empty state
+        console.log('[Courses] Showing table with courses');
         tableContainer.style.display = 'block';
         emptyState.style.display = 'none';
         
         // Render table rows
         tbody.innerHTML = this.courses.map(course => this.createTableRow(course)).join('');
+        console.log('[Courses] Table rows rendered');
         
         // Add event listeners to action buttons
         this.attachRowEventListeners();

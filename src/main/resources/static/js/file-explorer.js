@@ -112,6 +112,10 @@ export class FileExplorer {
      * @param {string} [options.headerMessage=null] - Header message to display above breadcrumbs (e.g., "Browse department files (Read-only)")
      * @param {boolean} [options.showProfessorLabels=false] - Show professor name labels on folders (DEANSHIP role)
      * @param {boolean} [options.showAllDepartments=false] - Allow viewing all departments (DEANSHIP role)
+     * @param {boolean} [options.hideTree=false] - Hide the tree view panel and use single-column layout (DEANSHIP role)
+     *                                             When true: Uses grid-cols-1 layout with only folder cards and file list
+     *                                             When false: Uses grid-cols-3 layout with tree panel (1/3) and file list (2/3)
+     *                                             This simplifies the UI for roles that don't need hierarchical tree navigation
      * 
      * @throws {Error} If the container element with the specified ID is not found
      * 
@@ -133,12 +137,13 @@ export class FileExplorer {
      * });
      * 
      * @example
-     * // Deanship Dashboard - Read-only with professor labels
+     * // Deanship Dashboard - Read-only with professor labels and no tree view
      * const deanshipExplorer = new FileExplorer('deanshipFileExplorer', {
      *   role: 'DEANSHIP',
      *   showAllDepartments: true,
      *   showProfessorLabels: true,
-     *   readOnly: true
+     *   readOnly: true,
+     *   hideTree: true
      * });
      */
     constructor(containerId, options = {}) {
@@ -161,6 +166,16 @@ export class FileExplorer {
             headerMessage: options.headerMessage || null, // Header message (e.g., "Browse department files (Read-only)")
             showProfessorLabels: options.showProfessorLabels || false, // Show professor names on folders for Deanship
             showAllDepartments: options.showAllDepartments || false, // Allow viewing all departments (Deanship)
+            
+            // TREE VIEW HIDING OPTION (Requirements: 5.1, 5.5)
+            // When true, hides the left-side tree panel and uses a single-column layout
+            // This simplifies the UI for the Dean role, matching the Professor Dashboard design
+            // Benefits:
+            // - Cleaner, less cluttered interface
+            // - More space for folder cards and file list
+            // - Simpler navigation using only breadcrumbs and folder cards
+            // - Consistent with Professor Dashboard UX
+            hideTree: options.hideTree || false,
 
             ...options
         };
@@ -188,6 +203,10 @@ export class FileExplorer {
      * Called whenever the centralized state changes.
      * Updates local component properties and triggers UI re-renders.
      * 
+     * CRITICAL FIX: When state is reset (currentNode becomes null), this method
+     * now properly clears the UI to prevent showing stale content from previous
+     * filter selections.
+     * 
      * @param {Object} state - The new state from FileExplorerState
      * @returns {void}
      */
@@ -213,14 +232,32 @@ export class FileExplorer {
             } else if (state.isFileListLoading) {
                 this.showFileListLoading();
             } else {
-                // Render updated content
-                if (this.treeRoot) {
-                    this.renderTree(this.treeRoot);
-                }
-                if (this.currentNode) {
-                    this.renderFileList(this.currentNode);
-                }
-                if (this.breadcrumbs) {
+                // CRITICAL FIX: Handle null state (after reset) by clearing UI
+                // This prevents showing stale content when filters change
+                if (this.treeRoot === null && this.currentNode === null) {
+                    // State was reset - clear both panels
+                    const treeContainer = document.getElementById('fileExplorerTree');
+                    const fileListContainer = document.getElementById('fileExplorerFileList');
+                    
+                    if (treeContainer) {
+                        treeContainer.innerHTML = this.renderEmptyState('Loading...', 'info');
+                    }
+                    if (fileListContainer) {
+                        fileListContainer.innerHTML = this.renderEmptyState('Loading...', 'info');
+                    }
+                } else {
+                    // Render updated content
+                    if (this.treeRoot) {
+                        this.renderTree(this.treeRoot);
+                    }
+                    // CRITICAL FIX: Don't auto-render file list at root level
+                    // Check if we're at root by comparing currentNode with treeRoot
+                    // This prevents overriding the empty state set by loadRoot
+                    const isAtRoot = this.currentNode === this.treeRoot;
+                    if (this.currentNode && !isAtRoot) {
+                        this.renderFileList(this.currentNode);
+                    }
+                    // Always render breadcrumbs (even if empty array) to show proper state
                     this.renderBreadcrumbs();
                 }
             }
@@ -238,10 +275,11 @@ export class FileExplorer {
      * Creates the complete File Explorer HTML structure including:
      * - Optional header message (for HOD role)
      * - Breadcrumb navigation area
-     * - Tree view panel (left side)
+     * - Tree view panel (left side) - optional, can be hidden with hideTree option
      * - File list panel (right side)
      * 
-     * The layout follows the Professor Dashboard master design with a 1/3 - 2/3 grid split.
+     * The layout follows the Professor Dashboard master design with a 1/3 - 2/3 grid split,
+     * or a single-column layout when hideTree is true.
      * 
      * @returns {void}
      */
@@ -252,6 +290,30 @@ export class FileExplorer {
                 <p class="text-sm text-gray-600">${this.escapeHtml(this.options.headerMessage)}</p>
             </div>
         ` : '';
+
+        // LAYOUT CONFIGURATION BASED ON hideTree OPTION
+        // When hideTree is true (Dean role):
+        //   - Uses single-column layout (grid-cols-1)
+        //   - File list takes full width
+        //   - Navigation via breadcrumbs and folder cards only
+        // When hideTree is false (Professor/HOD roles):
+        //   - Uses two-column layout (grid-cols-3: 1/3 tree, 2/3 file list)
+        //   - Tree panel shows hierarchical structure
+        //   - File list spans 2 columns (md:col-span-2)
+        const layoutClass = this.options.hideTree ? 'grid-cols-1' : 'grid-cols-1 md:grid-cols-3';
+        const fileListColSpan = this.options.hideTree ? '' : 'md:col-span-2';
+        
+        // Conditionally render tree view panel
+        // Empty string when hideTree is true, full tree HTML when false
+        const treeViewHtml = this.options.hideTree ? '' : `
+            <!-- Tree View -->
+            <div class="md:col-span-1 bg-white border border-gray-200 rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-gray-700 mb-3">Folder Structure</h3>
+                <div id="fileExplorerTree" class="space-y-1">
+                    ${this.renderNoSemesterSelected()}
+                </div>
+            </div>
+        `;
 
         this.container.innerHTML = `
             <div class="file-explorer">
@@ -269,17 +331,11 @@ export class FileExplorer {
                 </div>
 
                 <!-- File Explorer Content -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4">
-                    <!-- Tree View -->
-                    <div class="md:col-span-1 bg-white border border-gray-200 rounded-lg p-4">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-3">Folder Structure</h3>
-                        <div id="fileExplorerTree" class="space-y-1">
-                            ${this.renderNoSemesterSelected()}
-                        </div>
-                    </div>
+                <div class="grid ${layoutClass} gap-4 p-4">
+                    ${treeViewHtml}
 
                     <!-- File List -->
-                    <div class="md:col-span-2 bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="${fileListColSpan} bg-white border border-gray-200 rounded-lg p-4">
                         <h3 class="text-sm font-semibold text-gray-700 mb-3">Files</h3>
                         <div id="fileExplorerFileList" class="overflow-x-auto">
                             ${this.renderNoSemesterSelected()}
@@ -299,6 +355,9 @@ export class FileExplorer {
      * Shows loading state while fetching, then renders both tree view and file list.
      * On error, displays error state with user-friendly message.
      * 
+     * CRITICAL FIX: Clears both folder structure AND files section immediately to prevent
+     * showing stale content from previous filter selections.
+     * 
      * @param {number} academicYearId - The ID of the academic year to load
      * @param {number} semesterId - The ID of the semester to load
      * @param {boolean} [isBackground=false] - If true, suppresses the loading skeleton (useful for background updates)
@@ -309,11 +368,22 @@ export class FileExplorer {
      * await fileExplorer.loadRoot(1, 1);
      */
     async loadRoot(academicYearId, semesterId, isBackground = false) {
-        // Clear files section immediately to avoid showing stale content
+        // CRITICAL FIX: Clear BOTH folder structure and files section immediately
+        // This prevents showing stale content from previous filter selections
+        const treeContainer = document.getElementById('fileExplorerTree');
         const fileListContainer = document.getElementById('fileExplorerFileList');
-        if (fileListContainer) {
-            fileListContainer.innerHTML = this.renderEmptyState('Loading...', 'info');
+        
+        if (treeContainer) {
+            treeContainer.innerHTML = this.renderEmptyState('Loading folders...', 'info');
         }
+        if (fileListContainer) {
+            fileListContainer.innerHTML = this.renderEmptyState('Loading files...', 'info');
+        }
+
+        // CRITICAL FIX: Clear breadcrumbs immediately to prevent showing stale path
+        this.breadcrumbs = [];
+        fileExplorerState.setBreadcrumbs([]);
+        this.renderBreadcrumbs();
 
         // Show loading state only if not a background update
         if (!isBackground) {
@@ -323,24 +393,54 @@ export class FileExplorer {
         try {
             const response = await fileExplorer.getRoot(academicYearId, semesterId);
             this.treeRoot = response.data || response;
+
+            // Handle empty or null response
+            if (!this.treeRoot) {
+                this.renderEmptyDataState();
+                this.breadcrumbs = [];
+                fileExplorerState.setBreadcrumbs([]);
+                this.renderBreadcrumbs();
+                fileExplorerState.setLoading(false);
+                return;
+            }
+
             this.currentNode = this.treeRoot;
-            this.currentPath = this.currentNode.path || '';
+            // CRITICAL FIX: Reset currentPath to empty string at root level
+            // This ensures we're truly at root, not preserving old navigation state
+            this.currentPath = '';
 
             // Update state with loaded data
             fileExplorerState.setTreeRoot(this.treeRoot);
             fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
 
-            await this.loadBreadcrumbs(this.currentPath);
+            // CRITICAL FIX: Don't load breadcrumbs at root level
+            // Breadcrumbs should only be loaded when navigating into folders
+            // At root, we want to show "Select a folder to navigate"
+            // await this.loadBreadcrumbs(this.currentPath);
 
             // Check if we have an empty response (no children)
             const hasData = this.treeRoot && this.treeRoot.children && this.treeRoot.children.length > 0;
+            
+            // CRITICAL FIX: Also check for files in the root node
+            const hasFiles = this.treeRoot && this.treeRoot.files && this.treeRoot.files.length > 0;
 
-            if (!hasData) {
+            if (!hasData && !hasFiles) {
                 // Show friendly empty state instead of error
                 this.renderEmptyDataState();
             } else {
+                // Render tree view (if not hidden)
                 this.renderTree(this.treeRoot);
-                this.renderFileList(this.currentNode);
+                
+                // CRITICAL FIX: Show empty state in files section after filter change
+                // User must click on a folder to view its contents
+                // This prevents confusion and makes it clear that filters have been applied
+                const fileListContainer = document.getElementById('fileExplorerFileList');
+                if (fileListContainer) {
+                    fileListContainer.innerHTML = this.renderEmptyState(
+                        'Select a folder to view its contents',
+                        'folder'
+                    );
+                }
             }
 
             // Clear loading state
@@ -636,14 +736,31 @@ export class FileExplorer {
      * - Selected node highlighting (blue background)
      * - Folder icons (open/closed states)
      * 
+     * TREE VIEW HIDING:
+     * When hideTree option is true, this method returns immediately without rendering.
+     * This prevents unnecessary DOM manipulation and improves performance for roles
+     * that don't use the tree view (e.g., Dean role).
+     * 
      * @param {Object} node - The root node to render from
      * @returns {void}
      */
     renderTree(node) {
+        // Skip rendering if tree is hidden (Requirements: 5.1)
+        // Early return prevents DOM manipulation when tree panel is not displayed
+        if (this.options.hideTree) {
+            return;
+        }
+
         const container = document.getElementById('fileExplorerTree');
         if (!container) return;
 
-        if (!node || !node.children || node.children.length === 0) {
+        // Clear the tree completely if no node
+        if (!node) {
+            container.innerHTML = this.renderEmptyState('No data available', 'folder');
+            return;
+        }
+
+        if (!node.children || node.children.length === 0) {
             container.innerHTML = this.renderEmptyState('No folders available', 'folder');
             return;
         }
@@ -823,6 +940,7 @@ export class FileExplorer {
         const container = document.getElementById('fileExplorerFileList');
         if (!container) return;
 
+        // Clear the file list completely if no node
         if (!node) {
             container.innerHTML = this.renderEmptyState('No data available', 'info');
             return;
@@ -957,16 +1075,6 @@ export class FileExplorer {
                     </table>
                 </div>
             </div>
-            `;
-        } else if (folders.length > 0 && allFiles.length === 0) {
-            // Show message when there are folders but no files
-            html += `
-                <div class="text-center py-8">
-                    <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                    </svg>
-                    <p class="mt-2 text-sm text-gray-500">No files in this folder</p>
-                </div>
             `;
         }
 

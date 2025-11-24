@@ -124,7 +124,7 @@ async function viewReport() {
         const report = await hod.getProfessorSubmissionReport(selectedSemester);
         
         // Display report in a modal or new section
-        displayReportModal(report);
+        displaySubmissionReport(report);
     } catch (error) {
         console.error('Error viewing report:', error);
         showToast('Failed to load report', 'error');

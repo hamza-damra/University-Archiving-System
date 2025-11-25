@@ -1027,12 +1027,12 @@ body {
         }
 
         .dark .nav-tab:hover {
-            background-color: var(--bg-tertiary) !important;
+            background-color: #3c3c3c !important;
             color: var(--text-primary) !important;
         }
 
         .dark .nav-tab.active {
-            background-color: rgba(59, 130, 246, 0.15) !important;
+            background-color: rgba(168, 85, 247, 0.2) !important;
             color: var(--accent-blue) !important;
         }
 

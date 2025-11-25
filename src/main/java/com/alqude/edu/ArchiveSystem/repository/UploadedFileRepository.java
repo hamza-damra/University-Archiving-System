@@ -26,12 +26,30 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, Long
     List<UploadedFile> findByDocumentSubmissionIdOrderByFileOrderAsc(Long documentSubmissionId);
     
     /**
+     * Find all files for a document submission with uploader eagerly fetched.
+     * 
+     * @param documentSubmissionId the ID of the document submission
+     * @return list of uploaded files with uploader data, ordered by file order
+     */
+    @Query("SELECT f FROM UploadedFile f LEFT JOIN FETCH f.uploader WHERE f.documentSubmission.id = :documentSubmissionId ORDER BY f.fileOrder ASC")
+    List<UploadedFile> findByDocumentSubmissionIdWithUploaderOrderByFileOrderAsc(@Param("documentSubmissionId") Long documentSubmissionId);
+    
+    /**
      * Find all files in a specific folder.
      * 
      * @param folderId the ID of the folder
      * @return list of uploaded files in the folder
      */
     List<UploadedFile> findByFolderId(Long folderId);
+    
+    /**
+     * Find all files in a specific folder with uploader eagerly fetched.
+     * 
+     * @param folderId the ID of the folder
+     * @return list of uploaded files in the folder with uploader data
+     */
+    @Query("SELECT f FROM UploadedFile f LEFT JOIN FETCH f.uploader WHERE f.folder.id = :folderId")
+    List<UploadedFile> findByFolderIdWithUploader(@Param("folderId") Long folderId);
     
     /**
      * Find all files uploaded by a specific user.

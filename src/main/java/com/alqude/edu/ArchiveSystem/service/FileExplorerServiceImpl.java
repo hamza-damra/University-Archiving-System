@@ -707,9 +707,9 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
         DocumentSubmission submission = submissionOpt.get();
 
-        // Get uploaded files
+        // Get uploaded files with uploader data
         List<UploadedFile> files = uploadedFileRepository
-                .findByDocumentSubmissionIdOrderByFileOrderAsc(submission.getId());
+                .findByDocumentSubmissionIdWithUploaderOrderByFileOrderAsc(submission.getId());
 
         String parentPath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
                 "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
@@ -739,6 +739,15 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                     node.getMetadata().put("uploadedAt", file.getCreatedAt());
                     node.getMetadata().put("submissionId", submission.getId());
                     node.getMetadata().put("isOwnFile", isOwnCourse);
+                    
+                    // Include uploader name
+                    if (file.getUploader() != null) {
+                        String uploaderName = file.getUploader().getFirstName() + " " + file.getUploader().getLastName();
+                        node.getMetadata().put("uploaderName", uploaderName);
+                    } else {
+                        String fallbackUploaderName = professor.getFirstName() + " " + professor.getLastName();
+                        node.getMetadata().put("uploaderName", fallbackUploaderName);
+                    }
 
                     return node;
                 })
@@ -1100,12 +1109,20 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
             Folder documentTypeFolder = documentTypeFolderOpt.get();
 
-            // Query files from this folder
-            List<UploadedFile> files = uploadedFileRepository.findByFolderId(documentTypeFolder.getId());
+            // Query files from this folder with uploader data
+            List<UploadedFile> files = uploadedFileRepository.findByFolderIdWithUploader(documentTypeFolder.getId());
 
-            // Convert to DTOs
+            final String fallbackUploaderName = professor.getFirstName() + " " + professor.getLastName();
+
+            // Convert to DTOs ensuring uploader name is always populated
             return files.stream()
-                    .map(this::convertToUploadedFileDTO)
+                    .map(file -> {
+                        UploadedFileDTO dto = convertToUploadedFileDTO(file);
+                        if (dto.getUploaderName() == null) {
+                            dto.setUploaderName(fallbackUploaderName);
+                        }
+                        return dto;
+                    })
                     .collect(Collectors.toList());
 
         } catch (Exception e) {

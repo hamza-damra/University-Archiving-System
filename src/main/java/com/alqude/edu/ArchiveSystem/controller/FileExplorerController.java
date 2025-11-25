@@ -13,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
+
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -91,7 +91,7 @@ public class FileExplorerController {
             FileExplorerNode node = fileExplorerService.getNode(path, currentUser);
 
             return ResponseEntity.ok(ApiResponse.success("Node retrieved successfully", node));
-            
+
         } catch (EntityNotFoundException e) {
             log.error("Node not found for path: {}", path);
             return ResponseEntity.status(404)
@@ -118,7 +118,8 @@ public class FileExplorerController {
 
     /**
      * Refresh the file explorer tree for a specific academic year and semester.
-     * This endpoint forces a fresh fetch from the database and returns the updated tree structure.
+     * This endpoint forces a fresh fetch from the database and returns the updated
+     * tree structure.
      * Useful after creating new professors or course assignments.
      *
      * @param academicYearId the academic year ID
@@ -137,13 +138,13 @@ public class FileExplorerController {
                 academicYearId, semesterId);
 
         User currentUser = authService.getCurrentUser();
-        
+
         // Fetch fresh data from database
         FileExplorerNode rootNode = fileExplorerService.getRootNode(academicYearId, semesterId, currentUser);
-        
-        log.info("File explorer refreshed with {} professor nodes", 
+
+        log.info("File explorer refreshed with {} professor nodes",
                 rootNode.getChildren() != null ? rootNode.getChildren().size() : 0);
-        
+
         return ResponseEntity.ok(ApiResponse.success("File explorer refreshed successfully", rootNode));
     }
 
@@ -342,14 +343,13 @@ public class FileExplorerController {
         String originalFilename = file.getOriginalFilename();
         String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
                 .replace("+", "%20"); // Replace + with %20 for spaces
-        
+
         String contentDisposition = String.format(
                 "attachment; filename=\"%s\"; filename*=UTF-8''%s",
                 originalFilename,
-                encodedFilename
-        );
+                encodedFilename);
 
-        log.info("Sending file download response - filename: {}, Content-Disposition: {}", 
+        log.info("Sending file download response - filename: {}, Content-Disposition: {}",
                 originalFilename, contentDisposition);
 
         return ResponseEntity.ok()

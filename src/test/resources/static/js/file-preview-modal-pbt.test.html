@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Preview Modal Property-Based Tests</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .test-output {
+            background-color: #000;
+            border: 1px solid #00ff00;
+            padding: 20px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .pass { color: #00ff00; }
+        .fail { color: #ff0000; }
+        .info { color: #00aaff; }
+        button {
+            background-color: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #00cc00;
+        }
+        button:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="text-2xl font-bold mb-4">File Preview Modal Property-Based Tests</h1>
+    <p class="mb-4 info">Feature: file-preview-system</p>
+    <p class="mb-4 info">Testing Properties 1, 2, and 4</p>
+    
+    <button id="runTests" onclick="runTests()">Run Tests</button>
+    
+    <div id="output" class="test-output">
+        Click "Run Tests" to start property-based testing...
+    </div>
+
+    <script type="module">
+        // Import test module
+        import './file-preview-modal-pbt.test.js';
+        
+        // Override console.log to capture output
+        const originalLog = console.log;
+        const outputDiv = document.getElementById('output');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            const message = args.join(' ');
+            const span = document.createElement('span');
+            
+            if (message.includes('✓ PASS') || message.includes('PASSED')) {
+                span.className = 'pass';
+            } else if (message.includes('✗ FAIL') || message.includes('FAILED')) {
+                span.className = 'fail';
+            } else if (message.includes('Running:') || message.includes('Iterations:')) {
+                span.className = 'info';
+            }
+            
+            span.textContent = message + '\n';
+            outputDiv.appendChild(span);
+            outputDiv.scrollTop = outputDiv.scrollHeight;
+        };
+        
+        // Make runTests available globally
+        window.runTests = async function() {
+            const button = document.getElementById('runTests');
+            button.disabled = true;
+            button.textContent = 'Running...';
+            
+            outputDiv.innerHTML = '';
+            
+            try {
+                const allPassed = await window.runFilePreviewModalTests();
+                
+                if (allPassed) {
+                    console.log('\n🎉 All tests passed!');
+                } else {
+                    console.log('\n❌ Some tests failed. See details above.');
+                }
+            } catch (error) {
+                console.log('\n❌ Error running tests:', error.message);
+                console.log(error.stack);
+            } finally {
+                button.disabled = false;
+                button.textContent = 'Run Tests Again';
+            }
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Renderer Property-Based Tests</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        #output {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.running {
+            background-color: #ffc107;
+            color: #000;
+        }
+        .status.passed {
+            background-color: #28a745;
+            color: white;
+        }
+        .status.failed {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Code Renderer Property-Based Tests</h1>
+    <p><strong>Feature:</strong> file-preview-system</p>
+    <p><strong>Property 3:</strong> Format-specific renderer selection (code files)</p>
+    <p><strong>Validates:</strong> Requirements 4.4</p>
+    
+    <div class="test-controls">
+        <button id="runTests" onclick="runTests()">Run All Tests</button>
+        <span id="status"></span>
+    </div>
+    
+    <div id="output">Click "Run All Tests" to start testing...</div>
+
+    <script type="module">
+        // Import test file
+        import('./code-renderer-pbt.test.js').then(module => {
+            console.log('Test module loaded successfully');
+        }).catch(error => {
+            console.error('Failed to load test module:', error);
+            document.getElementById('output').textContent = 'Error loading test module: ' + error.message;
+        });
+    </script>
+
+    <script>
+        async function runTests() {
+            const button = document.getElementById('runTests');
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+            
+            // Disable button and show running status
+            button.disabled = true;
+            status.innerHTML = '<span class="status running">RUNNING</span>';
+            output.textContent = 'Running tests...\n\n';
+            
+            // Capture console output
+            const originalLog = console.log;
+            const logs = [];
+            console.log = function(...args) {
+                const message = args.map(arg => 
+                    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+                ).join(' ');
+                logs.push(message);
+                originalLog.apply(console, args);
+            };
+            
+            try {
+                // Run tests
+                const allPassed = await window.runCodeRendererTests();
+                
+                // Restore console.log
+                console.log = originalLog;
+                
+                // Display results
+                output.textContent = logs.join('\n');
+                
+                // Update status
+                if (allPassed) {
+                    status.innerHTML = '<span class="status passed">ALL TESTS PASSED ✓</span>';
+                } else {
+                    status.innerHTML = '<span class="status failed">SOME TESTS FAILED ✗</span>';
+                }
+            } catch (error) {
+                // Restore console.log
+                console.log = originalLog;
+                
+                output.textContent = logs.join('\n') + '\n\nERROR: ' + error.message + '\n' + error.stack;
+                status.innerHTML = '<span class="status failed">ERROR ✗</span>';
+            } finally {
+                // Re-enable button
+                button.disabled = false;
+            }
+        }
+        
+        // Make runTests available globally
+        window.runTests = runTests;
+    </script>
+</body>
+</html>

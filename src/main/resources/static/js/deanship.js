@@ -33,6 +33,29 @@ let departments = [];
 let fileExplorerInstance = null;
 let reportsDashboardInstance = null;
 
+/**
+ * Initialize modern dropdowns
+ * Transforms native select elements into modern styled dropdowns
+ */
+function initializeModernDropdowns() {
+    if (typeof window.initModernDropdowns === 'function') {
+        window.initModernDropdowns();
+    }
+}
+
+/**
+ * Refresh all modern dropdowns
+ * Call this after dynamically updating select options
+ */
+function refreshDropdowns() {
+    if (typeof window.refreshModernDropdown === 'function') {
+        const academicYearSelect = document.getElementById('academicYearSelect');
+        const semesterSelect = document.getElementById('semesterSelect');
+        if (academicYearSelect) window.refreshModernDropdown(academicYearSelect);
+        if (semesterSelect) window.refreshModernDropdown(semesterSelect);
+    }
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     console.log('=== Deanship Dashboard Initializing ===');
@@ -44,6 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeEventListeners();
     initializeNavigation();
     initializeFileExplorer();
+    initializeModernDropdowns(); // Initialize modern dropdowns
     // Load initial data WITHOUT triggering tab-specific loads yet
     loadInitialDataSilent();
     console.log('=== Initialization Complete ===');
@@ -661,6 +685,7 @@ function updateAcademicYearSelector() {
         const html = '<option value="">No academic years available</option>';
         select.innerHTML = html;
         localStorage.setItem('deanship_academic_years_options', html);
+        refreshDropdowns(); // Refresh modern dropdown
         return;
     }
 
@@ -689,7 +714,10 @@ function updateAcademicYearSelector() {
         selectedAcademicYearId = yearToSelect.id;
         selectedAcademicYear = yearToSelect;
         localStorage.setItem('deanship_selected_academic_year', yearToSelect.id);
+        refreshDropdowns(); // Refresh modern dropdown after populating options
         loadSemesters(yearToSelect.id);
+    } else {
+        refreshDropdowns(); // Refresh even if no year selected
     }
 }
 
@@ -705,6 +733,7 @@ async function loadSemesters(academicYearId) {
         const year = academicYears.find(y => y.id === academicYearId);
         if (!year || !year.semesters) {
             document.getElementById('semesterSelect').innerHTML = '<option value="">No semesters available</option>';
+            refreshDropdowns(); // Refresh modern dropdown
             return;
         }
 
@@ -715,6 +744,7 @@ async function loadSemesters(academicYearId) {
             const html = '<option value="">No semesters available for this year</option>';
             semesterSelect.innerHTML = html;
             localStorage.setItem('deanship_semesters_options', html);
+            refreshDropdowns(); // Refresh modern dropdown
             return;
         }
 
@@ -742,7 +772,10 @@ async function loadSemesters(academicYearId) {
             selectedSemesterId = semesterToSelect.id;
             semesterSelect.value = selectedSemesterId;
             localStorage.setItem('deanship_selected_semester', selectedSemesterId);
+            refreshDropdowns(); // Refresh modern dropdown after populating options
             onContextChange();
+        } else {
+            refreshDropdowns(); // Refresh even if no semester selected
         }
     } catch (error) {
         console.error('Error loading semesters:', error);

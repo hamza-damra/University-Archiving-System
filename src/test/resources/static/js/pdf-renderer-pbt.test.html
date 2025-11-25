@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Renderer Property-Based Tests</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4ec9b0;
+            border-bottom: 2px solid #4ec9b0;
+            padding-bottom: 10px;
+        }
+        
+        .test-info {
+            background-color: #252526;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #4ec9b0;
+        }
+        
+        .test-info h2 {
+            margin-top: 0;
+            color: #4ec9b0;
+        }
+        
+        .test-info p {
+            margin: 5px 0;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 3px;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #1177bb;
+        }
+        
+        button:disabled {
+            background-color: #3c3c3c;
+            cursor: not-allowed;
+        }
+        
+        #output {
+            background-color: #252526;
+            padding: 20px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            min-height: 400px;
+            border: 1px solid #3c3c3c;
+        }
+        
+        .pass {
+            color: #4ec9b0;
+        }
+        
+        .fail {
+            color: #f48771;
+        }
+        
+        .info {
+            color: #569cd6;
+        }
+        
+        .warning {
+            color: #dcdcaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Renderer Property-Based Tests</h1>
+        
+        <div class="test-info">
+            <h2>Feature: file-preview-system</h2>
+            <p><strong>Properties Tested:</strong></p>
+            <ul>
+                <li><strong>Property 3:</strong> Format-specific renderer selection (PDF files)</li>
+                <li><strong>Property 14:</strong> Multi-page document navigation</li>
+            </ul>
+            <p><strong>Validates Requirements:</strong> 4.2, 7.1, 7.3</p>
+            <p><strong>Test Framework:</strong> Custom Property-Based Testing (100 iterations per property)</p>
+        </div>
+        
+        <div class="controls">
+            <button id="runTests" onclick="runTests()">Run All Tests</button>
+            <button id="clearOutput" onclick="clearOutput()">Clear Output</button>
+        </div>
+        
+        <div id="output">Click "Run All Tests" to start testing...</div>
+    </div>
+
+    <script type="module">
+        // Import the test module
+        import './pdf-renderer-pbt.test.js';
+        
+        const output = document.getElementById('output');
+        const runButton = document.getElementById('runTests');
+        
+        // Override console.log to capture output
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            
+            const message = args.join(' ');
+            const line = document.createElement('div');
+            
+            // Apply styling based on content
+            if (message.includes('✓ PASS') || message.includes('PASSED')) {
+                line.className = 'pass';
+            } else if (message.includes('✗ FAIL') || message.includes('FAILED')) {
+                line.className = 'fail';
+            } else if (message.includes('Running:') || message.includes('Iterations:')) {
+                line.className = 'info';
+            } else if (message.includes('Failure example:')) {
+                line.className = 'warning';
+            }
+            
+            line.textContent = message;
+            output.appendChild(line);
+            
+            // Auto-scroll to bottom
+            output.scrollTop = output.scrollHeight;
+        };
+        
+        // Make runTests available globally
+        window.runTests = async function() {
+            runButton.disabled = true;
+            output.innerHTML = '';
+            
+            try {
+                console.log('Starting PDF Renderer Property-Based Tests...\n');
+                const allPassed = await window.runPDFRendererTests();
+                
+                console.log('\n');
+                if (allPassed) {
+                    console.log('✓ ALL TESTS PASSED');
+                } else {
+                    console.log('✗ SOME TESTS FAILED - See details above');
+                }
+            } catch (error) {
+                console.log(`\n✗ ERROR: ${error.message}`);
+                console.log(error.stack);
+            } finally {
+                runButton.disabled = false;
+            }
+        };
+        
+        window.clearOutput = function() {
+            output.innerHTML = 'Click "Run All Tests" to start testing...';
+        };
+        
+        console.log('Test runner loaded. Ready to run tests.');
+    </script>
+</body>
+</html>

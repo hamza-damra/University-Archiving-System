@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Office Renderer Property-Based Tests</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #4ec9b0;
+            border-bottom: 2px solid #4ec9b0;
+            padding-bottom: 10px;
+        }
+        
+        .test-info {
+            background-color: #252526;
+            border-left: 4px solid #007acc;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .test-info h2 {
+            color: #007acc;
+            margin-top: 0;
+        }
+        
+        .test-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .test-info li {
+            margin: 5px 0;
+        }
+        
+        .controls {
+            background-color: #252526;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-right: 10px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        button:hover {
+            background-color: #1177bb;
+        }
+        
+        button:disabled {
+            background-color: #3e3e42;
+            cursor: not-allowed;
+        }
+        
+        #output {
+            background-color: #1e1e1e;
+            border: 1px solid #3e3e42;
+            padding: 20px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .pass {
+            color: #4ec9b0;
+        }
+        
+        .fail {
+            color: #f48771;
+        }
+        
+        .info {
+            color: #569cd6;
+        }
+        
+        .warning {
+            color: #dcdcaa;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        
+        .status.running {
+            background-color: #1a5490;
+            color: white;
+        }
+        
+        .status.passed {
+            background-color: #0e7c0e;
+            color: white;
+        }
+        
+        .status.failed {
+            background-color: #c72e0f;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Office Renderer Property-Based Tests</h1>
+        
+        <div class="test-info">
+            <h2>Test Information</h2>
+            <p><strong>Feature:</strong> file-preview-system</p>
+            <p><strong>Component:</strong> OfficeRenderer</p>
+            <p><strong>Test Type:</strong> Property-Based Testing</p>
+            
+            <h3>Properties Being Tested:</h3>
+            <ul>
+                <li><strong>Property 3:</strong> Format-specific renderer selection (Office files)</li>
+                <li><strong>Property 22:</strong> Conversion failure handling</li>
+                <li>Format support detection</li>
+                <li>Conversion not available handling</li>
+                <li>Error handling for missing files</li>
+                <li>Error handling for permission denied</li>
+            </ul>
+            
+            <h3>Requirements Validated:</h3>
+            <ul>
+                <li><strong>4.3:</strong> Office document rendering (.doc, .docx, .xls, .xlsx, .ppt, .pptx)</li>
+                <li><strong>10.2:</strong> Conversion failure handling with download fallback</li>
+            </ul>
+        </div>
+        
+        <div class="controls">
+            <button id="runTestsBtn" onclick="runTests()">▶ Run All Tests</button>
+            <button id="clearBtn" onclick="clearOutput()">🗑 Clear Output</button>
+            <span id="statusIndicator"></span>
+        </div>
+        
+        <div id="output"></div>
+    </div>
+
+    <script type="module">
+        // Import the test module
+        import './office-renderer-pbt.test.js';
+        
+        // Make runTests available globally
+        window.runTests = async function() {
+            const output = document.getElementById('output');
+            const runBtn = document.getElementById('runTestsBtn');
+            const statusIndicator = document.getElementById('statusIndicator');
+            
+            // Disable button and show running status
+            runBtn.disabled = true;
+            statusIndicator.innerHTML = '<span class="status running">RUNNING</span>';
+            
+            // Clear output
+            output.innerHTML = '';
+            
+            // Capture console output
+            const originalLog = console.log;
+            const originalError = console.error;
+            const originalWarn = console.warn;
+            
+            console.log = function(...args) {
+                const message = args.join(' ');
+                output.innerHTML += formatLogMessage(message) + '\n';
+                output.scrollTop = output.scrollHeight;
+                originalLog.apply(console, args);
+            };
+            
+            console.error = function(...args) {
+                const message = args.join(' ');
+                output.innerHTML += `<span class="fail">${escapeHtml(message)}</span>\n`;
+                output.scrollTop = output.scrollHeight;
+                originalError.apply(console, args);
+            };
+            
+            console.warn = function(...args) {
+                const message = args.join(' ');
+                output.innerHTML += `<span class="warning">${escapeHtml(message)}</span>\n`;
+                output.scrollTop = output.scrollHeight;
+                originalWarn.apply(console, args);
+            };
+            
+            try {
+                // Run the tests
+                const allPassed = await window.runOfficeRendererTests();
+                
+                // Show final status
+                if (allPassed) {
+                    statusIndicator.innerHTML = '<span class="status passed">✓ ALL TESTS PASSED</span>';
+                } else {
+                    statusIndicator.innerHTML = '<span class="status failed">✗ SOME TESTS FAILED</span>';
+                }
+                
+            } catch (error) {
+                console.error('Error running tests:', error);
+                statusIndicator.innerHTML = '<span class="status failed">✗ ERROR</span>';
+            } finally {
+                // Restore console
+                console.log = originalLog;
+                console.error = originalError;
+                console.warn = originalWarn;
+                
+                // Re-enable button
+                runBtn.disabled = false;
+            }
+        };
+        
+        window.clearOutput = function() {
+            document.getElementById('output').innerHTML = '';
+            document.getElementById('statusIndicator').innerHTML = '';
+        };
+        
+        function formatLogMessage(message) {
+            // Format different types of messages
+            if (message.includes('✓ PASS')) {
+                return `<span class="pass">${escapeHtml(message)}</span>`;
+            } else if (message.includes('✗ FAIL')) {
+                return `<span class="fail">${escapeHtml(message)}</span>`;
+            } else if (message.includes('Running:')) {
+                return `<span class="info">${escapeHtml(message)}</span>`;
+            } else if (message.includes('='.repeat(60))) {
+                return `<span class="info">${escapeHtml(message)}</span>`;
+            } else if (message.includes('Total:') || message.includes('Passed:') || message.includes('Failed:')) {
+                return `<span class="warning">${escapeHtml(message)}</span>`;
+            } else {
+                return escapeHtml(message);
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

@@ -21,6 +21,19 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, Long
     @Query("SELECT f FROM UploadedFile f LEFT JOIN FETCH f.uploader WHERE f.id = :id")
     Optional<UploadedFile> findByIdWithUploader(@Param("id") Long id);
     
+    /**
+     * Find a file by ID with uploader and folder eagerly fetched for permission checking.
+     * 
+     * @param id the ID of the file
+     * @return optional uploaded file with uploader and folder loaded
+     */
+    @Query("SELECT f FROM UploadedFile f " +
+           "LEFT JOIN FETCH f.uploader u " +
+           "LEFT JOIN FETCH u.department " +
+           "LEFT JOIN FETCH f.folder " +
+           "WHERE f.id = :id")
+    Optional<UploadedFile> findByIdWithUploaderAndFolder(@Param("id") Long id);
+    
     List<UploadedFile> findByDocumentSubmissionId(Long documentSubmissionId);
     
     List<UploadedFile> findByDocumentSubmissionIdOrderByFileOrderAsc(Long documentSubmissionId);

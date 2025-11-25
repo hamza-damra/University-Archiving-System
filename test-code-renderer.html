@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Renderer Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        .test-result {
+            margin-top: 1rem;
+            padding: 1rem;
+            border-radius: 0.5rem;
+        }
+        .test-result.success {
+            background-color: #d1fae5;
+            border: 1px solid #10b981;
+        }
+        .test-result.error {
+            background-color: #fee2e2;
+            border: 1px solid #ef4444;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="test-container">
+        <h1 class="text-3xl font-bold mb-6">Code Renderer Test</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Test Controls</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Language:</label>
+                    <select id="languageSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="javascript">JavaScript</option>
+                        <option value="java">Java</option>
+                        <option value="python">Python</option>
+                        <option value="css">CSS</option>
+                        <option value="html">HTML</option>
+                        <option value="sql">SQL</option>
+                        <option value="json">JSON</option>
+                        <option value="xml">XML</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Theme:</label>
+                    <select id="themeSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg">
+                        <option value="github">GitHub</option>
+                        <option value="monokai">Monokai</option>
+                        <option value="atom-one-dark">Atom One Dark</option>
+                        <option value="vs">Visual Studio</option>
+                        <option value="stackoverflow-light">Stack Overflow Light</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <label class="flex items-center">
+                    <input type="checkbox" id="showLineNumbers" checked class="mr-2">
+                    <span class="text-sm font-medium">Show Line Numbers</span>
+                </label>
+            </div>
+            
+            <button id="renderBtn" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                Render Code
+            </button>
+        </div>
+        
+        <div id="testResults" class="mb-6"></div>
+        
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="bg-gray-800 text-white px-4 py-2 flex items-center justify-between">
+                <h2 class="text-lg font-semibold">Code Preview</h2>
+                <span id="languageBadge" class="px-3 py-1 bg-blue-600 rounded-full text-xs"></span>
+            </div>
+            <div id="codeContainer" class="h-96 overflow-auto"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Sample code for different languages
+        const sampleCode = {
+            javascript: `// JavaScript Example
+function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+const numbers = [1, 2, 3, 4, 5];
+const doubled = numbers.map(n => n * 2);
+
+console.log('Fibonacci of 10:', fibonacci(10));
+console.log('Doubled numbers:', doubled);`,
+
+            java: `// Java Example
+public class FilePreviewService {
+    private final FileRepository fileRepository;
+    
+    public FilePreviewService(FileRepository fileRepository) {
+        this.fileRepository = fileRepository;
+    }
+    
+    public FileMetadata getMetadata(Long fileId) {
+        return fileRepository.findById(fileId)
+            .orElseThrow(() -> new FileNotFoundException("File not found"));
+    }
+    
+    public String getContent(Long fileId) throws IOException {
+        File file = fileRepository.getFile(fileId);
+        return Files.readString(file.toPath());
+    }
+}`,
+
+            python: `# Python Example
+def quicksort(arr):
+    if len(arr) <= 1:
+        return arr
+    
+    pivot = arr[len(arr) // 2]
+    left = [x for x in arr if x < pivot]
+    middle = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+    
+    return quicksort(left) + middle + quicksort(right)
+
+# Example usage
+numbers = [3, 6, 8, 10, 1, 2, 1]
+sorted_numbers = quicksort(numbers)
+print(f"Sorted: {sorted_numbers}")`,
+
+            css: `/* CSS Example */
+.code-renderer-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: auto;
+    background-color: #f9fafb;
+}
+
+.line-numbers {
+    background-color: #f3f4f6;
+    color: #6b7280;
+    font-family: 'Courier New', monospace;
+    text-align: right;
+    user-select: none;
+    border-right: 1px solid #d1d5db;
+    padding: 1rem 0.75rem;
+}
+
+@media (prefers-color-scheme: dark) {
+    .code-renderer-container {
+        background-color: #111827;
+    }
+}`,
+
+            html: `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Preview System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>File Preview System</h1>
+        <div id="preview-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <div id="preview-content"></div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>`,
+
+            sql: `-- SQL Example
+SELECT 
+    u.id,
+    u.name,
+    u.email,
+    d.department_name,
+    COUNT(f.id) as file_count
+FROM users u
+LEFT JOIN departments d ON u.department_id = d.id
+LEFT JOIN uploaded_files f ON f.uploader_id = u.id
+WHERE u.role = 'PROFESSOR'
+    AND u.active = true
+GROUP BY u.id, u.name, u.email, d.department_name
+HAVING COUNT(f.id) > 0
+ORDER BY file_count DESC
+LIMIT 10;`,
+
+            json: `{
+  "name": "file-preview-system",
+  "version": "1.0.0",
+  "description": "A comprehensive file preview system",
+  "features": [
+    "PDF preview",
+    "Text file preview",
+    "Code syntax highlighting",
+    "Office document preview"
+  ],
+  "configuration": {
+    "maxFileSize": 5242880,
+    "supportedFormats": [
+      "pdf",
+      "txt",
+      "md",
+      "java",
+      "js",
+      "py"
+    ],
+    "virtualScrollThreshold": 1000
+  }
+}`,
+
+            xml: `<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appSettings>
+        <add key="MaxFileSize" value="5242880" />
+        <add key="VirtualScrollThreshold" value="1000" />
+    </appSettings>
+    <supportedFormats>
+        <format extension="pdf" type="application/pdf" />
+        <format extension="txt" type="text/plain" />
+        <format extension="java" type="text/x-java-source" />
+        <format extension="js" type="text/javascript" />
+    </supportedFormats>
+    <renderers>
+        <renderer name="PDFRenderer" class="PDFRenderer" />
+        <renderer name="TextRenderer" class="TextRenderer" />
+        <renderer name="CodeRenderer" class="CodeRenderer" />
+    </renderers>
+</configuration>`
+        };
+
+        // Mock CodeRenderer for testing
+        class CodeRenderer {
+            constructor(options = {}) {
+                this.options = {
+                    theme: options.theme || 'github',
+                    showLineNumbers: options.showLineNumbers !== false
+                };
+                this.currentContent = null;
+                this.currentLanguage = null;
+                this.highlightJsLoaded = false;
+            }
+
+            async render(content, container, language = null) {
+                if (!container) {
+                    throw new Error('Container element is required');
+                }
+
+                this.currentContent = content;
+                this.currentLanguage = language;
+
+                await this.ensureHighlightJsLoaded();
+                this.renderCode(container);
+            }
+
+            async ensureHighlightJsLoaded() {
+                if (typeof hljs !== 'undefined') {
+                    this.highlightJsLoaded = true;
+                    return;
+                }
+
+                return new Promise((resolve, reject) => {
+                    const cssLink = document.createElement('link');
+                    cssLink.rel = 'stylesheet';
+                    cssLink.href = `https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/${this.options.theme}.min.css`;
+                    document.head.appendChild(cssLink);
+
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js';
+                    script.onload = () => {
+                        this.highlightJsLoaded = true;
+                        resolve();
+                    };
+                    script.onerror = () => {
+                        reject(new Error('Failed to load Highlight.js library'));
+                    };
+                    document.head.appendChild(script);
+                });
+            }
+
+            renderCode(container) {
+                container.innerHTML = '';
+                container.className = 'code-renderer-container h-full overflow-auto bg-gray-50';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'relative';
+
+                const pre = document.createElement('pre');
+                pre.className = 'text-sm m-0 p-0';
+
+                const code = document.createElement('code');
+
+                if (this.currentLanguage) {
+                    code.className = `language-${this.currentLanguage}`;
+                }
+
+                code.textContent = this.currentContent;
+
+                if (this.highlightJsLoaded && typeof hljs !== 'undefined') {
+                    try {
+                        if (this.currentLanguage) {
+                            const highlighted = hljs.highlight(this.currentContent, {
+                                language: this.currentLanguage,
+                                ignoreIllegals: true
+                            });
+                            code.innerHTML = highlighted.value;
+                        } else {
+                            const highlighted = hljs.highlightAuto(this.currentContent);
+                            code.innerHTML = highlighted.value;
+                            this.currentLanguage = highlighted.language;
+                        }
+                    } catch (error) {
+                        console.warn('Syntax highlighting failed:', error);
+                        code.textContent = this.currentContent;
+                    }
+                }
+
+                pre.appendChild(code);
+
+                if (this.options.showLineNumbers) {
+                    const lineNumbersContainer = this.createLineNumbers();
+                    const codeContainer = document.createElement('div');
+                    codeContainer.className = 'flex';
+                    codeContainer.appendChild(lineNumbersContainer);
+                    codeContainer.appendChild(pre);
+                    wrapper.appendChild(codeContainer);
+                } else {
+                    pre.className += ' p-4';
+                    wrapper.appendChild(pre);
+                }
+
+                if (this.currentLanguage) {
+                    const badge = document.createElement('div');
+                    badge.className = 'absolute top-2 right-2 px-3 py-1 bg-blue-100 text-blue-700 text-xs rounded-full shadow-sm';
+                    badge.textContent = this.currentLanguage.toUpperCase();
+                    wrapper.appendChild(badge);
+                }
+
+                container.appendChild(wrapper);
+            }
+
+            createLineNumbers() {
+                const lines = this.currentContent.split('\n');
+                const lineCount = lines.length;
+
+                const lineNumbersDiv = document.createElement('div');
+                lineNumbersDiv.className = 'line-numbers bg-gray-100 text-gray-500 text-sm font-mono text-right select-none border-r border-gray-300 py-4 px-3 sticky left-0';
+
+                const lineNumbers = [];
+                for (let i = 1; i <= lineCount; i++) {
+                    lineNumbers.push(`<div class="leading-6">${i}</div>`);
+                }
+
+                lineNumbersDiv.innerHTML = lineNumbers.join('');
+
+                return lineNumbersDiv;
+            }
+
+            static detectLanguage(fileName) {
+                if (!fileName) return null;
+
+                const extension = fileName.split('.').pop().toLowerCase();
+
+                const languageMap = {
+                    'js': 'javascript',
+                    'java': 'java',
+                    'py': 'python',
+                    'css': 'css',
+                    'html': 'html',
+                    'sql': 'sql',
+                    'json': 'json',
+                    'xml': 'xml'
+                };
+
+                return languageMap[extension] || null;
+            }
+        }
+
+        // Test functionality
+        const languageSelect = document.getElementById('languageSelect');
+        const themeSelect = document.getElementById('themeSelect');
+        const showLineNumbers = document.getElementById('showLineNumbers');
+        const renderBtn = document.getElementById('renderBtn');
+        const codeContainer = document.getElementById('codeContainer');
+        const languageBadge = document.getElementById('languageBadge');
+        const testResults = document.getElementById('testResults');
+
+        let currentRenderer = null;
+
+        async function renderCode() {
+            const language = languageSelect.value;
+            const theme = themeSelect.value;
+            const showLines = showLineNumbers.checked;
+
+            try {
+                // Clear previous CSS
+                const oldLinks = document.querySelectorAll('link[href*="highlight.js"]');
+                oldLinks.forEach(link => link.remove());
+
+                currentRenderer = new CodeRenderer({
+                    theme: theme,
+                    showLineNumbers: showLines
+                });
+
+                const content = sampleCode[language];
+                await currentRenderer.render(content, codeContainer, language);
+
+                languageBadge.textContent = language.toUpperCase();
+
+                showTestResult('success', `Successfully rendered ${language} code with ${theme} theme`);
+            } catch (error) {
+                showTestResult('error', `Error: ${error.message}`);
+                console.error('Render error:', error);
+            }
+        }
+
+        function showTestResult(type, message) {
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${type}`;
+            resultDiv.textContent = message;
+            testResults.innerHTML = '';
+            testResults.appendChild(resultDiv);
+
+            setTimeout(() => {
+                resultDiv.remove();
+            }, 5000);
+        }
+
+        renderBtn.addEventListener('click', renderCode);
+
+        // Initial render
+        renderCode();
+    </script>
+</body>
+</html>

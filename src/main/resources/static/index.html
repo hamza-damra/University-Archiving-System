@@ -8,6 +8,102 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/common.css">
     <script src="/js/theme.js"></script>
+    <style>
+        /* Login page specific dark theme styles */
+        .dark .login-card {
+            background-color: var(--login-card-bg, #1E1F20) !important;
+            border-color: var(--border-primary, #444746) !important;
+        }
+        
+        .dark .login-input {
+            background-color: var(--login-input-bg, #2D2E30) !important;
+            border-color: var(--border-primary, #444746) !important;
+            color: var(--text-primary, #C4C7C5) !important;
+        }
+        
+        /* Fix for browser autofill styling in dark mode */
+        .dark .login-input:-webkit-autofill,
+        .dark .login-input:-webkit-autofill:hover,
+        .dark .login-input:-webkit-autofill:focus,
+        .dark .login-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #2D2E30 inset !important;
+            -webkit-text-fill-color: #C4C7C5 !important;
+            box-shadow: 0 0 0 30px #2D2E30 inset !important;
+            caret-color: #C4C7C5 !important;
+            transition: background-color 5000s ease-in-out 0s !important;
+        }
+        
+        /* Light mode autofill styling */
+        .login-input:-webkit-autofill,
+        .login-input:-webkit-autofill:hover,
+        .login-input:-webkit-autofill:focus,
+        .login-input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #ffffff inset !important;
+            -webkit-text-fill-color: #111827 !important;
+            box-shadow: 0 0 0 30px #ffffff inset !important;
+        }
+        
+        .dark .login-input::placeholder {
+            color: var(--text-tertiary, #8E918F) !important;
+        }
+        
+        .dark .login-input:focus {
+            border-color: var(--border-focus, #a855f7) !important;
+            background-color: var(--bg-tertiary, #2D2E30) !important;
+        }
+        
+        .dark .login-btn {
+            background-color: var(--login-button-bg, #a855f7) !important;
+        }
+        
+        .dark .login-btn:hover {
+            background-color: var(--login-button-hover, #9333ea) !important;
+        }
+        
+        .dark .login-title {
+            color: var(--text-primary, #C4C7C5) !important;
+        }
+        
+        .dark .login-subtitle {
+            color: var(--text-secondary, #C1C4C2) !important;
+        }
+        
+        .dark .login-label {
+            color: var(--text-secondary, #C1C4C2) !important;
+        }
+        
+        .dark .login-footer {
+            color: var(--text-tertiary, #8E918F) !important;
+        }
+        
+        .dark .login-error-container {
+            background-color: var(--status-danger-bg, #7f1d1d) !important;
+            border-color: #7f1d1d !important;
+            color: var(--status-danger-text, #fca5a5) !important;
+        }
+        
+        .dark .login-error-text {
+            color: #fca5a5 !important;
+        }
+        
+        .dark .loading-overlay-content {
+            background-color: var(--bg-elevated, #1E1F20) !important;
+        }
+        
+        .dark .loading-text {
+            color: var(--text-primary, #C4C7C5) !important;
+        }
+        
+        .dark .loading-spinner {
+            border-color: var(--login-button-bg, #a855f7) !important;
+        }
+        
+        /* Logo filter for dark mode */
+        .dark .login-logo {
+            filter: brightness(0) invert(1);
+            opacity: 0.9;
+        }
+    </style>
 </head>
 
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
@@ -25,73 +121,74 @@
                             d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
                     <!-- Moon icon (shown in light mode) -->
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                     </svg>
                 </button>
             </div>
             <div class="mb-4 flex justify-center">
-                <img src="/black-logo.png" alt="Al-Quds University logo"
+                <img src="/black-logo.png" alt="Al-Quds University logo" class="login-logo"
                     style="max-height: 120px; max-width: 300px; height: auto; width: auto;"
                     onerror="this.style.display='none'">
             </div>
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Al-Quds University</h1>
-            <p class="text-gray-600">Document Archiving System</p>
+            <h1 class="text-3xl font-bold login-title text-gray-900 mb-2">Al-Quds University</h1>
+            <p class="login-subtitle text-gray-600">Document Archiving System</p>
         </div>
 
         <!-- Login Card -->
-        <div class="bg-white rounded-lg shadow-md p-8">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6">Sign In</h2>
+        <div class="login-card bg-white rounded-lg shadow-md p-8 border border-transparent">
+            <h2 class="text-2xl font-semibold login-title text-gray-800 mb-6">Sign In</h2>
 
             <form id="loginForm" novalidate>
                 <!-- Email Field -->
                 <div class="mb-4">
-                    <label for="email" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="email" class="login-label block text-sm font-medium text-gray-700 mb-2">
                         Email Address
                     </label>
                     <input type="email" id="email" name="email" required aria-required="true"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                        class="login-input w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                         placeholder="your.email@alquds.edu">
-                    <p id="emailError" class="text-red-600 text-sm mt-1 hidden" role="alert"></p>
+                    <p id="emailError" class="login-error-text text-red-600 text-sm mt-1 hidden" role="alert"></p>
                 </div>
 
                 <!-- Password Field -->
                 <div class="mb-6">
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="password" class="login-label block text-sm font-medium text-gray-700 mb-2">
                         Password
                     </label>
                     <input type="password" id="password" name="password" required aria-required="true"
-                        class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
+                        class="login-input w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
                         placeholder="Enter your password">
-                    <p id="passwordError" class="text-red-600 text-sm mt-1 hidden" role="alert"></p>
+                    <p id="passwordError" class="login-error-text text-red-600 text-sm mt-1 hidden" role="alert"></p>
                 </div>
 
                 <!-- General Error Message -->
                 <div id="generalError"
-                    class="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm hidden"
+                    class="login-error-container mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm hidden"
                     role="alert"></div>
 
                 <!-- Submit Button -->
                 <button type="submit" id="submitBtn"
-                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium">
+                    class="login-btn w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium">
                     Sign In
                 </button>
             </form>
         </div>
 
         <!-- Footer -->
-        <footer class="text-center mt-8 text-sm text-gray-600">
+        <footer class="login-footer text-center mt-8 text-sm text-gray-600">
             <p>Al-Quds University — Archiving System</p>
         </footer>
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span class="text-gray-700">Signing in...</span>
+    <div id="loadingOverlay"
+        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="loading-overlay-content bg-white rounded-lg p-6 flex items-center space-x-3">
+            <div class="loading-spinner animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span class="loading-text text-gray-700">Signing in...</span>
         </div>
     </div>
 

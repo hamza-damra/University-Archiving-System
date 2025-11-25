@@ -1129,7 +1129,7 @@ export class FileExplorer {
         const fileIconClass = this.getFileIconClass(fileType);
 
         return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-800 transition-all group">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-all group">
                 <td class="px-4 py-3 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="file-icon-container w-14 h-14 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg mr-3 flex-shrink-0">

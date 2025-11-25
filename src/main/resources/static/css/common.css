@@ -78,12 +78,12 @@
 
     --border-primary: #444746;
     --border-secondary: #2D2E30;
-    --border-focus: #a855f7;
+    --border-focus: #3b82f6;
 
-    /* Accents */
-    --accent-blue: #a855f7;
-    --accent-blue-hover: #9333ea;
-    --accent-blue-light: #4c1d95;
+    /* Accents - Blue theme for dark mode */
+    --accent-blue: #3b82f6;
+    --accent-blue-hover: #2563eb;
+    --accent-blue-light: #1e3a8a;
     --accent-cyan: #14b8a6;
     --accent-cyan-hover: #0d9488;
     --accent-cyan-light: #134e4a;

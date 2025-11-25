@@ -196,73 +196,62 @@ body {
 /* Table styles in dark mode */
 .dark table {
     color: var(--text-primary);
+}
 
-    .dark .card,
-    .dark .bg-white {
-        background-color: var(--bg-primary);
-        border-color: var(--border-primary);
-    }
+.dark thead {
+    background-color: var(--bg-tertiary);
+}
 
-    /* Input fields in dark mode */
-    .dark input,
-    .dark select,
-    .dark textarea {
-        background-color: var(--bg-tertiary);
-        border-color: var(--border-primary);
-        color: var(--text-primary);
-    }
+.dark tbody tr {
+    border-color: var(--border-primary);
+}
 
-    .dark input::placeholder,
-    .dark select::placeholder,
-    .dark textarea::placeholder {
-        color: var(--text-tertiary);
-    }
+.dark tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
 
-    .dark input:focus,
-    .dark select:focus,
-    .dark textarea:focus {
-        border-color: var(--border-focus);
-        background-color: var(--bg-primary);
-    }
+/* Ensure text remains readable on table row hover in dark mode */
+.dark tbody tr:hover td {
+    color: inherit;
+}
 
-    /* Table styles in dark mode */
-    .dark table {
-        color: var(--text-primary);
-    }
+.dark tbody tr:hover .text-gray-900,
+.dark tbody tr:hover .text-gray-100 {
+    color: var(--text-primary) !important;
+}
 
-    .dark thead {
-        background-color: var(--bg-tertiary);
-    }
+/* Dark mode table body background override */
+.dark tbody.bg-white,
+.dark table tbody {
+    background-color: var(--bg-secondary) !important;
+}
 
-    .dark tbody tr {
-        border-color: var(--border-primary);
-    }
+/* Specific dark mode hover for file table rows */
+.dark table tbody tr.group:hover,
+.dark table tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
 
-    .dark tbody tr:hover {
-        background-color: var(--bg-tertiary) !important;
-    }
-    
-    /* Specific dark mode hover for file table rows */
-    .dark table tbody tr.group:hover,
-    .dark table tbody tr:hover {
-        background-color: rgba(59, 130, 246, 0.1) !important;
-    }
+/* Override inline Tailwind hover classes in dark mode */
+.dark tr.hover\:bg-gray-50:hover {
+    background-color: var(--bg-tertiary) !important;
+}
 
-    /* Modal backdrop in dark mode */
-    .dark .modal-backdrop {
-        background-color: rgba(0, 0, 0, 0.7);
-    }
+/* Modal backdrop in dark mode */
+.dark .modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.7);
+}
 
-    /* Toast notifications in dark mode */
-    .dark .toast {
-        height: 40px;
-        border-radius: 0.5rem;
-        background-color: var(--bg-tertiary);
-        border: 1px solid var(--border-primary);
-        cursor: pointer;
-        transition: all 0.2s ease;
-        color: var(--text-secondary);
-    }
+/* Toast notifications in dark mode */
+.dark .toast {
+    height: 40px;
+    border-radius: 0.5rem;
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+}
 
     .theme-toggle:hover {
         background-color: var(--accent-blue-light);
@@ -462,6 +451,17 @@ body {
 
     tbody tr:hover {
         background-color: #f9fafb;
+    }
+
+    /* Ensure text remains readable on table row hover */
+    tbody tr:hover td {
+        color: inherit;
+    }
+
+    tbody tr:hover .text-gray-900,
+    tbody tr:hover .text-gray-700,
+    tbody tr:hover .text-gray-600 {
+        color: #111827 !important; /* Ensure dark text on light hover background */
     }
 
     /* Modal backdrop */
@@ -1373,4 +1373,5 @@ body {
         .dark img[alt*="logo"] {
             filter: brightness(0) invert(1);
             opacity: 0.9;
-        }
+        }        }
+

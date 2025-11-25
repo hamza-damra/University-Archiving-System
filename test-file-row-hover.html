@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Row Hover Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="src/main/resources/static/css/common.css">
+    <style>
+        body {
+            padding: 2rem;
+        }
+        .test-section {
+            margin-bottom: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto">
+        <h1 class="text-3xl font-bold mb-6">File Row Hover Test</h1>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Light Mode Test</h2>
+            <p class="text-sm text-gray-600 mb-4">Hover over the file rows below. Text should remain DARK and readable.</p>
+            
+            <div class="bg-white border border-gray-200 rounded-lg p-4">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Uploaded</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <tr class="hover:bg-gray-50 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600">lecture_notes.pdf</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-700">2.5 MB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-600">2024-01-15</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-600 hover:text-blue-800">Download</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600">assignment.docx</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-700">1.2 MB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-600">2024-01-14</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-600 hover:text-blue-800">Download</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-900 group-hover:text-blue-600">diagram.png</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-700">856 KB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-600">2024-01-13</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-600 hover:text-blue-800">Download</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="test-section dark">
+            <h2 class="text-xl font-semibold mb-4 text-gray-100">Dark Mode Test</h2>
+            <p class="text-sm text-gray-400 mb-4">Hover over the file rows below. Text should remain LIGHT and readable.</p>
+            
+            <div class="bg-gray-900 border border-gray-700 rounded-lg p-4">
+                <table class="min-w-full divide-y divide-gray-700 border border-gray-700 rounded-lg">
+                    <thead class="bg-gray-800">
+                        <tr>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Name</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Size</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Uploaded</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-gray-900 divide-y divide-gray-700">
+                        <tr class="hover:bg-gray-700 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-100 group-hover:text-blue-400">lecture_notes.pdf</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">2.5 MB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">2024-01-15</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-400 hover:text-blue-300">Download</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-700 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-100 group-hover:text-blue-400">assignment.docx</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">1.2 MB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">2024-01-14</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-400 hover:text-blue-300">Download</button>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-700 transition-all group">
+                            <td class="px-4 py-3">
+                                <span class="text-sm font-medium text-gray-100 group-hover:text-blue-400">diagram.png</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">856 KB</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <span class="text-xs text-gray-300">2024-01-13</span>
+                            </td>
+                            <td class="px-4 py-3">
+                                <button class="text-blue-400 hover:text-blue-300">Download</button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Test Instructions</h2>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 class="font-semibold mb-2">✅ Expected Behavior:</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li><strong>Light Mode:</strong> Text should be dark (#111827) on light gray hover background</li>
+                    <li><strong>Dark Mode:</strong> Text should be light (CSS variable) on dark gray hover background</li>
+                    <li><strong>File names:</strong> Should turn blue on hover (group-hover effect)</li>
+                    <li><strong>All text:</strong> Should remain clearly readable at all times</li>
+                </ul>
+                
+                <h3 class="font-semibold mt-4 mb-2">❌ Bug (Before Fix):</h3>
+                <ul class="list-disc list-inside space-y-1 text-sm">
+                    <li>Text turned WHITE on hover, making it unreadable</li>
+                    <li>Poor contrast ratio (failed WCAG AA standards)</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

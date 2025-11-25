@@ -159,3 +159,48 @@ To prevent similar issues in the future:
 
 ## Conclusion
 The fix ensures file row text remains readable on hover by explicitly setting text colors with sufficient specificity to override Tailwind utilities. The solution is minimal, targeted, and maintains all existing functionality while improving accessibility and user experience.
+
+
+## Update: Refined Hover Behavior for Metadata Badges
+
+### Issue
+After the initial fix, metadata badges (Size, Uploaded, Uploader) and the eye icon were turning black on hover instead of maintaining their original gray styling.
+
+### Additional Fix Applied
+
+#### Light Mode - Exclude Badges from Color Override
+```css
+/* Only apply dark text to file name, not to badges or icons */
+tbody tr:hover .text-gray-900:not(.file-metadata-badge):not(.file-metadata-badge *),
+tbody tr:hover .text-gray-700:not(.file-metadata-badge):not(.file-metadata-badge *) {
+    color: #111827 !important;
+}
+
+/* Keep metadata badges with their original styling on hover */
+tbody tr:hover .file-metadata-badge {
+    color: inherit;
+}
+```
+
+#### Dark Mode - Exclude Badges from Color Override
+```css
+/* Only apply light text to file name in dark mode, not to badges or icons */
+.dark tbody tr:hover .text-gray-900:not(.file-metadata-badge):not(.file-metadata-badge *),
+.dark tbody tr:hover .text-gray-100:not(.file-metadata-badge):not(.file-metadata-badge *) {
+    color: var(--text-primary) !important;
+}
+
+/* Keep metadata badges with their original styling on hover in dark mode */
+.dark tbody tr:hover .file-metadata-badge {
+    color: inherit;
+}
+```
+
+### What Changed
+- **File name**: Still turns dark (light mode) or light (dark mode) on hover ✅
+- **Metadata badges**: Now maintain their original gray color on hover ✅
+- **Eye icon**: Maintains its gray color and hover effect ✅
+- **Download button**: Maintains its blue background and white text ✅
+
+### Result
+The hover behavior now matches the expected design where only the file name changes color significantly, while metadata badges and icons maintain their subtle, professional appearance.

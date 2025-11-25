@@ -215,9 +215,15 @@ body {
     color: inherit;
 }
 
-.dark tbody tr:hover .text-gray-900,
-.dark tbody tr:hover .text-gray-100 {
+/* Only apply light text to file name in dark mode, not to badges or icons */
+.dark tbody tr:hover .text-gray-900:not(.file-metadata-badge):not(.file-metadata-badge *),
+.dark tbody tr:hover .text-gray-100:not(.file-metadata-badge):not(.file-metadata-badge *) {
     color: var(--text-primary) !important;
+}
+
+/* Keep metadata badges with their original styling on hover in dark mode */
+.dark tbody tr:hover .file-metadata-badge {
+    color: inherit;
 }
 
 /* Dark mode table body background override */
@@ -458,10 +464,15 @@ body {
         color: inherit;
     }
 
-    tbody tr:hover .text-gray-900,
-    tbody tr:hover .text-gray-700,
-    tbody tr:hover .text-gray-600 {
+    /* Only apply dark text to file name, not to badges or icons */
+    tbody tr:hover .text-gray-900:not(.file-metadata-badge):not(.file-metadata-badge *),
+    tbody tr:hover .text-gray-700:not(.file-metadata-badge):not(.file-metadata-badge *) {
         color: #111827 !important; /* Ensure dark text on light hover background */
+    }
+    
+    /* Keep metadata badges with their original styling on hover */
+    tbody tr:hover .file-metadata-badge {
+        color: inherit;
     }
 
     /* Modal backdrop */

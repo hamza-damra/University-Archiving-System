@@ -248,6 +248,72 @@ body {
     background-color: rgba(0, 0, 0, 0.7);
 }
 
+/* ===================================
+   MODAL DIALOG BUTTONS - DARK MODE
+   =================================== */
+
+/* Modal container in dark mode */
+.dark [role="dialog"] .bg-white,
+.dark [role="dialog"] > div > .bg-white {
+    background-color: var(--bg-elevated) !important;
+}
+
+/* Modal header and footer borders */
+.dark [role="dialog"] .border-b,
+.dark [role="dialog"] .border-t {
+    border-color: var(--border-primary) !important;
+}
+
+/* Modal title text */
+.dark [role="dialog"] .text-gray-900,
+.dark [role="dialog"] #modalTitle {
+    color: var(--text-primary) !important;
+}
+
+/* Modal content labels */
+.dark [role="dialog"] .text-gray-700,
+.dark [role="dialog"] label {
+    color: var(--text-secondary) !important;
+}
+
+/* Primary button (Download, Submit, Confirm) - Purple accent in dark mode */
+.dark [role="dialog"] button.bg-blue-600,
+.dark [role="dialog"] button[data-action="download"],
+.dark [role="dialog"] button[data-action="confirm"],
+.dark [role="dialog"] button[data-action="submit"] {
+    background-color: var(--accent-blue) !important;
+    color: #ffffff !important;
+    border: none !important;
+}
+
+.dark [role="dialog"] button.bg-blue-600:hover,
+.dark [role="dialog"] button[data-action="download"]:hover,
+.dark [role="dialog"] button[data-action="confirm"]:hover,
+.dark [role="dialog"] button[data-action="submit"]:hover {
+    background-color: var(--accent-blue-hover) !important;
+}
+
+/* Secondary button (Close, Cancel) - Dark background with light text */
+.dark [role="dialog"] button.bg-gray-200,
+.dark [role="dialog"] button[data-action="close"],
+.dark [role="dialog"] button[data-action="cancel"] {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border-primary) !important;
+}
+
+.dark [role="dialog"] button.bg-gray-200:hover,
+.dark [role="dialog"] button[data-action="close"]:hover,
+.dark [role="dialog"] button[data-action="cancel"]:hover {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-secondary) !important;
+}
+
+/* Ensure text-gray-800 in buttons is overridden */
+.dark [role="dialog"] button.text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
 /* Toast notifications in dark mode */
 .dark .toast {
     height: 40px;
@@ -1006,6 +1072,48 @@ body {
             color: var(--text-primary) !important;
         }
 
+        /* Modal Close Button (X) - Dark Mode High Visibility - CRITICAL FIX */
+        /* Target all possible close button selectors with maximum specificity */
+        .dark [data-close-modal],
+        .dark .modal-close,
+        .dark [role="dialog"] button[data-close-modal],
+        .dark .rounded-lg button[data-close-modal],
+        .dark .bg-white button.text-gray-400,
+        .dark [role="dialog"] button.text-gray-400,
+        .dark .shadow-xl button.text-gray-400 {
+            color: #C4C7C5 !important; /* Light gray - highly visible */
+            opacity: 1 !important;
+        }
+
+        .dark [data-close-modal]:hover,
+        .dark .modal-close:hover,
+        .dark [role="dialog"] button[data-close-modal]:hover,
+        .dark .rounded-lg button[data-close-modal]:hover,
+        .dark .bg-white button.text-gray-400:hover,
+        .dark [role="dialog"] button.text-gray-400:hover,
+        .dark .shadow-xl button.text-gray-400:hover {
+            color: #ffffff !important; /* Pure white on hover */
+            background-color: rgba(255, 255, 255, 0.15) !important;
+            border-radius: 4px;
+        }
+
+        /* Ensure X button SVG is visible - target stroke color */
+        .dark [data-close-modal] svg,
+        .dark .modal-close svg,
+        .dark [role="dialog"] button svg,
+        .dark .bg-white button.text-gray-400 svg {
+            color: #C4C7C5 !important;
+            stroke: #C4C7C5 !important;
+        }
+
+        .dark [data-close-modal]:hover svg,
+        .dark .modal-close:hover svg,
+        .dark [role="dialog"] button:hover svg,
+        .dark .bg-white button.text-gray-400:hover svg {
+            color: #ffffff !important;
+            stroke: #ffffff !important;
+        }
+
         /* Modal Body Inputs */
         .dark #uploadModal label,
         .dark .modal-body label {
@@ -1068,35 +1176,59 @@ body {
         }
 
         /* Modal Buttons Dark Mode Support */
-        /* Primary button (Download, Submit, etc.) */
-        .dark .modal-footer button.bg-blue-600,
+        /* Primary button (Download, Submit, etc.) - Keep purple/blue accent */
+        .dark button[data-action="download"],
+        .dark button[data-action="confirm"],
         .dark button.bg-blue-600 {
             background-color: var(--accent-blue) !important;
             color: white !important;
         }
 
-        .dark .modal-footer button.bg-blue-600:hover,
+        .dark button[data-action="download"]:hover,
+        .dark button[data-action="confirm"]:hover,
         .dark button.bg-blue-600:hover {
             background-color: var(--accent-blue-hover) !important;
         }
 
-        /* Secondary button (Close, Cancel, etc.) */
-        .dark .modal-footer button.bg-gray-200,
+        /* Secondary button (Close, Cancel, etc.) - Dark background with light text */
+        .dark button[data-action="close"],
+        .dark button[data-action="cancel"],
         .dark button.bg-gray-200 {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 1px solid var(--border-primary) !important;
         }
 
-        .dark .modal-footer button.bg-gray-200:hover,
+        .dark button[data-action="close"]:hover,
+        .dark button[data-action="cancel"]:hover,
         .dark button.bg-gray-200:hover {
             background-color: var(--bg-secondary) !important;
+            border-color: var(--border-secondary) !important;
         }
 
-        /* Generic button text colors in dark mode */
-        .dark .modal-footer button.text-gray-800,
-        .dark button.text-gray-800 {
+        /* Override Tailwind text color classes in modal buttons */
+        .dark button.text-gray-800,
+        .dark [role="dialog"] button.text-gray-800 {
             color: var(--text-primary) !important;
+        }
+
+        /* Ensure all modal buttons in dark mode have proper styling */
+        .dark .bg-white button.bg-gray-200,
+        .dark [role="dialog"] button.bg-gray-200,
+        .dark .rounded-lg button.bg-gray-200 {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+        }
+
+        /* Specifically target buttons with both bg-gray-200 and text-gray-800 classes */
+        .dark button.bg-gray-200.text-gray-800 {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-primary) !important;
+        }
+
+        .dark button.bg-gray-200.text-gray-800:hover {
+            background-color: var(--bg-secondary) !important;
         }
 
         /* ===================================

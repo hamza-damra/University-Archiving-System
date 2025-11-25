@@ -958,595 +958,522 @@ body {
 
     .dark .border-blue-100,
     .dark .border-blue-200 {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark .border-red-200 {
-            border-color: var(--status-danger-text) !important;
-        }
+    .dark .border-red-200 {
+        border-color: var(--status-danger-text) !important;
+    }
 
-        /* Invert logo in dark mode */
-        .dark img[src*="logo"] {
-            filter: brightness(0) invert(1);
-            opacity: 0.9;
-        }
+    .dark .bg-green-50 {
+        background-color: var(--bg-tertiary) !important;
+    }
 
-        .dark .text-blue-600 {
-            color: var(--accent-blue) !important;
-        }
+    .dark .text-green-600 {
+        color: var(--accent-cyan) !important;
+    }
 
-        .dark .border-blue-100,
-        .dark .border-blue-200 {
-            border-color: var(--border-primary) !important;
-        }
+    .dark .bg-purple-50 {
+        background-color: var(--bg-tertiary) !important;
+    }
 
-        .dark .bg-green-50 {
-            background-color: var(--bg-tertiary) !important;
-        }
+    .dark .text-purple-600 {
+        color: var(--accent-blue) !important;
+    }
 
-        .dark .text-green-600 {
-            color: var(--accent-cyan) !important;
-        }
+    .dark .text-red-600 {
+        color: #f87171 !important;
+    }
 
-        .dark .bg-purple-50 {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        .dark .text-purple-600 {
-            color: var(--accent-blue) !important;
-        }
-
-        .dark .text-red-600 {
-            color: #f87171 !important;
-        }
-
-        /* ===================================
+    /* ===================================
    SIDEBAR DARK MODE OVERRIDES
    =================================== */
 
-        /* Sidebar Container */
-        .dark aside.bg-white {
-            background-color: var(--bg-primary) !important;
-            border-color: var(--border-primary) !important;
-        }
+    /* Sidebar Container */
+    .dark aside.bg-white {
+        background-color: var(--bg-primary) !important;
+        border-color: var(--border-primary) !important;
+    }
 
-        /* Sidebar Header */
-        .dark aside .border-gray-100 {
-            border-color: var(--border-primary) !important;
-        }
+    /* Sidebar Header */
+    .dark aside .border-gray-100 {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark aside .text-gray-900 {
-            color: var(--text-primary) !important;
-        }
+    .dark aside .text-gray-900 {
+        color: var(--text-primary) !important;
+    }
 
-        .dark aside .text-gray-500 {
-            color: var(--text-secondary) !important;
-        }
+    .dark aside .text-gray-500 {
+        color: var(--text-secondary) !important;
+    }
 
-        /* Navigation Tabs */
-        .dark .nav-tab {
-            color: var(--text-secondary) !important;
-        }
+    /* Navigation Tabs */
+    .dark .nav-tab {
+        color: var(--text-secondary) !important;
+    }
 
-        .dark .nav-tab:hover {
-            background-color: #3c3c3c !important;
-            color: var(--text-primary) !important;
-        }
+    .dark .nav-tab:hover {
+        background-color: #3c3c3c !important;
+        color: #ffffff !important;
+    }
 
-        .dark .nav-tab.active {
-            background-color: rgba(168, 85, 247, 0.2) !important;
-            color: var(--accent-blue) !important;
-        }
+    .dark .nav-tab.active {
+        background-color: rgba(168, 85, 247, 0.2) !important;
+        color: var(--accent-blue) !important;
+    }
 
-        /* Sidebar Footer (Logout) */
-        .dark aside .border-t {
-            border-color: var(--border-primary) !important;
-        }
+    /* Sidebar Footer (Logout) */
+    .dark aside .border-t {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark #logoutBtn:hover {
-            background-color: rgba(239, 68, 68, 0.1) !important;
-        }
+    .dark #logoutBtn:hover {
+        background-color: rgba(239, 68, 68, 0.1) !important;
+    }
 
-        /* ===================================
+    /* ===================================
    MODAL DARK MODE OVERRIDES
    =================================== */
 
-        /* Modal Background */
-        .dark #uploadModal .bg-white,
-        .dark .modal-content {
-            background-color: var(--bg-elevated) !important;
-            color: var(--text-primary) !important;
-        }
+    /* Modal Background */
+    .dark #uploadModal .bg-white,
+    .dark .modal-content {
+        background-color: var(--bg-elevated) !important;
+        color: var(--text-primary) !important;
+    }
 
-        /* Modal Header */
-        .dark #uploadModal .border-b,
-        .dark .modal-header {
-            border-color: var(--border-primary) !important;
-        }
+    /* Modal Header */
+    .dark #uploadModal .border-b,
+    .dark .modal-header {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark #uploadModalTitle,
-        .dark .modal-title {
-            color: var(--text-primary) !important;
-        }
+    .dark #uploadModalTitle,
+    .dark .modal-title {
+        color: var(--text-primary) !important;
+    }
 
-        .dark #uploadModal button.text-gray-400:hover,
-        .dark .modal-close:hover {
-            color: var(--text-primary) !important;
-        }
+    .dark #uploadModal button.text-gray-400:hover,
+    .dark .modal-close:hover {
+        color: var(--text-primary) !important;
+    }
 
-        /* Modal Close Button (X) - Dark Mode High Visibility - CRITICAL FIX */
-        /* Target all possible close button selectors with maximum specificity */
-        .dark [data-close-modal],
-        .dark .modal-close,
-        .dark [role="dialog"] button[data-close-modal],
-        .dark .rounded-lg button[data-close-modal],
-        .dark .bg-white button.text-gray-400,
-        .dark [role="dialog"] button.text-gray-400,
-        .dark .shadow-xl button.text-gray-400 {
-            color: #C4C7C5 !important; /* Light gray - highly visible */
-            opacity: 1 !important;
-        }
+    /* Modal Close Button (X) - Dark Mode High Visibility - CRITICAL FIX */
+    /* Target all possible close button selectors with maximum specificity */
+    .dark [data-close-modal],
+    .dark .modal-close,
+    .dark [role="dialog"] button[data-close-modal],
+    .dark .rounded-lg button[data-close-modal],
+    .dark .bg-white button.text-gray-400,
+    .dark [role="dialog"] button.text-gray-400,
+    .dark .shadow-xl button.text-gray-400 {
+        color: #C4C7C5 !important;
+        opacity: 1 !important;
+    }
 
-        .dark [data-close-modal]:hover,
-        .dark .modal-close:hover,
-        .dark [role="dialog"] button[data-close-modal]:hover,
-        .dark .rounded-lg button[data-close-modal]:hover,
-        .dark .bg-white button.text-gray-400:hover,
-        .dark [role="dialog"] button.text-gray-400:hover,
-        .dark .shadow-xl button.text-gray-400:hover {
-            color: #ffffff !important; /* Pure white on hover */
-            background-color: rgba(255, 255, 255, 0.15) !important;
-            border-radius: 4px;
-        }
+    .dark [data-close-modal]:hover,
+    .dark .modal-close:hover,
+    .dark [role="dialog"] button[data-close-modal]:hover,
+    .dark .rounded-lg button[data-close-modal]:hover,
+    .dark .bg-white button.text-gray-400:hover,
+    .dark [role="dialog"] button.text-gray-400:hover,
+    .dark .shadow-xl button.text-gray-400:hover {
+        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.15) !important;
+        border-radius: 4px;
+    }
 
-        /* Ensure X button SVG is visible - target stroke color */
-        .dark [data-close-modal] svg,
-        .dark .modal-close svg,
-        .dark [role="dialog"] button svg,
-        .dark .bg-white button.text-gray-400 svg {
-            color: #C4C7C5 !important;
-            stroke: #C4C7C5 !important;
-        }
+    /* Ensure X button SVG is visible - target stroke color */
+    .dark [data-close-modal] svg,
+    .dark .modal-close svg,
+    .dark [role="dialog"] button svg,
+    .dark .bg-white button.text-gray-400 svg {
+        color: #C4C7C5 !important;
+        stroke: #C4C7C5 !important;
+    }
 
-        .dark [data-close-modal]:hover svg,
-        .dark .modal-close:hover svg,
-        .dark [role="dialog"] button:hover svg,
-        .dark .bg-white button.text-gray-400:hover svg {
-            color: #ffffff !important;
-            stroke: #ffffff !important;
-        }
+    .dark [data-close-modal]:hover svg,
+    .dark .modal-close:hover svg,
+    .dark [role="dialog"] button:hover svg,
+    .dark .bg-white button.text-gray-400:hover svg {
+        color: #ffffff !important;
+        stroke: #ffffff !important;
+    }
 
-        /* Modal Body Inputs */
-        .dark #uploadModal label,
-        .dark .modal-body label {
-            color: var(--text-secondary) !important;
-        }
+    /* Modal Body Inputs */
+    .dark #uploadModal label,
+    .dark .modal-body label {
+        color: var(--text-secondary) !important;
+    }
 
-        .dark #uploadModal input[type="file"],
-        .dark #uploadModal textarea,
-        .dark .modal-body input,
-        .dark .modal-body textarea {
-            background-color: var(--bg-tertiary) !important;
-            border-color: var(--border-primary) !important;
-            color: var(--text-primary) !important;
-        }
+    .dark #uploadModal input[type="file"],
+    .dark #uploadModal textarea,
+    .dark .modal-body input,
+    .dark .modal-body textarea {
+        background-color: var(--bg-tertiary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+    }
 
-        .dark #uploadModal input[type="file"]:focus,
-        .dark #uploadModal textarea:focus,
-        .dark .modal-body input:focus,
-        .dark .modal-body textarea:focus {
-            border-color: var(--accent-blue) !important;
-            outline: 2px solid var(--accent-blue) !important;
-            outline-offset: 2px !important;
-        }
+    .dark #uploadModal input[type="file"]:focus,
+    .dark #uploadModal textarea:focus,
+    .dark .modal-body input:focus,
+    .dark .modal-body textarea:focus {
+        border-color: var(--accent-blue) !important;
+        outline: 2px solid var(--accent-blue) !important;
+        outline-offset: 2px !important;
+    }
 
-        .dark #uploadModal p.text-gray-500,
-        .dark .modal-body p.text-muted {
-            color: var(--text-tertiary) !important;
-        }
+    .dark #uploadModal p.text-gray-500,
+    .dark .modal-body p.text-muted {
+        color: var(--text-tertiary) !important;
+    }
 
-        /* Modal Footer */
-        .dark #uploadModal .border-t,
-        .dark .modal-footer {
-            border-color: var(--border-primary) !important;
-        }
+    /* Modal Footer */
+    .dark #uploadModal .border-t,
+    .dark .modal-footer {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark #uploadModal button.bg-white,
-        .dark .modal-footer .btn-secondary {
-            background-color: var(--bg-tertiary) !important;
-            border-color: var(--border-primary) !important;
-            color: var(--text-primary) !important;
-        }
+    .dark #uploadModal button.bg-white,
+    .dark .modal-footer .btn-secondary {
+        background-color: var(--bg-tertiary) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+    }
 
-        .dark #uploadModal button.bg-white:hover,
-        .dark .modal-footer .btn-secondary:hover {
-            background-color: var(--bg-secondary) !important;
-        }
+    .dark #uploadModal button.bg-white:hover,
+    .dark .modal-footer .btn-secondary:hover {
+        background-color: var(--bg-secondary) !important;
+    }
 
-        /* File Details Modal Specifics (if dynamically generated) */
-        .dark .file-details-modal {
-            background-color: var(--bg-elevated) !important;
-            color: var(--text-primary) !important;
-        }
+    /* File Details Modal Specifics (if dynamically generated) */
+    .dark .file-details-modal {
+        background-color: var(--bg-elevated) !important;
+        color: var(--text-primary) !important;
+    }
 
-        .dark .file-details-label {
-            color: var(--text-secondary) !important;
-        }
+    .dark .file-details-label {
+        color: var(--text-secondary) !important;
+    }
 
-        .dark .file-details-value {
-            color: var(--text-primary) !important;
-        }
+    .dark .file-details-value {
+        color: var(--text-primary) !important;
+    }
 
-        /* Modal Buttons Dark Mode Support */
-        /* Primary button (Download, Submit, etc.) - Keep purple/blue accent */
-        .dark button[data-action="download"],
-        .dark button[data-action="confirm"],
-        .dark button.bg-blue-600 {
-            background-color: var(--accent-blue) !important;
-            color: white !important;
-        }
+    /* Modal Buttons Dark Mode Support */
+    /* Primary button (Download, Submit, etc.) - Keep purple/blue accent */
+    .dark button[data-action="download"],
+    .dark button[data-action="confirm"],
+    .dark button.bg-blue-600 {
+        background-color: var(--accent-blue) !important;
+        color: white !important;
+    }
 
-        .dark button[data-action="download"]:hover,
-        .dark button[data-action="confirm"]:hover,
-        .dark button.bg-blue-600:hover {
-            background-color: var(--accent-blue-hover) !important;
-        }
+    .dark button[data-action="download"]:hover,
+    .dark button[data-action="confirm"]:hover,
+    .dark button.bg-blue-600:hover {
+        background-color: var(--accent-blue-hover) !important;
+    }
 
-        /* Secondary button (Close, Cancel, etc.) - Dark background with light text */
-        .dark button[data-action="close"],
-        .dark button[data-action="cancel"],
-        .dark button.bg-gray-200 {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-primary) !important;
-        }
+    /* Secondary button (Close, Cancel, etc.) - Dark background with light text */
+    .dark button[data-action="close"],
+    .dark button[data-action="cancel"],
+    .dark button.bg-gray-200 {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-primary) !important;
+    }
 
-        .dark button[data-action="close"]:hover,
-        .dark button[data-action="cancel"]:hover,
-        .dark button.bg-gray-200:hover {
-            background-color: var(--bg-secondary) !important;
-            border-color: var(--border-secondary) !important;
-        }
+    .dark button[data-action="close"]:hover,
+    .dark button[data-action="cancel"]:hover,
+    .dark button.bg-gray-200:hover {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-secondary) !important;
+    }
 
-        /* Override Tailwind text color classes in modal buttons */
-        .dark button.text-gray-800,
-        .dark [role="dialog"] button.text-gray-800 {
-            color: var(--text-primary) !important;
-        }
+    /* Override Tailwind text color classes in modal buttons */
+    .dark button.text-gray-800,
+    .dark [role="dialog"] button.text-gray-800 {
+        color: var(--text-primary) !important;
+    }
 
-        /* Ensure all modal buttons in dark mode have proper styling */
-        .dark .bg-white button.bg-gray-200,
-        .dark [role="dialog"] button.bg-gray-200,
-        .dark .rounded-lg button.bg-gray-200 {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-        }
+    /* Ensure all modal buttons in dark mode have proper styling */
+    .dark .bg-white button.bg-gray-200,
+    .dark [role="dialog"] button.bg-gray-200,
+    .dark .rounded-lg button.bg-gray-200 {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+    }
 
-        /* Specifically target buttons with both bg-gray-200 and text-gray-800 classes */
-        .dark button.bg-gray-200.text-gray-800 {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border-primary) !important;
-        }
+    /* Specifically target buttons with both bg-gray-200 and text-gray-800 classes */
+    .dark button.bg-gray-200.text-gray-800 {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border-primary) !important;
+    }
 
-        .dark button.bg-gray-200.text-gray-800:hover {
-            background-color: var(--bg-secondary) !important;
-        }
+    .dark button.bg-gray-200.text-gray-800:hover {
+        background-color: var(--bg-secondary) !important;
+    }
 
-        /* ===================================
+    /* ===================================
    DASHBOARD CONTENT DARK MODE OVERRIDES
    =================================== */
 
-        /* Main Content Area */
-        .dark main .bg-white {
-            background-color: var(--bg-secondary) !important;
-        }
+    /* Main Content Area */
+    .dark main .bg-white {
+        background-color: var(--bg-secondary) !important;
+    }
 
-        .dark main .bg-gray-50 {
-            background-color: var(--bg-tertiary) !important;
-        }
+    .dark main .bg-gray-50 {
+        background-color: var(--bg-tertiary) !important;
+    }
 
-        /* Text Colors */
-        .dark main .text-gray-900,
-        .dark main .text-gray-800 {
-            color: var(--text-primary) !important;
-        }
+    /* Text Colors */
+    .dark main .text-gray-900,
+    .dark main .text-gray-800 {
+        color: var(--text-primary) !important;
+    }
 
-        .dark main .text-gray-700,
-        .dark main .text-gray-600,
-        .dark main .text-gray-500 {
-            color: var(--text-secondary) !important;
-        }
+    .dark main .text-gray-700,
+    .dark main .text-gray-600,
+    .dark main .text-gray-500 {
+        color: var(--text-secondary) !important;
+    }
 
-        .dark main .text-gray-400 {
-            color: var(--text-tertiary) !important;
-        }
+    .dark main .text-gray-400 {
+        color: var(--text-tertiary) !important;
+    }
 
-        /* Borders */
-        .dark main .border-gray-200,
-        .dark main .border-gray-100 {
-            border-color: var(--border-primary) !important;
-        }
+    /* Borders */
+    .dark main .border-gray-200,
+    .dark main .border-gray-100 {
+        border-color: var(--border-primary) !important;
+    }
 
-        /* Inputs and Selects */
-        .dark main select,
-        .dark main input,
-        .dark main textarea {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border-primary) !important;
-        }
+    /* Inputs and Selects */
+    .dark main select,
+    .dark main input,
+    .dark main textarea {
+        background-color: var(--bg-tertiary) !important;
+        color: var(--text-primary) !important;
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark main select:focus,
-        .dark main input:focus,
-        .dark main textarea:focus {
-            border-color: var(--accent-blue) !important;
-            outline: 2px solid var(--accent-blue) !important;
-            outline-offset: 2px !important;
-        }
+    .dark main select:focus,
+    .dark main input:focus,
+    .dark main textarea:focus {
+        border-color: var(--accent-blue) !important;
+        outline: 2px solid var(--accent-blue) !important;
+        outline-offset: 2px !important;
+    }
 
-        /* Stat Cards Specifics */
-        .dark .card {
-            background-color: var(--bg-elevated) !important;
-            border-color: var(--border-primary) !important;
-        }
+    /* Stat Cards Specifics */
+    .dark .card {
+        background-color: var(--bg-elevated) !important;
+        border-color: var(--border-primary) !important;
+    }
 
-        /* Quick Summary Card */
-        .dark #dashboardSummary {
-            color: var(--text-secondary) !important;
-        }
+    /* Quick Summary Card */
+    .dark #dashboardSummary {
+        color: var(--text-secondary) !important;
+    }
 
-        /* ===================================
+    /* ===================================
    DASHBOARD HEADER DARK MODE OVERRIDES
    =================================== */
 
-        /* Header Background and Border */
-        .dark header.bg-white {
-            background-color: var(--bg-secondary) !important;
-            border-color: var(--border-primary) !important;
-        }
+    /* Header Background and Border */
+    .dark header.bg-white {
+        background-color: var(--bg-secondary) !important;
+        border-color: var(--border-primary) !important;
+    }
 
-        /* Header Text */
-        .dark header .text-gray-900,
-        .dark header .text-gray-800 {
-            color: var(--text-primary) !important;
-        }
+    /* Header Text */
+    .dark header .text-gray-900,
+    .dark header .text-gray-800 {
+        color: var(--text-primary) !important;
+    }
 
-        .dark header .text-gray-500 {
-            color: var(--text-secondary) !important;
-        }
+    .dark header .text-gray-500 {
+        color: var(--text-secondary) !important;
+    }
 
-        /* Mobile Menu Button */
-        .dark header button.text-gray-500:hover {
-            color: var(--text-primary) !important;
-        }
+    /* Mobile Menu Button */
+    .dark header button.text-gray-500:hover {
+        color: var(--text-primary) !important;
+    }
 
-        /* Notification Button */
-        .dark #notificationsBtn {
-            color: var(--text-secondary) !important;
-        }
+    /* Notification Button */
+    .dark #notificationsBtn {
+        color: var(--text-secondary) !important;
+    }
 
-        .dark #notificationsBtn:hover {
-            color: var(--text-primary) !important;
-            background-color: var(--bg-tertiary) !important;
-        }
+    .dark #notificationsBtn:hover {
+        color: var(--text-primary) !important;
+        background-color: var(--bg-tertiary) !important;
+    }
 
-        /* Notification Dropdown */
-        .dark #notificationsDropdown {
-            background-color: var(--bg-elevated) !important;
-            border-color: var(--border-primary) !important;
-        }
+    /* Notification Dropdown */
+    .dark #notificationsDropdown {
+        background-color: var(--bg-elevated) !important;
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark #notificationsDropdown .border-gray-200 {
-            border-color: var(--border-primary) !important;
-        }
+    .dark #notificationsDropdown .border-gray-200 {
+        border-color: var(--border-primary) !important;
+    }
 
-        .dark #notificationsDropdown h3 {
-            color: var(--text-primary) !important;
-        }
+    .dark #notificationsDropdown h3 {
+        color: var(--text-primary) !important;
+    }
 
-        .dark #notificationsDropdown #closeNotificationsDropdown {
-            color: var(--text-tertiary) !important;
-        }
+    .dark #notificationsDropdown #closeNotificationsDropdown {
+        color: var(--text-tertiary) !important;
+    }
 
-        .dark #notificationsDropdown #closeNotificationsDropdown:hover {
-            color: var(--text-primary) !important;
-        }
+    .dark #notificationsDropdown #closeNotificationsDropdown:hover {
+        color: var(--text-primary) !important;
+    }
 
-        .dark #notificationsDropdown p.text-gray-500 {
-            color: var(--text-secondary) !important;
-        }
+    .dark #notificationsDropdown p.text-gray-500 {
+        color: var(--text-secondary) !important;
+    }
 
-        /* Profile Section */
-        .dark #professorName {
-            color: var(--text-primary) !important;
-        }
+    /* Profile Section */
+    .dark #professorName {
+        color: var(--text-primary) !important;
+    }
 
-        .dark header .bg-blue-100 {
-            background-color: var(--accent-blue) !important;
-            color: #ffffff !important;
-        }
+    .dark header .bg-blue-100 {
+        background-color: var(--accent-blue) !important;
+        color: #ffffff !important;
+    }
 
-        /* ===================================
+    /* ===================================
    LOGIN PAGE DARK MODE OVERRIDES
    =================================== */
 
-        /* Login page body background */
-        .dark body.bg-gray-50 {
-            background-color: var(--bg-secondary) !important;
-        }
+    /* Login page body background */
+    .dark body.bg-gray-50 {
+        background-color: var(--bg-secondary) !important;
+    }
 
-        /* Login card */
-        .dark .bg-white.rounded-lg.shadow-md {
-            background-color: var(--login-card-bg) !important;
-            box-shadow: var(--shadow-lg) !important;
-        }
+    /* Login card */
+    .dark .bg-white.rounded-lg.shadow-md {
+        background-color: var(--login-card-bg) !important;
+        box-shadow: var(--shadow-lg) !important;
+    }
 
-        /* Login page headings */
-        .dark h1.text-gray-900 {
-            color: var(--text-primary) !important;
-        }
+    /* Login page headings */
+    .dark h1.text-gray-900 {
+        color: var(--text-primary) !important;
+    }
 
-        .dark h2.text-gray-800 {
-            color: var(--text-primary) !important;
-        }
+    .dark h2.text-gray-800 {
+        color: var(--text-primary) !important;
+    }
 
-        /* Login page subtitle */
-        .dark p.text-gray-600 {
-            color: var(--text-secondary) !important;
-        }
+    /* Login page subtitle */
+    .dark p.text-gray-600 {
+        color: var(--text-secondary) !important;
+    }
 
-        /* Login form labels */
-        .dark label.text-gray-700 {
-            color: var(--text-secondary) !important;
-        }
+    /* Login form labels */
+    .dark label.text-gray-700 {
+        color: var(--text-secondary) !important;
+    }
 
-        /* Login form inputs */
-        .dark input[type="email"],
-        .dark input[type="password"] {
-            background-color: var(--login-input-bg) !important;
-            border-color: var(--border-primary) !important;
-            color: var(--text-primary) !important;
-        }
+    /* Login form inputs */
+    .dark input[type="email"],
+    .dark input[type="password"] {
+        background-color: var(--login-input-bg) !important;
+        border-color: var(--border-primary) !important;
+        color: var(--text-primary) !important;
+    }
 
-        .dark input[type="email"]::placeholder,
-        .dark input[type="password"]::placeholder {
-            color: var(--text-tertiary) !important;
-        }
+    .dark input[type="email"]::placeholder,
+    .dark input[type="password"]::placeholder {
+        color: var(--text-tertiary) !important;
+    }
 
-        .dark input[type="email"]:focus,
-        .dark input[type="password"]:focus {
-            border-color: var(--border-focus) !important;
-            background-color: var(--bg-tertiary) !important;
-        }
+    .dark input[type="email"]:focus,
+    .dark input[type="password"]:focus {
+        border-color: var(--border-focus) !important;
+        background-color: var(--bg-tertiary) !important;
+    }
 
-        /* Login button */
-        .dark button[type="submit"].bg-blue-600 {
-            background-color: var(--login-button-bg) !important;
-        }
+    /* Login button */
+    .dark button[type="submit"].bg-blue-600 {
+        background-color: var(--login-button-bg) !important;
+    }
 
-        .dark button[type="submit"].bg-blue-600:hover {
-            background-color: var(--login-button-hover) !important;
-        }
+    .dark button[type="submit"].bg-blue-600:hover {
+        background-color: var(--login-button-hover) !important;
+    }
 
-        /* Error messages */
-        .dark .text-red-600 {
-            color: #fca5a5 !important;
-        }
+    /* Error messages */
+    .dark .text-red-600 {
+        color: #fca5a5 !important;
+    }
 
-        .dark .bg-red-50 {
-            background-color: var(--status-danger-bg) !important;
-        }
+    .dark .bg-red-50 {
+        background-color: var(--status-danger-bg) !important;
+    }
 
-        .dark .border-red-200 {
-            border-color: #7f1d1d !important;
-        }
+    .dark .border-red-200 {
+        border-color: #7f1d1d !important;
+    }
 
-        .dark .text-red-700 {
-            color: var(--status-danger-text) !important;
-        }
+    .dark .text-red-700 {
+        color: var(--status-danger-text) !important;
+    }
 
-        /* Loading overlay */
-        .dark #loadingOverlay .bg-white {
-            background-color: var(--bg-elevated) !important;
-        }
+    /* Loading overlay */
+    .dark #loadingOverlay .bg-white {
+        background-color: var(--bg-elevated) !important;
+    }
 
-        .dark #loadingOverlay .text-gray-700 {
-            color: var(--text-primary) !important;
-        }
+    .dark #loadingOverlay .text-gray-700 {
+        color: var(--text-primary) !important;
+    }
 
-        /* Footer text */
-        .dark footer.text-gray-600 {
-            color: var(--text-tertiary) !important;
-        }
+    /* Footer text */
+    .dark footer.text-gray-600 {
+        color: var(--text-tertiary) !important;
+    }
 
-        /* Theme toggle button */
-        .dark .theme-toggle {
-            color: var(--text-secondary);
-            background-color: transparent;
-            border: 1px solid var(--border-primary);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+    /* Theme toggle button */
+    .dark .theme-toggle {
+        color: var(--text-secondary);
+        background-color: transparent;
+        border: 1px solid var(--border-primary);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
 
-        .theme-toggle {
-            color: var(--text-secondary);
-            background-color: transparent;
-            border: 1px solid var(--border-primary);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
+    .theme-toggle {
+        color: var(--text-secondary);
+        background-color: transparent;
+        border: 1px solid var(--border-primary);
+        border-radius: 0.5rem;
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
 
-        .dark .theme-toggle:hover {
-            background-color: var(--bg-tertiary);
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-        }
+    .dark .theme-toggle:hover {
+        background-color: var(--bg-tertiary);
+        border-color: var(--accent-blue);
+        color: var(--accent-blue);
+    }
 
-        /* Logo filter for dark mode - Invert black logo to white */
-        .dark img[alt*="logo"] {
-            filter: brightness(0) invert(1);
-            opacity: 0.9;
-        }
-
-        .dark .bg-red-50 {
-            background-color: var(--status-danger-bg) !important;
-        }
-
-        .dark .border-red-200 {
-            border-color: #7f1d1d !important;
-        }
-
-        .dark .text-red-700 {
-            color: var(--status-danger-text) !important;
-        }
-
-        /* Loading overlay */
-        .dark #loadingOverlay .bg-white {
-            background-color: var(--bg-elevated) !important;
-        }
-
-        .dark #loadingOverlay .text-gray-700 {
-            color: var(--text-primary) !important;
-        }
-
-        /* Footer text */
-        .dark footer.text-gray-600 {
-            color: var(--text-tertiary) !important;
-        }
-
-        /* Theme toggle button */
-        .dark .theme-toggle {
-            color: var(--text-secondary);
-            background-color: transparent;
-            border: 1px solid var(--border-primary);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .theme-toggle {
-            color: var(--text-secondary);
-            background-color: transparent;
-            border: 1px solid var(--border-primary);
-            border-radius: 0.5rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .dark .theme-toggle:hover {
-            background-color: var(--bg-tertiary);
-            border-color: var(--accent-blue);
-            color: var(--accent-blue);
-        }
-
-        /* Logo filter for dark mode - Invert black logo to white */
-        .dark img[alt*="logo"] {
-            filter: brightness(0) invert(1);
-            opacity: 0.9;
-        }        }
-
+    /* Logo filter for dark mode - Invert black logo to white */
+    .dark img[alt*="logo"] {
+        filter: brightness(0) invert(1);
+        opacity: 0.9;
+    }

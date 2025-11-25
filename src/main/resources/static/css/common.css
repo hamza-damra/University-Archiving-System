@@ -1067,6 +1067,38 @@ body {
             color: var(--text-primary) !important;
         }
 
+        /* Modal Buttons Dark Mode Support */
+        /* Primary button (Download, Submit, etc.) */
+        .dark .modal-footer button.bg-blue-600,
+        .dark button.bg-blue-600 {
+            background-color: var(--accent-blue) !important;
+            color: white !important;
+        }
+
+        .dark .modal-footer button.bg-blue-600:hover,
+        .dark button.bg-blue-600:hover {
+            background-color: var(--accent-blue-hover) !important;
+        }
+
+        /* Secondary button (Close, Cancel, etc.) */
+        .dark .modal-footer button.bg-gray-200,
+        .dark button.bg-gray-200 {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border-primary) !important;
+        }
+
+        .dark .modal-footer button.bg-gray-200:hover,
+        .dark button.bg-gray-200:hover {
+            background-color: var(--bg-secondary) !important;
+        }
+
+        /* Generic button text colors in dark mode */
+        .dark .modal-footer button.text-gray-800,
+        .dark button.text-gray-800 {
+            color: var(--text-primary) !important;
+        }
+
         /* ===================================
    DASHBOARD CONTENT DARK MODE OVERRIDES
    =================================== */

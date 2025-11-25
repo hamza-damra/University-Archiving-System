@@ -1010,17 +1010,17 @@ body {
 
     /* Navigation Tabs */
     .dark .nav-tab {
-        color: var(--text-secondary) !important;
+        color: #ffffff !important;
     }
 
     .dark .nav-tab:hover {
-        background-color: #3c3c3c !important;
+        background-color: #4285f4 !important;
         color: #ffffff !important;
     }
 
     .dark .nav-tab.active {
-        background-color: rgba(168, 85, 247, 0.2) !important;
-        color: var(--accent-blue) !important;
+        background-color: #4285f4 !important;
+        color: #ffffff !important;
     }
 
     /* Sidebar Footer (Logout) */

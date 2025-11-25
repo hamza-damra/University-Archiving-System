@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Indicator Timing Test</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        /* Fade-in animation for modals */
+        .fade-in {
+            animation: fadeIn 0.2s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        /* Smooth fade-in for loading indicators */
+        .loading-fade-in {
+            animation: loadingFadeIn 0.15s ease-in;
+        }
+        
+        @keyframes loadingFadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        
+        /* Screen reader only class */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        .test-result {
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 6px;
+            font-family: monospace;
+        }
+        
+        .test-pass {
+            background-color: #d1fae5;
+            color: #065f46;
+            border-left: 4px solid #10b981;
+        }
+        
+        .test-fail {
+            background-color: #fee2e2;
+            color: #991b1b;
+            border-left: 4px solid #ef4444;
+        }
+        
+        .test-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+            border-left: 4px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-6">Loading Indicator Timing Test</h1>
+        
+        <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Test Controls</h2>
+            
+            <div class="space-y-4">
+                <button id="testBasicTiming" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Test 1: Basic Loading Indicator Timing (≤100ms)
+                </button>
+                
+                <button id="testAnimation" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Test 2: Fade-in Animation
+                </button>
+                
+                <button id="testPersistence" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Test 3: Loading Persistence Until Content Loads
+                </button>
+                
+                <button id="testMultipleTypes" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Test 4: Different File Types
+                </button>
+                
+                <button id="testRetry" 
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Test 5: Loading on Retry
+                </button>
+                
+                <button id="runAllTests" 
+                        class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold">
+                    Run All Tests
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Test Results</h2>
+            <div id="testResults" class="space-y-2">
+                <p class="text-gray-600">Click a test button to run tests...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { FilePreviewModal } from './src/main/resources/static/js/file-preview-modal.js';
+        
+        const resultsContainer = document.getElementById('testResults');
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result test-${type}`;
+            div.textContent = message;
+            resultsContainer.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsContainer.innerHTML = '';
+        }
+        
+        function cleanupModals() {
+            const modals = document.querySelectorAll('.fixed.inset-0');
+            modals.forEach(modal => modal.remove());
+            delete window.filePreviewModal;
+        }
+        
+        // Mock fetch for testing
+        function setupMockFetch(delay = 500) {
+            window.fetch = async (url) => {
+                await new Promise(resolve => setTimeout(resolve, delay));
+                
+                if (url.includes('/metadata')) {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            success: true,
+                            data: {
+                                id: 1,
+                                fileName: 'test.txt',
+                                fileSize: 1024,
+                                mimeType: 'text/plain',
+                                uploadDate: new Date().toISOString(),
+                                uploaderName: 'Test User',
+                                departmentName: 'Test Department'
+                            }
+                        })
+                    };
+                } else if (url.includes('/content')) {
+                    return {
+                        ok: true,
+                        text: async () => 'Test content for preview'
+                    };
+                }
+                
+                return { ok: false, status: 404 };
+            };
+        }
+        
+        // Test 1: Basic timing
+        document.getElementById('testBasicTiming').addEventListener('click', async () => {
+            clearResults();
+            cleanupModals();
+            addResult('Test 1: Checking loading indicator timing...', 'info');
+            
+            setupMockFetch(500);
+            
+            const modal = new FilePreviewModal();
+            const startTime = performance.now();
+            
+            // Start opening modal
+            modal.open(1, 'test.txt', 'text/plain');
+            
+            // Check for loading indicator
+            let loadingTime = null;
+            const checkInterval = setInterval(() => {
+                const spinner = document.querySelector('.animate-spin');
+                const loadingText = document.querySelector('.preview-content');
+                
+                if (spinner && loadingText && loadingText.textContent.includes('Loading preview')) {
+                    loadingTime = performance.now() - startTime;
+                    clearInterval(checkInterval);
+                    
+                    if (loadingTime <= 100) {
+                        addResult(`✓ PASS: Loading indicator appeared in ${loadingTime.toFixed(2)}ms (≤100ms)`, 'pass');
+                    } else {
+                        addResult(`✗ FAIL: Loading indicator appeared in ${loadingTime.toFixed(2)}ms (should be ≤100ms)`, 'fail');
+                    }
+                    
+                    setTimeout(() => {
+                        modal.close();
+                        cleanupModals();
+                    }, 1000);
+                }
+            }, 5);
+            
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                if (loadingTime === null) {
+                    addResult('✗ FAIL: Loading indicator did not appear within 200ms', 'fail');
+                    modal.close();
+                    cleanupModals();
+                }
+            }, 200);
+        });
+        
+        // Test 2: Animation
+        document.getElementById('testAnimation').addEventListener('click', async () => {
+            clearResults();
+            cleanupModals();
+            addResult('Test 2: Checking fade-in animation...', 'info');
+            
+            setupMockFetch(500);
+            
+            const modal = new FilePreviewModal();
+            modal.open(1, 'test.txt', 'text/plain');
+            
+            setTimeout(() => {
+                const modalElement = document.querySelector('.fixed.inset-0');
+                const loadingContainer = document.querySelector('.loading-fade-in');
+                const spinner = document.querySelector('.animate-spin');
+                
+                let passed = true;
+                
+                if (!modalElement) {
+                    addResult('✗ FAIL: Modal element not found', 'fail');
+                    passed = false;
+                }
+                
+                if (!modalElement.classList.contains('fade-in')) {
+                    addResult('✗ FAIL: Modal missing fade-in class', 'fail');
+                    passed = false;
+                }
+                
+                if (!loadingContainer) {
+                    addResult('✗ FAIL: Loading container missing loading-fade-in class', 'fail');
+                    passed = false;
+                }
+                
+                if (!spinner) {
+                    addResult('✗ FAIL: Loading spinner not found', 'fail');
+                    passed = false;
+                }
+                
+                if (passed) {
+                    addResult('✓ PASS: Modal has fade-in animation', 'pass');
+                    addResult('✓ PASS: Loading indicator has loading-fade-in animation', 'pass');
+                    addResult('✓ PASS: Spinner has animate-spin class', 'pass');
+                }
+                
+                setTimeout(() => {
+                    modal.close();
+                    cleanupModals();
+                }, 1000);
+            }, 100);
+        });
+        
+        // Test 3: Persistence
+        document.getElementById('testPersistence').addEventListener('click', async () => {
+            clearResults();
+            cleanupModals();
+            addResult('Test 3: Checking loading persistence...', 'info');
+            
+            setupMockFetch(400);
+            
+            const modal = new FilePreviewModal();
+            modal.open(1, 'test.txt', 'text/plain');
+            
+            let checks = [];
+            
+            // Check at 50ms
+            setTimeout(() => {
+                const spinner1 = document.querySelector('.animate-spin');
+                checks.push({ time: 50, present: !!spinner1 });
+            }, 50);
+            
+            // Check at 150ms
+            setTimeout(() => {
+                const spinner2 = document.querySelector('.animate-spin');
+                checks.push({ time: 150, present: !!spinner2 });
+            }, 150);
+            
+            // Check at 250ms
+            setTimeout(() => {
+                const spinner3 = document.querySelector('.animate-spin');
+                checks.push({ time: 250, present: !!spinner3 });
+            }, 250);
+            
+            // Final check after content loads
+            setTimeout(() => {
+                const spinner4 = document.querySelector('.animate-spin');
+                const hasContent = document.querySelector('.preview-content pre') !== null;
+                
+                checks.forEach(check => {
+                    if (check.present) {
+                        addResult(`✓ PASS: Loading indicator present at ${check.time}ms`, 'pass');
+                    } else {
+                        addResult(`✗ FAIL: Loading indicator missing at ${check.time}ms`, 'fail');
+                    }
+                });
+                
+                if (!spinner4 || hasContent) {
+                    addResult('✓ PASS: Loading indicator removed after content loads', 'pass');
+                } else {
+                    addResult('✗ FAIL: Loading indicator still present after content loads', 'fail');
+                }
+                
+                setTimeout(() => {
+                    modal.close();
+                    cleanupModals();
+                }, 500);
+            }, 600);
+        });
+        
+        // Test 4: Multiple file types
+        document.getElementById('testMultipleTypes').addEventListener('click', async () => {
+            clearResults();
+            cleanupModals();
+            addResult('Test 4: Testing different file types...', 'info');
+            
+            setupMockFetch(300);
+            
+            const fileTypes = [
+                { type: 'text/plain', name: 'test.txt' },
+                { type: 'application/pdf', name: 'test.pdf' },
+                { type: 'text/javascript', name: 'test.js' },
+                { type: 'application/json', name: 'test.json' }
+            ];
+            
+            let currentIndex = 0;
+            
+            function testNextType() {
+                if (currentIndex >= fileTypes.length) {
+                    addResult('✓ All file types tested successfully', 'pass');
+                    return;
+                }
+                
+                const fileType = fileTypes[currentIndex];
+                const modal = new FilePreviewModal();
+                const startTime = performance.now();
+                
+                modal.open(1, fileType.name, fileType.type);
+                
+                setTimeout(() => {
+                    const spinner = document.querySelector('.animate-spin');
+                    const timeTaken = performance.now() - startTime;
+                    
+                    if (spinner && timeTaken <= 100) {
+                        addResult(`✓ PASS: ${fileType.type} - Loading in ${timeTaken.toFixed(2)}ms`, 'pass');
+                    } else {
+                        addResult(`✗ FAIL: ${fileType.type} - Loading in ${timeTaken.toFixed(2)}ms`, 'fail');
+                    }
+                    
+                    modal.close();
+                    cleanupModals();
+                    
+                    currentIndex++;
+                    setTimeout(testNextType, 100);
+                }, 50);
+            }
+            
+            testNextType();
+        });
+        
+        // Test 5: Retry
+        document.getElementById('testRetry').addEventListener('click', async () => {
+            clearResults();
+            cleanupModals();
+            addResult('Test 5: Testing loading on retry...', 'info');
+            
+            let callCount = 0;
+            window.fetch = async (url) => {
+                callCount++;
+                if (callCount === 1 && url.includes('/metadata')) {
+                    return { ok: false, status: 500 };
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                if (url.includes('/metadata')) {
+                    return {
+                        ok: true,
+                        json: async () => ({
+                            success: true,
+                            data: {
+                                id: 1,
+                                fileName: 'test.txt',
+                                fileSize: 1024,
+                                mimeType: 'text/plain',
+                                uploadDate: new Date().toISOString()
+                            }
+                        })
+                    };
+                }
+                
+                return { ok: false, status: 404 };
+            };
+            
+            const modal = new FilePreviewModal();
+            
+            try {
+                await modal.open(1, 'test.txt', 'text/plain');
+            } catch (e) {
+                addResult('First attempt failed as expected', 'info');
+            }
+            
+            setTimeout(() => {
+                const retryStartTime = performance.now();
+                modal.retryPreview();
+                
+                setTimeout(() => {
+                    const spinner = document.querySelector('.animate-spin');
+                    const timeTaken = performance.now() - retryStartTime;
+                    
+                    if (spinner && timeTaken <= 100) {
+                        addResult(`✓ PASS: Retry loading in ${timeTaken.toFixed(2)}ms`, 'pass');
+                    } else {
+                        addResult(`✗ FAIL: Retry loading in ${timeTaken.toFixed(2)}ms`, 'fail');
+                    }
+                    
+                    setTimeout(() => {
+                        modal.close();
+                        cleanupModals();
+                    }, 1000);
+                }, 50);
+            }, 200);
+        });
+        
+        // Run all tests
+        document.getElementById('runAllTests').addEventListener('click', async () => {
+            clearResults();
+            addResult('Running all tests...', 'info');
+            
+            const tests = [
+                'testBasicTiming',
+                'testAnimation',
+                'testPersistence',
+                'testMultipleTypes',
+                'testRetry'
+            ];
+            
+            for (const testId of tests) {
+                await new Promise(resolve => {
+                    document.getElementById(testId).click();
+                    setTimeout(resolve, 3000);
+                });
+            }
+            
+            addResult('All tests completed!', 'info');
+        });
+    </script>
+</body>
+</html>

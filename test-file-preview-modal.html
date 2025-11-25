@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Preview Modal Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .fade-in {
+            animation: fadeIn 0.2s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+            File Preview Modal Demo
+        </h1>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Test File Preview Modal
+            </h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                Click the buttons below to test the file preview modal with different file types.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="testPreview(1, 'document.pdf', 'application/pdf')"
+                        class="px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                    Preview PDF File
+                </button>
+                
+                <button onclick="testPreview(2, 'report.docx', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')"
+                        class="px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                    Preview Word Document
+                </button>
+                
+                <button onclick="testPreview(3, 'code.js', 'text/javascript')"
+                        class="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors">
+                    Preview JavaScript File
+                </button>
+                
+                <button onclick="testPreview(4, 'notes.txt', 'text/plain')"
+                        class="px-4 py-3 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors">
+                    Preview Text File
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Test Download Functionality
+            </h2>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                Test the download button in the preview modal. Open a preview and click the download button.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <button onclick="testDownload(5, 'spreadsheet.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')"
+                        class="px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                    Test Download Excel File
+                </button>
+                
+                <button onclick="testDownload(6, 'image.png', 'image/png')"
+                        class="px-4 py-3 bg-pink-600 text-white rounded-lg hover:bg-pink-700 transition-colors">
+                    Test Download Image File
+                </button>
+                
+                <button onclick="testDownload(7, 'archive.zip', 'application/zip')"
+                        class="px-4 py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors">
+                    Test Download ZIP File
+                </button>
+                
+                <button onclick="testDownload(8, 'video.mp4', 'video/mp4')"
+                        class="px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">
+                    Test Download Video File
+                </button>
+            </div>
+        </div>
+        
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                Event Log
+            </h2>
+            <div id="eventLog" class="bg-gray-100 dark:bg-gray-900 rounded p-4 h-64 overflow-y-auto font-mono text-sm">
+                <div class="text-gray-600 dark:text-gray-400">Events will appear here...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <script type="module">
+        import { FilePreviewModal } from './src/main/resources/static/js/file-preview-modal.js';
+        
+        // Mock fetch for demo
+        window.fetch = async (url) => {
+            const fileId = url.match(/files\/(\d+)/)?.[1];
+            
+            if (url.includes('/metadata')) {
+                return {
+                    ok: true,
+                    status: 200,
+                    json: async () => ({
+                        success: true,
+                        data: {
+                            id: parseInt(fileId),
+                            fileName: `file_${fileId}.txt`,
+                            mimeType: 'text/plain',
+                            fileSize: Math.floor(Math.random() * 1000000) + 1000,
+                            uploadDate: new Date().toISOString(),
+                            uploaderName: 'Demo User',
+                            uploaderEmail: 'demo@example.com',
+                            departmentName: 'Computer Science',
+                            previewable: true
+                        }
+                    })
+                };
+            }
+            
+            if (url.includes('/download')) {
+                logEvent('Download', `Download request for file ${fileId}`);
+                return {
+                    ok: true,
+                    status: 200,
+                    blob: async () => new Blob(['Demo file content for download'], { type: 'application/octet-stream' })
+                };
+            }
+            
+            return {
+                ok: true,
+                status: 200,
+                blob: async () => new Blob(['Demo content'])
+            };
+        };
+        
+        // Create modal instance
+        const modal = new FilePreviewModal({
+            onDownload: async (fileId, fileName) => {
+                logEvent('Download', `File ${fileId}: ${fileName}`);
+            },
+            onClose: () => {
+                logEvent('Close', 'Modal closed by user');
+            }
+        });
+        
+        // Listen for modal events
+        document.addEventListener('preview:opened', (e) => {
+            logEvent('Opened', `File ${e.detail.fileId}: ${e.detail.fileName}`);
+        });
+        
+        document.addEventListener('preview:loaded', (e) => {
+            logEvent('Loaded', `Content loaded for file ${e.detail.fileId}`);
+        });
+        
+        document.addEventListener('preview:closed', (e) => {
+            logEvent('Closed', 'Modal closed');
+        });
+        
+        document.addEventListener('preview:error', (e) => {
+            logEvent('Error', e.detail.error);
+        });
+        
+        // Test function
+        window.testPreview = async (fileId, fileName, fileType) => {
+            logEvent('Test', `Opening preview for ${fileName}`);
+            await modal.open(fileId, fileName, fileType);
+        };
+        
+        // Test download function
+        window.testDownload = async (fileId, fileName, fileType) => {
+            logEvent('Test', `Opening preview for ${fileName} (download test)`);
+            await modal.open(fileId, fileName, fileType);
+            logEvent('Info', 'Click the download button in the modal header to test download');
+        };
+        
+        // Event logging
+        function logEvent(type, message) {
+            const log = document.getElementById('eventLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const entry = document.createElement('div');
+            entry.className = 'mb-1';
+            
+            const typeColors = {
+                'Test': 'text-blue-600 dark:text-blue-400',
+                'Opened': 'text-green-600 dark:text-green-400',
+                'Loaded': 'text-green-600 dark:text-green-400',
+                'Closed': 'text-gray-600 dark:text-gray-400',
+                'Download': 'text-purple-600 dark:text-purple-400',
+                'Error': 'text-red-600 dark:text-red-400'
+            };
+            
+            entry.innerHTML = `
+                <span class="text-gray-500">[${timestamp}]</span>
+                <span class="${typeColors[type] || 'text-gray-600'}">${type}:</span>
+                <span class="text-gray-900 dark:text-gray-100">${message}</span>
+            `;
+            
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        window.logEvent = logEvent;
+        
+        logEvent('Ready', 'File Preview Modal demo loaded');
+    </script>
+</body>
+</html>

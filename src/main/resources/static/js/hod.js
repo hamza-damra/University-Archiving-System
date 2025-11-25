@@ -41,6 +41,22 @@ const filterCourse = document.getElementById('filterCourse');
 const filterDocType = document.getElementById('filterDocType');
 const filterStatus = document.getElementById('filterStatus');
 
+// Modern Dropdown Functions
+function initializeModernDropdowns() {
+    if (typeof initModernDropdowns === 'function') {
+        initModernDropdowns('#academicYearSelect, #semesterSelect');
+    }
+}
+
+function refreshDropdowns() {
+    if (academicYearSelect && academicYearSelect._modernDropdown) {
+        academicYearSelect._modernDropdown.refresh();
+    }
+    if (semesterSelect && semesterSelect._modernDropdown) {
+        semesterSelect._modernDropdown.refresh();
+    }
+}
+
 // Initialize
 hodName.textContent = userInfo.fullName;
 loadAcademicYears();
@@ -49,6 +65,9 @@ initializeFileExplorer();
 initializeTabSwitching();
 initializeReportButtons();
 initializeSidebar();
+
+// Initialize modern dropdowns after a short delay
+setTimeout(initializeModernDropdowns, 100);
 
 // Sidebar Toggle
 function initializeSidebar() {
@@ -247,12 +266,16 @@ async function loadAcademicYears() {
             </option>`
         ).join('');
         
+        // Refresh modern dropdown
+        refreshDropdowns();
+        
         selectedAcademicYear = activeYear.id;
         await loadSemesters(activeYear.id);
     } catch (error) {
         console.error('Error loading academic years:', error);
         showToast('Failed to load academic years', 'error');
         academicYearSelect.innerHTML = '<option value="">Error loading academic years</option>';
+        refreshDropdowns();
     }
 }
 
@@ -261,10 +284,12 @@ async function loadSemesters(academicYearId) {
     try {
         semesterSelect.disabled = true;
         semesterSelect.innerHTML = '<option value="">Loading semesters...</option>';
+        refreshDropdowns();
         
         const year = academicYears.find(y => y.id === academicYearId);
         if (!year || !year.semesters) {
             semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+            refreshDropdowns();
             return;
         }
         
@@ -272,6 +297,7 @@ async function loadSemesters(academicYearId) {
         
         if (semesters.length === 0) {
             semesterSelect.innerHTML = '<option value="">No semesters available</option>';
+            refreshDropdowns();
             return;
         }
         
@@ -286,6 +312,7 @@ async function loadSemesters(academicYearId) {
         ).join('');
         
         semesterSelect.disabled = false;
+        refreshDropdowns();
         
         // Auto-select first semester and load data
         if (semesters.length > 0) {
@@ -296,6 +323,7 @@ async function loadSemesters(academicYearId) {
         console.error('Error loading semesters:', error);
         showToast('Failed to load semesters', 'error');
         semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+        refreshDropdowns();
     }
 }
 

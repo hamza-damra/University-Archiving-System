@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive Layout Property-Based Tests</title>
+    
+    <!-- File Preview Modal CSS -->
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        
+        .test-header {
+            background: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007acc;
+        }
+        
+        .test-header h1 {
+            margin: 0 0 10px 0;
+            color: #4ec9b0;
+        }
+        
+        .test-output {
+            background: #1e1e1e;
+            border: 1px solid #3e3e42;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        
+        .test-output pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .passed {
+            color: #4ec9b0;
+        }
+        
+        .failed {
+            color: #f48771;
+        }
+        
+        .running {
+            color: #dcdcaa;
+        }
+        
+        .summary {
+            background: #252526;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            border-left: 4px solid #4ec9b0;
+        }
+        
+        .summary.has-failures {
+            border-left-color: #f48771;
+        }
+        
+        .button {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        
+        .button:hover {
+            background: #005a9e;
+        }
+        
+        .button:disabled {
+            background: #3e3e42;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <h1>🧪 Responsive Layout Property-Based Tests</h1>
+        <p><strong>Feature:</strong> file-preview-system</p>
+        <p><strong>Property 18:</strong> Responsive layout adaptation</p>
+        <p><strong>Validates:</strong> Requirements 9.2</p>
+        <p style="margin-top: 10px; color: #858585;">
+            Tests that the preview modal adapts its layout appropriately for different viewport sizes
+        </p>
+        <div style="margin-top: 15px;">
+            <button class="button" onclick="runAllTests()" id="runButton">Run Tests</button>
+            <button class="button" onclick="clearOutput()">Clear Output</button>
+        </div>
+    </div>
+
+    <div class="test-output" id="output">
+        <pre id="outputContent">Click "Run Tests" to start property-based testing...</pre>
+    </div>
+
+    <div class="summary" id="summary" style="display: none;">
+        <h3 style="margin-top: 0;">Test Summary</h3>
+        <div id="summaryContent"></div>
+    </div>
+
+    <script type="module">
+        import fc from 'https://cdn.jsdelivr.net/npm/fast-check@3.15.0/+esm';
+        
+        // Make fc available globally
+        window.fc = fc;
+        
+        // Capture console output
+        const originalLog = console.log;
+        const originalError = console.error;
+        const outputElement = document.getElementById('outputContent');
+        
+        function appendOutput(message, className = '') {
+            const span = document.createElement('span');
+            span.className = className;
+            span.textContent = message + '\n';
+            outputElement.appendChild(span);
+            outputElement.parentElement.scrollTop = outputElement.parentElement.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            const message = args.join(' ');
+            appendOutput(message, message.includes('✓') ? 'passed' : message.includes('✗') ? 'failed' : '');
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            const message = args.join(' ');
+            appendOutput(message, 'failed');
+            originalError.apply(console, args);
+        };
+        
+        // Load and run tests
+        window.runAllTests = async function() {
+            const runButton = document.getElementById('runButton');
+            runButton.disabled = true;
+            runButton.textContent = 'Running...';
+            
+            outputElement.innerHTML = '';
+            document.getElementById('summary').style.display = 'none';
+            
+            try {
+                // Import test module
+                const module = await import('./responsive-layout-pbt.test.js');
+                
+                // Run tests
+                const results = await module.runTests();
+                
+                // Display summary
+                const summaryDiv = document.getElementById('summary');
+                const summaryContent = document.getElementById('summaryContent');
+                
+                summaryDiv.style.display = 'block';
+                if (results.failedCount > 0) {
+                    summaryDiv.classList.add('has-failures');
+                } else {
+                    summaryDiv.classList.remove('has-failures');
+                }
+                
+                summaryContent.innerHTML = `
+                    <p><strong>Total Tests:</strong> ${results.passedCount + results.failedCount}</p>
+                    <p class="passed"><strong>Passed:</strong> ${results.passedCount}</p>
+                    <p class="failed"><strong>Failed:</strong> ${results.failedCount}</p>
+                    ${results.failedCount === 0 ? '<p class="passed">🎉 All property tests passed!</p>' : '<p class="failed">⚠️ Some tests failed. Check output above for details.</p>'}
+                `;
+                
+            } catch (error) {
+                console.error('Error running tests:', error);
+                appendOutput(`\nFatal error: ${error.message}`, 'failed');
+            } finally {
+                runButton.disabled = false;
+                runButton.textContent = 'Run Tests';
+            }
+        };
+        
+        window.clearOutput = function() {
+            outputElement.innerHTML = 'Click "Run Tests" to start property-based testing...';
+            document.getElementById('summary').style.display = 'none';
+        };
+    </script>
+</body>
+</html>

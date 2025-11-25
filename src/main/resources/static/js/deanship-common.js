@@ -99,6 +99,11 @@ export class DeanshipLayout {
             // Display user info
             this.displayUserInfo();
 
+            // Initialize modern dropdowns
+            if (typeof window.initModernDropdowns === 'function') {
+                window.initModernDropdowns();
+            }
+
             // Load academic years
             await this.loadAcademicYears();
 
@@ -165,6 +170,11 @@ export class DeanshipLayout {
             }
             select.appendChild(option);
         });
+        
+        // Refresh modern dropdown
+        if (typeof window.refreshModernDropdown === 'function') {
+            window.refreshModernDropdown(select);
+        }
     }
 
     /**
@@ -200,6 +210,11 @@ export class DeanshipLayout {
             option.textContent = `${semester.name} (${semester.startDate} - ${semester.endDate})`;
             select.appendChild(option);
         });
+        
+        // Refresh modern dropdown
+        if (typeof window.refreshModernDropdown === 'function') {
+            window.refreshModernDropdown(select);
+        }
     }
 
     /**

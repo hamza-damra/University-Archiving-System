@@ -1477,3 +1477,1292 @@ body {
         filter: brightness(0) invert(1);
         opacity: 0.9;
     }
+
+/* ===================================
+   FILE PREVIEW MODAL RESPONSIVE DESIGN
+   =================================== */
+
+/* Desktop (default) - already defined in modal structure */
+
+/* Tablet breakpoint (768px - 1023px) */
+@media (max-width: 1023px) {
+    /* Modal container adjustments */
+    [role="dialog"] > div {
+        max-width: 90vw !important;
+        max-height: 85vh !important;
+    }
+
+    /* Modal header - stack elements on smaller tablets */
+    [role="dialog"] .flex.items-center.justify-between {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Preview metadata - wrap badges */
+    .preview-metadata {
+        flex-wrap: wrap;
+        gap: 0.25rem !important;
+    }
+
+    /* Modal content area - adjust padding */
+    .preview-content {
+        padding: 1rem !important;
+    }
+
+    /* Search bar - adjust spacing */
+    #preview-search-bar {
+        padding: 0.75rem !important;
+    }
+
+    #preview-search-bar .flex {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Button sizes - ensure touch-friendly */
+    [role="dialog"] button {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.625rem !important;
+    }
+
+    /* Text buttons with labels */
+    [role="dialog"] button:not([aria-label]) {
+        padding: 0.625rem 1rem !important;
+    }
+
+    /* PDF renderer controls */
+    .pdf-controls {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    /* Code renderer - adjust font size */
+    .code-preview pre {
+        font-size: 0.875rem !important;
+    }
+
+    /* Text renderer - adjust font size */
+    .text-preview {
+        font-size: 0.9375rem !important;
+    }
+}
+
+/* Mobile breakpoint (max-width: 767px) */
+@media (max-width: 767px) {
+    /* Modal container - full screen on mobile */
+    [role="dialog"] {
+        padding: 0 !important;
+    }
+
+    [role="dialog"] > div {
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        height: 100vh !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Modal header - vertical layout */
+    [role="dialog"] .flex.items-center.justify-between {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem !important;
+        gap: 0.75rem;
+    }
+
+    /* Title section - full width */
+    [role="dialog"] .flex-1.min-w-0 {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    /* Modal title - smaller font */
+    #preview-modal-title {
+        font-size: 1rem !important;
+        line-height: 1.5rem !important;
+    }
+
+    /* Action buttons container - full width */
+    [role="dialog"] .flex.items-center.gap-2 {
+        width: 100%;
+        justify-content: flex-end;
+        margin-left: 0 !important;
+    }
+
+    /* Metadata badges - smaller text */
+    .preview-metadata {
+        font-size: 0.6875rem !important;
+    }
+
+    /* Modal content area - minimal padding */
+    .preview-content {
+        padding: 0.75rem !important;
+    }
+
+    /* Search bar - vertical layout */
+    #preview-search-bar {
+        padding: 0.75rem !important;
+    }
+
+    #preview-search-bar .flex {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    #preview-search-bar .flex-1 {
+        width: 100%;
+    }
+
+    #preview-search-bar .flex.items-center.gap-1 {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    /* Search count - adjust positioning */
+    #preview-search-count {
+        min-width: auto !important;
+        flex: 1;
+    }
+
+    /* Touch-friendly button sizes (minimum 44x44px) */
+    [role="dialog"] button {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 0.75rem !important;
+        touch-action: manipulation;
+    }
+
+    /* Text buttons with labels - larger padding */
+    [role="dialog"] button:not([aria-label]) {
+        padding: 0.75rem 1.25rem !important;
+        font-size: 0.9375rem !important;
+    }
+
+    /* Large file warning - adjust layout */
+    .preview-content .flex.flex-col.items-center {
+        padding: 2rem 1rem !important;
+    }
+
+    .preview-content .flex.flex-col.items-center svg {
+        width: 3rem !important;
+        height: 3rem !important;
+    }
+
+    .preview-content .flex.flex-col.items-center .text-lg {
+        font-size: 1rem !important;
+    }
+
+    .preview-content .flex.flex-col.items-center .text-sm {
+        font-size: 0.8125rem !important;
+    }
+
+    /* Action buttons - stack vertically on mobile */
+    .preview-content .flex.flex-col.sm\\:flex-row,
+    .preview-content .flex.gap-2,
+    .preview-content .flex.gap-3 {
+        flex-direction: column !important;
+        width: 100%;
+    }
+
+    .preview-content .flex.flex-col.sm\\:flex-row button,
+    .preview-content .flex.gap-2 button,
+    .preview-content .flex.gap-3 button {
+        width: 100%;
+    }
+
+    /* PDF renderer - adjust controls */
+    .pdf-controls {
+        flex-direction: column;
+        gap: 0.5rem;
+        padding: 0.75rem !important;
+    }
+
+    .pdf-controls button {
+        width: 100%;
+    }
+
+    .pdf-page-info {
+        order: -1;
+        text-align: center;
+        width: 100%;
+        padding: 0.5rem;
+    }
+
+    /* PDF canvas - full width */
+    .pdf-canvas-container {
+        width: 100% !important;
+        overflow-x: auto;
+    }
+
+    .pdf-canvas-container canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Code renderer - smaller font and line numbers */
+    .code-preview pre {
+        font-size: 0.75rem !important;
+        line-height: 1.4 !important;
+    }
+
+    .code-preview .line-numbers {
+        font-size: 0.6875rem !important;
+    }
+
+    /* Text renderer - adjust font size */
+    .text-preview {
+        font-size: 0.875rem !important;
+        line-height: 1.5 !important;
+    }
+
+    /* Office renderer - adjust iframe */
+    .office-preview iframe {
+        width: 100% !important;
+        min-height: 60vh !important;
+    }
+
+    /* Error state - adjust icon and text */
+    .preview-content .flex.flex-col.items-center.justify-center svg {
+        width: 3rem !important;
+        height: 3rem !important;
+    }
+
+    /* Loading spinner - adjust size */
+    .preview-content .animate-spin {
+        width: 3rem !important;
+        height: 3rem !important;
+    }
+
+    /* Scrollbar - thinner on mobile */
+    .preview-content::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+    }
+}
+
+/* Small mobile breakpoint (max-width: 374px) */
+@media (max-width: 374px) {
+    /* Further reduce padding */
+    [role="dialog"] .flex.items-center.justify-between {
+        padding: 0.75rem !important;
+    }
+
+    .preview-content {
+        padding: 0.5rem !important;
+    }
+
+    /* Smaller title */
+    #preview-modal-title {
+        font-size: 0.9375rem !important;
+    }
+
+    /* Smaller buttons */
+    [role="dialog"] button {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 0.625rem !important;
+    }
+
+    /* Smaller icons */
+    [role="dialog"] button svg {
+        width: 1rem !important;
+        height: 1rem !important;
+    }
+
+    /* Code renderer - even smaller font */
+    .code-preview pre {
+        font-size: 0.6875rem !important;
+    }
+
+    /* Text renderer - smaller font */
+    .text-preview {
+        font-size: 0.8125rem !important;
+    }
+}
+
+/* Landscape orientation adjustments for mobile */
+@media (max-width: 767px) and (orientation: landscape) {
+    /* Reduce header height in landscape */
+    [role="dialog"] .flex.items-center.justify-between {
+        padding: 0.5rem 1rem !important;
+    }
+
+    /* Maximize content area */
+    .preview-content {
+        max-height: calc(100vh - 120px) !important;
+    }
+
+    /* Hide metadata in landscape to save space */
+    .preview-metadata {
+        display: none !important;
+    }
+
+    /* Compact search bar */
+    #preview-search-bar {
+        padding: 0.5rem !important;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    /* Ensure all interactive elements are touch-friendly */
+    [role="dialog"] button,
+    [role="dialog"] input,
+    [role="dialog"] select {
+        min-height: 44px;
+        touch-action: manipulation;
+    }
+
+    /* Larger tap targets for links */
+    [role="dialog"] a {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* Remove hover effects on touch devices */
+    [role="dialog"] button:hover {
+        transform: none !important;
+    }
+
+    /* Add active state for touch feedback */
+    [role="dialog"] button:active {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    /* Improve scrolling performance */
+    .preview-content {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+}
+
+/* High DPI displays (Retina) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    /* Sharper text rendering */
+    .preview-content {
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Adjust canvas rendering for PDF */
+    .pdf-canvas-container canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* Reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+    /* Disable animations for users who prefer reduced motion */
+    [role="dialog"],
+    [role="dialog"] * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    /* Keep essential transitions */
+    [role="dialog"] button:active {
+        transition: opacity 0.1s ease;
+    }
+}
+
+/* Print styles for preview modal */
+@media print {
+    /* Hide modal chrome when printing */
+    [role="dialog"] .flex.items-center.justify-between,
+    [role="dialog"] .preview-backdrop,
+    #preview-search-bar {
+        display: none !important;
+    }
+
+    /* Full width content */
+    [role="dialog"] > div {
+        max-width: 100% !important;
+        max-height: none !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .preview-content {
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* Ensure content is visible */
+    .preview-content * {
+        color: black !important;
+        background: white !important;
+    }
+}
+
+/* ===================================
+   MODERN DROPDOWN/SELECT COMPONENT
+   JavaScript-powered custom dropdown
+   =================================== */
+
+/* Modern Dropdown Wrapper */
+.modern-dropdown-wrapper {
+    position: relative;
+    display: block;
+    width: 100%;
+    z-index: 100;
+}
+
+.modern-dropdown-wrapper.open {
+    z-index: 1000;
+}
+
+/* Dropdown Toggle Button */
+.modern-dropdown-toggle {
+    position: relative;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    min-height: 48px;
+    width: 100%;
+    padding: 0.875rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    text-align: left;
+    border: 1.5px solid var(--border-primary);
+    border-radius: 0.75rem;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.modern-dropdown-toggle:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-secondary);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.modern-dropdown-toggle:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15),
+                0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+.modern-dropdown-wrapper.open .modern-dropdown-toggle {
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15),
+                0 4px 12px rgba(59, 130, 246, 0.2);
+}
+
+/* Dropdown Text */
+.modern-dropdown-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modern-dropdown-text.placeholder {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* Dropdown Arrow */
+.modern-dropdown-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-dropdown-arrow svg {
+    width: 100%;
+    height: 100%;
+    stroke: var(--text-tertiary);
+    transition: stroke 200ms ease;
+}
+
+.modern-dropdown-toggle:hover .modern-dropdown-arrow svg {
+    stroke: var(--accent-blue);
+}
+
+.modern-dropdown-wrapper.open .modern-dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+.modern-dropdown-wrapper.open .modern-dropdown-arrow svg {
+    stroke: var(--accent-blue);
+}
+
+/* Dropdown Menu */
+.modern-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    padding: 0.5rem;
+    background-color: var(--bg-primary);
+    border: 1.5px solid var(--border-primary);
+    border-radius: 0.75rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15),
+                0 4px 12px rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 1001;
+}
+
+.modern-dropdown-wrapper.open .modern-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+/* Menu Arrow/Pointer */
+.modern-dropdown-menu::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: 24px;
+    width: 12px;
+    height: 12px;
+    background-color: var(--bg-primary);
+    border-left: 1.5px solid var(--border-primary);
+    border-top: 1.5px solid var(--border-primary);
+    transform: rotate(45deg);
+    z-index: 1;
+}
+
+/* Dropdown Option */
+.modern-dropdown-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin: 2px 0;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    text-align: left;
+    color: var(--text-primary);
+    background-color: transparent;
+    border: none;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.modern-dropdown-option:hover,
+.modern-dropdown-option:focus {
+    outline: none;
+    background-color: var(--accent-blue);
+    color: #ffffff;
+}
+
+.modern-dropdown-option.placeholder {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.modern-dropdown-option.placeholder:hover {
+    background-color: var(--bg-tertiary);
+    color: var(--text-tertiary);
+}
+
+.modern-dropdown-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.modern-dropdown-option.disabled:hover {
+    background-color: transparent;
+    color: var(--text-tertiary);
+}
+
+/* Selected Option */
+.modern-dropdown-option.selected {
+    background-color: rgba(59, 130, 246, 0.1);
+    color: var(--accent-blue);
+}
+
+.modern-dropdown-option.selected:hover,
+.modern-dropdown-option.selected:focus {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+}
+
+/* Option Text */
+.modern-dropdown-option .option-text {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Check Icon */
+.modern-dropdown-option .option-check {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: all 150ms ease;
+}
+
+.modern-dropdown-option .option-check svg {
+    width: 100%;
+    height: 100%;
+    stroke: var(--accent-blue);
+}
+
+.modern-dropdown-option.selected .option-check {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.modern-dropdown-option.selected:hover .option-check svg,
+.modern-dropdown-option.selected:focus .option-check svg {
+    stroke: #ffffff;
+}
+
+/* Dark Mode Styles */
+.dark .modern-dropdown-toggle {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+.dark .modern-dropdown-toggle:hover {
+    background-color: var(--bg-primary);
+    border-color: var(--accent-blue);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+}
+
+.dark .modern-dropdown-menu {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5),
+                0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dark .modern-dropdown-menu::before {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+.dark .modern-dropdown-option:hover,
+.dark .modern-dropdown-option:focus {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+}
+
+.dark .modern-dropdown-option.selected {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: var(--accent-blue);
+}
+
+.dark .modern-dropdown-option.placeholder:hover {
+    background-color: var(--bg-primary);
+}
+
+/* Scrollbar Styling for Dropdown Menu */
+.modern-dropdown-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modern-dropdown-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.modern-dropdown-menu::-webkit-scrollbar-thumb {
+    background-color: var(--border-primary);
+    border-radius: 3px;
+}
+
+.modern-dropdown-menu::-webkit-scrollbar-thumb:hover {
+    background-color: var(--text-tertiary);
+}
+
+/* ===================================
+   NATIVE SELECT FALLBACK STYLING
+   (Enhanced native selects)
+   =================================== */
+
+/* Hide native checkbox inputs */
+[type="checkbox"].dropdown-toggle:checked,
+[type="checkbox"].dropdown-toggle:not(:checked) {
+    position: absolute;
+    left: -9999px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Custom Dropdown Wrapper */
+.custom-dropdown {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    z-index: 100;
+}
+
+/* Dropdown Toggle Button/Label */
+.custom-dropdown .dropdown-toggle-label {
+    position: relative;
+    font-family: 'Inter', 'Roboto', sans-serif;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    min-height: 48px;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0.75rem;
+    width: 100%;
+    letter-spacing: 0.025em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border: 1.5px solid var(--border-primary);
+    background-color: var(--bg-tertiary);
+    cursor: pointer;
+    color: var(--text-primary);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.custom-dropdown .dropdown-toggle-label:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-secondary);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+/* Arrow Icon */
+.custom-dropdown .dropdown-toggle-label .dropdown-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.custom-dropdown .dropdown-toggle-label .dropdown-arrow svg {
+    width: 20px;
+    height: 20px;
+    stroke: var(--text-tertiary);
+    transition: stroke 200ms ease;
+}
+
+.custom-dropdown .dropdown-toggle-label:hover .dropdown-arrow svg {
+    stroke: var(--accent-blue);
+}
+
+/* Rotate arrow when open */
+.dropdown-toggle:checked + .dropdown-toggle-label .dropdown-arrow {
+    transform: rotate(180deg);
+}
+
+/* Dropdown backdrop for closing */
+.dropdown-toggle:checked + .dropdown-toggle-label::before,
+.dropdown-toggle:not(:checked) + .dropdown-toggle-label::before {
+    position: fixed;
+    top: 0;
+    left: 0;
+    content: '';
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    cursor: auto;
+    pointer-events: none;
+}
+
+.dropdown-toggle:checked + .dropdown-toggle-label::before {
+    pointer-events: auto;
+}
+
+/* Dropdown Menu */
+.custom-dropdown .dropdown-menu {
+    position: absolute;
+    padding: 0.5rem;
+    background-color: var(--bg-tertiary);
+    top: calc(100% + 8px);
+    left: 0;
+    width: 100%;
+    border-radius: 0.75rem;
+    display: block;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25),
+                0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-10px);
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid var(--border-primary);
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+/* Show dropdown when checked */
+.dropdown-toggle:checked ~ .dropdown-menu {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+}
+
+/* Arrow pointer on dropdown */
+.custom-dropdown .dropdown-menu::after {
+    position: absolute;
+    top: -6px;
+    left: 24px;
+    width: 12px;
+    height: 12px;
+    background-color: var(--bg-tertiary);
+    border-left: 1px solid var(--border-primary);
+    border-top: 1px solid var(--border-primary);
+    content: '';
+    display: block;
+    z-index: 2;
+    transform: rotate(45deg);
+    transition: all 200ms linear;
+}
+
+/* Dropdown Items */
+.custom-dropdown .dropdown-item {
+    position: relative;
+    color: var(--text-primary);
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    font-family: 'Inter', 'Roboto', sans-serif;
+    font-weight: 500;
+    font-size: 0.9375rem;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    margin: 2px 0;
+    text-align: left;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    width: 100%;
+}
+
+.custom-dropdown .dropdown-item:hover {
+    color: #ffffff;
+    background-color: var(--accent-blue);
+}
+
+.custom-dropdown .dropdown-item.selected {
+    background-color: var(--accent-blue-light);
+    color: var(--accent-blue);
+}
+
+.custom-dropdown .dropdown-item.selected::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accent-blue);
+}
+
+/* Dropdown item icons */
+.custom-dropdown .dropdown-item .item-icon {
+    width: 18px;
+    height: 18px;
+    opacity: 0;
+    transition: opacity 200ms ease, transform 200ms ease;
+    transform: translateX(-5px);
+}
+
+.custom-dropdown .dropdown-item:hover .item-icon {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+/* Placeholder text styling */
+.custom-dropdown .dropdown-placeholder {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* ===================================
+   NATIVE SELECT MODERN STYLING
+   (Fallback & for forms)
+   =================================== */
+
+/* Modern select styling */
+select,
+.modern-select,
+#academicYearSelect,
+#semesterSelect,
+#filterCourse,
+#filterDocType,
+#filterStatus,
+#filterDepartment,
+#filterProfessor,
+.filter-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 100%;
+    padding: 0.875rem 2.75rem 0.875rem 1rem;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: var(--text-primary);
+    background-color: var(--bg-tertiary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.875rem center;
+    background-size: 1.25rem 1.25rem;
+    border: 1.5px solid var(--border-primary);
+    border-radius: 0.75rem;
+    cursor: pointer;
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    min-height: 48px;
+}
+
+/* Select hover state */
+select:hover,
+.modern-select:hover,
+#academicYearSelect:hover,
+#semesterSelect:hover,
+#filterCourse:hover,
+#filterDocType:hover,
+#filterStatus:hover,
+#filterDepartment:hover,
+#filterProfessor:hover,
+.filter-select:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-secondary);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* Select focus state */
+select:focus,
+.modern-select:focus,
+#academicYearSelect:focus,
+#semesterSelect:focus,
+#filterCourse:focus,
+#filterDocType:focus,
+#filterStatus:focus,
+#filterDepartment:focus,
+#filterProfessor:focus,
+.filter-select:focus {
+    outline: none;
+    border-color: var(--accent-blue);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15),
+                0 4px 12px rgba(59, 130, 246, 0.2);
+    background-color: var(--bg-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* Select with value selected (non-placeholder) */
+select:not([value=""]),
+.modern-select.has-value {
+    color: var(--text-primary);
+}
+
+/* Placeholder/disabled option styling */
+select option:disabled,
+select option[value=""] {
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+/* Option styling */
+select option {
+    padding: 0.875rem 1rem;
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+    font-weight: 500;
+    border-radius: 0;
+}
+
+select option:checked {
+    background: linear-gradient(0deg, var(--accent-blue) 0%, var(--accent-blue) 100%);
+    color: #ffffff;
+}
+
+/* Dark mode modern select */
+.dark select,
+.dark .modern-select,
+.dark #academicYearSelect,
+.dark #semesterSelect,
+.dark #filterCourse,
+.dark #filterDocType,
+.dark #filterStatus,
+.dark #filterDepartment,
+.dark #filterProfessor,
+.dark .filter-select {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239ca3af'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.dark select:hover,
+.dark .modern-select:hover,
+.dark #academicYearSelect:hover,
+.dark #semesterSelect:hover,
+.dark #filterCourse:hover,
+.dark #filterDocType:hover,
+.dark #filterStatus:hover,
+.dark #filterDepartment:hover,
+.dark #filterProfessor:hover,
+.dark .filter-select:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-primary);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+.dark select:focus,
+.dark .modern-select:focus,
+.dark #academicYearSelect:focus,
+.dark #semesterSelect:focus,
+.dark #filterCourse:focus,
+.dark #filterDocType:focus,
+.dark #filterStatus:focus,
+.dark #filterDepartment:focus,
+.dark #filterProfessor:focus,
+.dark .filter-select:focus {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-primary);
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25),
+                0 4px 16px rgba(59, 130, 246, 0.3);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%233b82f6'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2.5' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+}
+
+/* Dark mode options */
+.dark select option {
+    background-color: var(--bg-tertiary);
+    color: var(--text-primary);
+}
+
+.dark select option:checked {
+    background: linear-gradient(0deg, var(--accent-blue) 0%, var(--accent-blue) 100%);
+    color: #ffffff;
+}
+
+/* Custom dropdown dark mode */
+.dark .custom-dropdown .dropdown-toggle-label {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+.dark .custom-dropdown .dropdown-toggle-label:hover {
+    border-color: var(--accent-blue);
+    background-color: var(--bg-primary);
+    box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25);
+}
+
+.dark .custom-dropdown .dropdown-menu {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+    box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5),
+                0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.dark .custom-dropdown .dropdown-menu::after {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+.dark .custom-dropdown .dropdown-item:hover {
+    background-color: var(--accent-blue);
+    color: #ffffff;
+}
+
+.dark .custom-dropdown .dropdown-item.selected {
+    background-color: rgba(59, 130, 246, 0.2);
+    color: var(--accent-blue);
+}
+
+/* Select label styling */
+.select-label,
+label[for="academicYearSelect"],
+label[for="semesterSelect"],
+.filter-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.075em;
+    color: var(--text-tertiary);
+    margin-bottom: 0.625rem;
+    transition: color 200ms ease;
+}
+
+/* Label focus state (when sibling select is focused) */
+select:focus ~ .select-label,
+.modern-select:focus ~ .select-label {
+    color: var(--accent-blue);
+}
+
+/* Context bar container styling */
+.context-bar,
+.bg-white.rounded-xl.shadow-sm.border.border-gray-200.p-4.mb-8 {
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05),
+                0 1px 2px rgba(0, 0, 0, 0.02);
+    transition: box-shadow 0.2s ease;
+}
+
+.context-bar:hover,
+.bg-white.rounded-xl.shadow-sm.border.border-gray-200.p-4.mb-8:hover {
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07),
+                0 2px 4px rgba(0, 0, 0, 0.04);
+}
+
+/* Dark mode context bar */
+.dark .context-bar,
+.dark .bg-white.rounded-xl.shadow-sm.border.border-gray-200.p-4.mb-8 {
+    background-color: var(--bg-primary);
+    border-color: var(--border-primary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* Filter select group styling */
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Animated focus ring */
+@keyframes focusRing {
+    0% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+    }
+    70% {
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+    }
+}
+
+select:focus-visible,
+.modern-select:focus-visible {
+    animation: focusRing 0.6s ease-out;
+}
+
+/* Loading state for select */
+select.loading,
+.modern-select.loading {
+    pointer-events: none;
+    opacity: 0.7;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='10' stroke='%233b82f6' stroke-width='2' stroke-dasharray='32' stroke-dashoffset='8'%3E%3CanimateTransform attributeName='transform' type='rotate' dur='1s' from='0 12 12' to='360 12 12' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E");
+}
+
+/* Disabled state */
+select:disabled,
+.modern-select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--bg-tertiary);
+}
+
+/* Small select variant */
+select.select-sm,
+.modern-select.select-sm {
+    padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    border-radius: 0.5rem;
+    background-size: 1rem 1rem;
+}
+
+/* Large select variant */
+select.select-lg,
+.modern-select.select-lg {
+    padding: 1rem 3rem 1rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 0.875rem;
+    background-size: 1.5rem 1.5rem;
+    background-position: right 1rem center;
+}
+
+/* ===================================
+   ACCESSIBILITY UTILITIES
+   =================================== */
+
+/* Screen reader only - visually hidden but accessible to screen readers */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+}
+
+/* Focusable screen reader only - becomes visible when focused */
+.sr-only-focusable:focus {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+}
+
+/* ===================================
+   ANIMATIONS
+   =================================== */
+
+/* Fade-in animation for modals and overlays */
+.fade-in {
+    animation: fadeIn 0.2s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Smooth fade-in for loading indicators */
+.loading-fade-in {
+    animation: loadingFadeIn 0.15s ease-in;
+}
+
+@keyframes loadingFadeIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

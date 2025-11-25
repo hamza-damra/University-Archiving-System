@@ -100,10 +100,34 @@ const fileExplorerTabContent = document.getElementById('fileExplorerTabContent')
 const fileExplorerContainer = document.getElementById('fileExplorerContainer');
 const breadcrumbs = document.getElementById('breadcrumbs');
 
+// Initialize Modern Dropdowns
+let academicYearDropdown = null;
+let semesterDropdown = null;
+
+function initializeModernDropdowns() {
+    if (typeof initModernDropdowns === 'function') {
+        const instances = initModernDropdowns('#academicYearSelect, #semesterSelect');
+        if (instances.length >= 1) academicYearDropdown = instances[0];
+        if (instances.length >= 2) semesterDropdown = instances[1];
+    }
+}
+
+function refreshDropdowns() {
+    if (academicYearSelect._modernDropdown) {
+        academicYearSelect._modernDropdown.refresh();
+    }
+    if (semesterSelect._modernDropdown) {
+        semesterSelect._modernDropdown.refresh();
+    }
+}
+
 // Initialize
 professorName.textContent = userInfo.fullName;
 loadAcademicYears();
 loadNotifications();
+
+// Initialize modern dropdowns after a short delay to ensure DOM is ready
+setTimeout(initializeModernDropdowns, 100);
 
 // Poll notifications every 30 seconds
 setInterval(loadNotifications, 30000);
@@ -276,6 +300,9 @@ async function loadAcademicYears() {
             academicYearSelect.appendChild(option);
         });
 
+        // Refresh modern dropdown after populating options
+        refreshDropdowns();
+
         // Load semesters for active year
         if (selectedAcademicYearId) {
             await loadSemesters(selectedAcademicYearId);
@@ -289,6 +316,7 @@ async function loadAcademicYears() {
         }
         showToast('Unable to load academic years. Please refresh the page or contact support if the problem persists.', 'error');
         academicYearSelect.innerHTML = '<option value="">Error loading years</option>';
+        refreshDropdowns();
     }
 }
 
@@ -299,6 +327,7 @@ async function loadSemesters(academicYearId) {
 
         if (semesters.length === 0) {
             semesterSelect.innerHTML = '<option value="">No semesters available for this year</option>';
+            refreshDropdowns();
             showToast('No semesters found for the selected academic year.', 'warning');
             courses = [];
             renderCourses();
@@ -313,15 +342,20 @@ async function loadSemesters(academicYearId) {
             semesterSelect.appendChild(option);
         });
 
+        // Refresh modern dropdown after populating options
+        refreshDropdowns();
+
         // Auto-select first semester if available
         if (semesters.length > 0) {
             semesterSelect.value = semesters[0].id;
+            refreshDropdowns();
             await handleSemesterChange(semesters[0].id);
         }
     } catch (error) {
         console.error('Error loading semesters:', error);
         showToast('Unable to load semesters. Please try selecting a different academic year or refresh the page.', 'error');
         semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
+        refreshDropdowns();
     }
 }
 

@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Responsive File Preview Modal Test</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- File Preview Modal CSS -->
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+        
+        .test-button {
+            padding: 0.75rem 1.5rem;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 0.5rem;
+            transition: background 0.2s;
+        }
+        
+        .test-button:hover {
+            background: #1d4ed8;
+        }
+        
+        .viewport-info {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            background: #1f2937;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            z-index: 100;
+        }
+        
+        .breakpoint-indicator {
+            display: inline-block;
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+            margin-right: 0.5rem;
+        }
+        
+        .breakpoint-desktop { background: #10b981; }
+        .breakpoint-tablet { background: #f59e0b; }
+        .breakpoint-mobile { background: #ef4444; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <!-- Viewport Info -->
+    <div class="viewport-info">
+        <span class="breakpoint-indicator" id="breakpoint-indicator"></span>
+        <span id="viewport-size"></span>
+    </div>
+
+    <div class="test-container">
+        <h1 class="text-3xl font-bold mb-6">Responsive File Preview Modal Test</h1>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Test Scenarios</h2>
+            <p class="text-gray-600 mb-4">
+                Click the buttons below to test different preview scenarios. 
+                Resize your browser window to test responsive behavior at different breakpoints:
+            </p>
+            <ul class="list-disc list-inside text-gray-600 mb-4 space-y-1">
+                <li><strong>Desktop:</strong> > 768px (Green indicator)</li>
+                <li><strong>Tablet:</strong> ≤ 768px (Orange indicator)</li>
+                <li><strong>Mobile:</strong> ≤ 480px (Red indicator)</li>
+            </ul>
+            
+            <div class="flex flex-wrap gap-2">
+                <button class="test-button" onclick="testTextPreview()">Text File Preview</button>
+                <button class="test-button" onclick="testPDFPreview()">PDF Preview</button>
+                <button class="test-button" onclick="testLargeFile()">Large File Warning</button>
+                <button class="test-button" onclick="testError()">Error State</button>
+                <button class="test-button" onclick="testWithSearch()">Preview with Search</button>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Responsive Features</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 bg-gray-50 rounded">
+                    <h3 class="font-semibold mb-2">Desktop (> 768px)</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✓ Full-width modal (max 72rem)</li>
+                        <li>✓ Horizontal button layout</li>
+                        <li>✓ All metadata visible</li>
+                        <li>✓ Standard padding</li>
+                    </ul>
+                </div>
+                <div class="p-4 bg-gray-50 rounded">
+                    <h3 class="font-semibold mb-2">Tablet (≤ 768px)</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✓ Adjusted modal size</li>
+                        <li>✓ Touch-friendly buttons (44px)</li>
+                        <li>✓ Reduced padding</li>
+                        <li>✓ Stacked action buttons</li>
+                    </ul>
+                </div>
+                <div class="p-4 bg-gray-50 rounded">
+                    <h3 class="font-semibold mb-2">Mobile (≤ 480px)</h3>
+                    <ul class="text-sm text-gray-600 space-y-1">
+                        <li>✓ Full-screen modal</li>
+                        <li>✓ Larger touch targets (48px)</li>
+                        <li>✓ Vertical layout</li>
+                        <li>✓ 16px input (no zoom)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2 class="text-xl font-semibold mb-4">Testing Checklist</h2>
+            <div class="space-y-2">
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Modal opens and displays correctly on desktop</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Modal adapts layout on tablet (≤ 768px)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Modal goes full-screen on mobile (≤ 480px)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>All buttons are touch-friendly (min 44px)</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Text is readable at all sizes</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Search bar adapts to mobile layout</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Metadata wraps appropriately</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Content area scrolls properly</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Modal closes with ESC key</span>
+                </label>
+                <label class="flex items-center">
+                    <input type="checkbox" class="mr-2">
+                    <span>Modal closes when clicking backdrop</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <!-- File Preview Modal Script -->
+    <script type="module">
+        import { FilePreviewModal } from '/js/file-preview-modal.js';
+        
+        // Create global modal instance
+        window.previewModal = new FilePreviewModal({
+            onDownload: async (fileId, fileName) => {
+                console.log('Download:', fileId, fileName);
+                alert(`Downloading: ${fileName}`);
+            }
+        });
+        
+        // Test functions
+        window.testTextPreview = function() {
+            const modal = createMockModal();
+            modal.innerHTML = getMockModalHTML('sample-document.txt', 'text/plain');
+            
+            // Simulate text content
+            setTimeout(() => {
+                const content = modal.querySelector('.preview-content');
+                content.innerHTML = `
+                    <pre class="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+
+This is a sample text file to demonstrate the responsive preview modal.
+Try resizing your browser window to see how the layout adapts.
+
+Key features:
+- Touch-friendly buttons on mobile
+- Full-screen on small devices
+- Readable text at all sizes
+- Proper spacing and padding
+                    </pre>
+                `;
+            }, 500);
+        };
+        
+        window.testPDFPreview = function() {
+            const modal = createMockModal();
+            modal.innerHTML = getMockModalHTML('document.pdf', 'application/pdf');
+            
+            setTimeout(() => {
+                const content = modal.querySelector('.preview-content');
+                content.innerHTML = `
+                    <div class="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700">
+                        <div class="flex items-center justify-center h-96 bg-gray-100 dark:bg-gray-700 rounded">
+                            <div class="text-center">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-red-500" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6"/>
+                                </svg>
+                                <p class="text-lg font-medium">PDF Document</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Page 1 of 5</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }, 500);
+        };
+        
+        window.testLargeFile = function() {
+            const modal = createMockModal();
+            modal.innerHTML = getMockModalHTML('large-file.txt', 'text/plain');
+            
+            setTimeout(() => {
+                const content = modal.querySelector('.preview-content');
+                content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full py-12">
+                        <svg class="w-16 h-16 text-yellow-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Large File Warning</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 text-center max-w-md">
+                            This file is <strong>8.5 MB</strong>, which exceeds the recommended preview size of 5MB.
+                        </p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
+                            Loading large files may take longer and could affect browser performance.
+                        </p>
+                        <div class="flex flex-col sm:flex-row gap-3">
+                            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                                Preview First Part
+                            </button>
+                            <button class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                                Download File
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }, 500);
+        };
+        
+        window.testError = function() {
+            const modal = createMockModal();
+            modal.innerHTML = getMockModalHTML('missing-file.txt', 'text/plain');
+            
+            setTimeout(() => {
+                const content = modal.querySelector('.preview-content');
+                content.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-full py-12">
+                        <svg class="w-16 h-16 text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">File Not Found</p>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-6 text-center max-w-md">
+                            This file could not be found. It may have been deleted or moved.
+                        </p>
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                `;
+            }, 500);
+        };
+        
+        window.testWithSearch = function() {
+            const modal = createMockModal();
+            modal.innerHTML = getMockModalHTML('code-file.js', 'text/javascript');
+            
+            // Show search bar
+            setTimeout(() => {
+                const searchBar = modal.querySelector('#preview-search-bar');
+                searchBar.classList.remove('hidden');
+                
+                const content = modal.querySelector('.preview-content');
+                content.innerHTML = `
+                    <pre class="bg-white dark:bg-gray-800 p-4 rounded border border-gray-200 dark:border-gray-700 overflow-auto">
+function calculateTotal(items) {
+    return items.reduce((sum, item) => sum + item.price, 0);
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD'
+    }).format(amount);
+}
+
+const cart = [
+    { name: 'Item 1', price: 10.99 },
+    { name: 'Item 2', price: 25.50 },
+    { name: 'Item 3', price: 5.99 }
+];
+
+const total = calculateTotal(cart);
+console.log('Total:', formatCurrency(total));
+                    </pre>
+                `;
+            }, 500);
+        };
+        
+        function createMockModal() {
+            const existing = document.querySelector('.file-preview-modal');
+            if (existing) {
+                existing.remove();
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'file-preview-modal fade-in';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            
+            document.body.appendChild(modal);
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target.classList.contains('preview-backdrop')) {
+                    modal.remove();
+                }
+            });
+            
+            // Close on ESC key
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    modal.remove();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+            
+            return modal;
+        }
+        
+        function getMockModalHTML(fileName, mimeType) {
+            return `
+                <div class="preview-backdrop" aria-hidden="true"></div>
+                <div class="preview-modal-content">
+                    <div class="preview-modal-header">
+                        <div class="flex-1 min-w-0">
+                            <h2 class="preview-modal-title">${fileName}</h2>
+                            <div class="preview-metadata">
+                                <span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">2.5 MB</span>
+                                <span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">${mimeType}</span>
+                                <span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Uploaded: Nov 26, 2025</span>
+                                <span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">Prof. John Doe</span>
+                                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">Computer Science</span>
+                            </div>
+                        </div>
+                        <div class="preview-actions" role="toolbar">
+                            <button class="preview-action-btn" title="Search">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            </button>
+                            <button class="preview-action-btn" title="Download">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                            <button class="preview-action-btn" title="Close" onclick="this.closest('.file-preview-modal').remove()">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="preview-search-bar" class="preview-search-bar hidden">
+                        <div class="flex items-center gap-2">
+                            <div class="flex-1 relative">
+                                <input type="text" placeholder="Search in preview..." class="preview-search-input">
+                            </div>
+                            <div class="flex items-center gap-1">
+                                <span class="text-sm text-gray-600 dark:text-gray-400 min-w-[80px] text-center">0 matches</span>
+                                <button class="preview-action-btn">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                    </svg>
+                                </button>
+                                <button class="preview-action-btn">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="preview-content">
+                        <div class="flex items-center justify-center h-full">
+                            <div class="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Update viewport info
+        function updateViewportInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            const indicator = document.getElementById('breakpoint-indicator');
+            const sizeText = document.getElementById('viewport-size');
+            
+            sizeText.textContent = `${width}×${height}px`;
+            
+            if (width > 768) {
+                indicator.className = 'breakpoint-indicator breakpoint-desktop';
+            } else if (width > 480) {
+                indicator.className = 'breakpoint-indicator breakpoint-tablet';
+            } else {
+                indicator.className = 'breakpoint-indicator breakpoint-mobile';
+            }
+        }
+        
+        updateViewportInfo();
+        window.addEventListener('resize', updateViewportInfo);
+    </script>
+</body>
+</html>

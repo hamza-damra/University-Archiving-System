@@ -1042,23 +1042,23 @@ export class FileExplorer {
                 const roleLabels = this.generateRoleSpecificLabels(folder);
 
                 html += `
-                    <div class="flex items-center justify-between p-5 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-700 hover:bg-blue-100 dark:hover:bg-gray-700 cursor-pointer transition-all group"
+                    <div class="folder-card flex items-center justify-between p-5 rounded-lg border cursor-pointer transition-all group"
                          onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')">
                         <div class="flex items-center space-x-4 flex-1">
-                            <svg class="w-8 h-8 text-blue-600 dark:text-blue-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="folder-icon w-8 h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                             </svg>
                             <div class="flex-1">
                                 <div class="flex items-center flex-wrap gap-2">
-                                    <p class="text-base font-semibold text-gray-900 dark:text-gray-100">${this.escapeHtml(folder.name)}</p>
+                                    <p class="folder-name text-base font-semibold">${this.escapeHtml(folder.name)}</p>
                                     ${roleLabels}
                                 </div>
                                 ${folder.metadata && folder.metadata.description ? `
-                                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">${this.escapeHtml(folder.metadata.description)}</p>
+                                    <p class="folder-description text-sm mt-1">${this.escapeHtml(folder.metadata.description)}</p>
                                 ` : ''}
                             </div>
                         </div>
-                        <svg class="w-6 h-6 text-gray-400 dark:text-gray-500 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="folder-arrow w-6 h-6 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                         </svg>
                     </div>

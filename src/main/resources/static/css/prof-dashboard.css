@@ -79,3 +79,61 @@ body {
     background-color: var(--accent-blue-light) !important;
     border: 2px dashed var(--accent-blue) !important;
 }
+
+/* Notification Dropdown Styles */
+#notificationsDropdown {
+    animation: notificationDropdownFadeIn 0.15s ease-out;
+    border-radius: 12px !important;
+    overflow: hidden !important;
+    -webkit-mask-image: -webkit-radial-gradient(white, black);
+    mask-image: radial-gradient(white, black);
+}
+
+#notificationsDropdown > div {
+    background: inherit;
+}
+
+#notificationsDropdown #notificationsList {
+    background: inherit;
+}
+
+@keyframes notificationDropdownFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Dark mode support for notifications dropdown */
+.dark #notificationsDropdown {
+    background-color: var(--bg-elevated);
+    border-color: var(--border-primary);
+}
+
+.dark #notificationsDropdown h3 {
+    color: var(--text-primary);
+}
+
+.dark #notificationsDropdown .border-gray-200 {
+    border-color: var(--border-primary);
+}
+
+.dark #notificationsDropdown #closeNotificationsDropdown {
+    color: var(--text-tertiary);
+}
+
+.dark #notificationsDropdown #closeNotificationsDropdown:hover {
+    color: var(--text-primary);
+}
+
+.dark #notificationsDropdown #notificationsList {
+    background-color: var(--bg-elevated);
+}
+
+.dark #notificationsDropdown #notificationsList .text-gray-500 {
+    color: var(--text-secondary);
+}

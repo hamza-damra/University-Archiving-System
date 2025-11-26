@@ -303,6 +303,22 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             }
         }
         
+        // Fallback: Check if the file's physical path contains the professor's ID
+        // This handles legacy files that may not have proper folder/uploader associations
+        if (user.getRole() == Role.ROLE_PROFESSOR && user.getProfessorId() != null) {
+            String fileUrl = file.getFileUrl();
+            if (fileUrl != null && fileUrl.contains(user.getProfessorId())) {
+                log.info("File path contains professor ID {} - granting access", user.getProfessorId());
+                return true;
+            }
+        }
+        
+        // HOD can access all files in their department
+        if (user.getRole() == Role.ROLE_HOD) {
+            log.info("HOD user - granting access to department files");
+            return true;
+        }
+        
         log.warn("No permission criteria matched for fileId: {}, user: {}", fileId, user.getEmail());
         // Default: deny access for files without folder or uploader info
         return false;

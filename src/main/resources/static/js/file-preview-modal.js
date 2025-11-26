@@ -44,11 +44,21 @@ export class FilePreviewModal {
         this.lastFocusableElement = null;
         this.previouslyFocusedElement = null;
         
+        // Drag state
+        this.isDragging = false;
+        this.dragStartX = 0;
+        this.dragStartY = 0;
+        this.modalStartX = 0;
+        this.modalStartY = 0;
+        
         // Bind methods to maintain context
         this.handleEscKey = this.handleEscKey.bind(this);
         this.handleClickOutside = this.handleClickOutside.bind(this);
         this.handleKeyboardNavigation = this.handleKeyboardNavigation.bind(this);
         this.trapFocus = this.trapFocus.bind(this);
+        this.handleDragStart = this.handleDragStart.bind(this);
+        this.handleDragMove = this.handleDragMove.bind(this);
+        this.handleDragEnd = this.handleDragEnd.bind(this);
     }
 
     /**
@@ -153,6 +163,7 @@ export class FilePreviewModal {
         this.currentFileName = null;
         this.currentFileType = null;
         this.currentRenderer = null;
+        this.isDragging = false;
         this.searchVisible = false;
         this.isOpen = false;
         this.focusableElements = [];
@@ -182,7 +193,16 @@ export class FilePreviewModal {
                 await this.options.onDownload(this.currentFileId, this.currentFileName);
             } else {
                 // Default download implementation
-                const response = await fetch(`/api/file-explorer/files/${this.currentFileId}/download`);
+                const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch(`/api/file-explorer/files/${this.currentFileId}/download`, {
+                    method: 'GET',
+                    headers: headers
+                });
                 
                 if (!response.ok) {
                     throw new Error('Download failed');
@@ -547,14 +567,14 @@ export class FilePreviewModal {
             
             <!-- Modal Content -->
             <div class="preview-modal-content">
-                <!-- Header -->
-                <div class="preview-modal-header">
+                <!-- Header - Draggable -->
+                <div class="preview-modal-header" id="preview-modal-drag-handle">
                     <div class="flex-1 min-w-0">
                         <h2 id="preview-modal-title" class="preview-modal-title">
                             ${this.escapeHtml(this.currentFileName)}
                         </h2>
                         <div id="preview-modal-description" class="preview-metadata">
-                            <!-- Metadata will be populated here -->
+                            <!-- Metadata hidden for cleaner UI -->
                         </div>
                     </div>
                     <div class="preview-actions" role="toolbar" aria-label="Preview actions">
@@ -648,6 +668,9 @@ export class FilePreviewModal {
                     <!-- Content will be loaded here -->
                 </div>
                 
+                <!-- Resize Handle -->
+                <div class="preview-resize-handle" aria-hidden="true"></div>
+                
                 <!-- Screen reader announcements -->
                 <div id="preview-sr-announcements" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></div>
             </div>
@@ -661,6 +684,9 @@ export class FilePreviewModal {
         
         // Make modal accessible globally for onclick handlers
         window.filePreviewModal = this;
+        
+        // Setup drag functionality
+        this.setupDragFunctionality();
     }
 
     /**
@@ -715,6 +741,12 @@ export class FilePreviewModal {
         document.removeEventListener('keydown', this.handleEscKey);
         document.removeEventListener('keydown', this.handleKeyboardNavigation);
         document.removeEventListener('keydown', this.trapFocus);
+        
+        // Clean up drag listeners
+        document.removeEventListener('mousemove', this.handleDragMove);
+        document.removeEventListener('mouseup', this.handleDragEnd);
+        document.removeEventListener('touchmove', this.handleDragMove);
+        document.removeEventListener('touchend', this.handleDragEnd);
     }
 
     /**
@@ -738,6 +770,115 @@ export class FilePreviewModal {
     }
 
     /**
+     * Setup drag functionality for the modal
+     * @private
+     */
+    setupDragFunctionality() {
+        const dragHandle = this.modalElement?.querySelector('#preview-modal-drag-handle');
+        const modalContent = this.modalElement?.querySelector('.preview-modal-content');
+        
+        if (!dragHandle || !modalContent) return;
+        
+        // Set initial position to center
+        modalContent.style.position = 'relative';
+        modalContent.style.left = '0';
+        modalContent.style.top = '0';
+        
+        dragHandle.addEventListener('mousedown', this.handleDragStart);
+        dragHandle.addEventListener('touchstart', this.handleDragStart, { passive: false });
+    }
+
+    /**
+     * Handle drag start
+     * @private
+     */
+    handleDragStart(event) {
+        // Don't drag if clicking on buttons
+        if (event.target.closest('button')) return;
+        
+        const modalContent = this.modalElement?.querySelector('.preview-modal-content');
+        if (!modalContent) return;
+        
+        this.isDragging = true;
+        modalContent.classList.add('dragging');
+        
+        // Get starting positions
+        const clientX = event.type === 'touchstart' ? event.touches[0].clientX : event.clientX;
+        const clientY = event.type === 'touchstart' ? event.touches[0].clientY : event.clientY;
+        
+        this.dragStartX = clientX;
+        this.dragStartY = clientY;
+        this.modalStartX = parseInt(modalContent.style.left || '0', 10);
+        this.modalStartY = parseInt(modalContent.style.top || '0', 10);
+        
+        // Add move and end listeners
+        document.addEventListener('mousemove', this.handleDragMove);
+        document.addEventListener('mouseup', this.handleDragEnd);
+        document.addEventListener('touchmove', this.handleDragMove, { passive: false });
+        document.addEventListener('touchend', this.handleDragEnd);
+        
+        event.preventDefault();
+    }
+
+    /**
+     * Handle drag move
+     * @private
+     */
+    handleDragMove(event) {
+        if (!this.isDragging) return;
+        
+        const modalContent = this.modalElement?.querySelector('.preview-modal-content');
+        if (!modalContent) return;
+        
+        const clientX = event.type === 'touchmove' ? event.touches[0].clientX : event.clientX;
+        const clientY = event.type === 'touchmove' ? event.touches[0].clientY : event.clientY;
+        
+        const deltaX = clientX - this.dragStartX;
+        const deltaY = clientY - this.dragStartY;
+        
+        // Calculate new position
+        let newX = this.modalStartX + deltaX;
+        let newY = this.modalStartY + deltaY;
+        
+        // Get viewport bounds
+        const rect = modalContent.getBoundingClientRect();
+        const maxX = window.innerWidth - rect.width / 2;
+        const maxY = window.innerHeight - 50; // Keep at least 50px visible
+        const minX = -rect.width / 2;
+        const minY = -rect.height + 50;
+        
+        // Constrain to viewport
+        newX = Math.max(minX, Math.min(maxX, newX));
+        newY = Math.max(minY, Math.min(maxY, newY));
+        
+        modalContent.style.left = `${newX}px`;
+        modalContent.style.top = `${newY}px`;
+        
+        event.preventDefault();
+    }
+
+    /**
+     * Handle drag end
+     * @private
+     */
+    handleDragEnd() {
+        if (!this.isDragging) return;
+        
+        this.isDragging = false;
+        
+        const modalContent = this.modalElement?.querySelector('.preview-modal-content');
+        if (modalContent) {
+            modalContent.classList.remove('dragging');
+        }
+        
+        // Remove move and end listeners
+        document.removeEventListener('mousemove', this.handleDragMove);
+        document.removeEventListener('mouseup', this.handleDragEnd);
+        document.removeEventListener('touchmove', this.handleDragMove);
+        document.removeEventListener('touchend', this.handleDragEnd);
+    }
+
+    /**
      * Fetch file metadata from API
      * @private
      * @param {number} fileId - File ID
@@ -745,7 +886,19 @@ export class FilePreviewModal {
      */
     async fetchMetadata(fileId) {
         try {
-            const response = await fetch(`/api/file-explorer/files/${fileId}/metadata`);
+            // Get auth token from localStorage or sessionStorage
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/file-explorer/files/${fileId}/metadata`, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 const error = new Error();
@@ -798,37 +951,14 @@ export class FilePreviewModal {
      * @param {Object} metadata - File metadata
      */
     displayMetadata(metadata) {
+        // Metadata display is disabled for cleaner UI
+        // The metadata container is hidden via CSS
+        // This function is kept for potential future use or API compatibility
         const metadataContainer = this.modalElement?.querySelector('.preview-metadata');
         if (!metadataContainer) return;
-
-        const badges = [];
         
-        // File size
-        if (metadata.fileSize) {
-            badges.push(`<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">${this.formatFileSize(metadata.fileSize)}</span>`);
-        }
-        
-        // File type
-        if (metadata.mimeType) {
-            badges.push(`<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">${this.escapeHtml(metadata.mimeType)}</span>`);
-        }
-        
-        // Upload date
-        if (metadata.uploadDate) {
-            badges.push(`<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded">Uploaded: ${this.formatDate(metadata.uploadDate)}</span>`);
-        }
-        
-        // Uploader name
-        if (metadata.uploaderName) {
-            badges.push(`<span class="px-2 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded">${this.escapeHtml(metadata.uploaderName)}</span>`);
-        }
-        
-        // Department (for Dean/HOD views)
-        if (metadata.departmentName) {
-            badges.push(`<span class="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded">${this.escapeHtml(metadata.departmentName)}</span>`);
-        }
-        
-        metadataContainer.innerHTML = badges.join('');
+        // Clear any existing content - keep header clean
+        metadataContainer.innerHTML = '';
     }
 
     /**

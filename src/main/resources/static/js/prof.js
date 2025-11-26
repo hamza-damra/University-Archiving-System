@@ -121,6 +121,26 @@ function refreshDropdowns() {
     }
 }
 
+function showNotificationsDropdown() {
+    if (!notificationsDropdown) return;
+    
+    // Position the dropdown using fixed positioning to avoid stacking context issues
+    const btnRect = notificationsBtn.getBoundingClientRect();
+    notificationsDropdown.style.position = 'fixed';
+    notificationsDropdown.style.top = (btnRect.bottom + 8) + 'px';
+    notificationsDropdown.style.right = (window.innerWidth - btnRect.right) + 'px';
+    notificationsDropdown.style.left = 'auto';
+    
+    notificationsDropdown.classList.remove('hidden');
+    loadNotifications();
+}
+
+function hideNotificationsDropdown() {
+    if (!notificationsDropdown) return;
+    notificationsDropdown.classList.add('hidden');
+}
+
+
 // Initialize
 professorName.textContent = userInfo.fullName;
 loadAcademicYears();
@@ -192,14 +212,15 @@ logoutBtn.addEventListener('click', () => {
 // Notifications dropdown toggle
 notificationsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    notificationsDropdown.classList.toggle('hidden');
-    if (!notificationsDropdown.classList.contains('hidden')) {
-        loadNotifications();
+    if (notificationsDropdown.classList.contains('hidden')) {
+        showNotificationsDropdown();
+    } else {
+        hideNotificationsDropdown();
     }
 });
 
 closeNotificationsDropdown.addEventListener('click', () => {
-    notificationsDropdown.classList.add('hidden');
+    hideNotificationsDropdown();
 });
 
 // Close dropdown when clicking outside
@@ -207,7 +228,7 @@ document.addEventListener('click', (e) => {
     if (!notificationsDropdown.classList.contains('hidden') &&
         !notificationsDropdown.contains(e.target) &&
         !notificationsBtn.contains(e.target)) {
-        notificationsDropdown.classList.add('hidden');
+        hideNotificationsDropdown();
     }
 });
 

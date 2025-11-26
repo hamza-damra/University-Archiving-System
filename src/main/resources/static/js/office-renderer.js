@@ -73,8 +73,18 @@ export class OfficeRenderer {
      */
     async fetchConvertedContent(fileId) {
         try {
+            // Get auth token
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             // Use the new office-preview endpoint that converts Office documents to HTML
-            const response = await fetch(`/api/file-explorer/files/${fileId}/office-preview`);
+            const response = await fetch(`/api/file-explorer/files/${fileId}/office-preview`, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 const error = new Error();
@@ -356,7 +366,16 @@ export class OfficeRenderer {
         if (!this.currentFileId) return;
         
         try {
-            const response = await fetch(`/api/file-explorer/files/${this.currentFileId}/download`);
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/file-explorer/files/${this.currentFileId}/download`, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 throw new Error('Failed to download file');

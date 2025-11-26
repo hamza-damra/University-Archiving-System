@@ -1342,6 +1342,40 @@ body {
         color: var(--text-secondary) !important;
     }
 
+    /* Notification Items in Dark Mode */
+    .dark #notificationsDropdown #notificationsList > div {
+        background-color: var(--bg-elevated) !important;
+        border-color: var(--border-primary) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList > div.bg-white {
+        background-color: var(--bg-elevated) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList > div.bg-blue-50 {
+        background-color: var(--accent-blue-light) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList > div:hover {
+        background-color: var(--bg-tertiary) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList .text-gray-900 {
+        color: var(--text-primary) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList .text-gray-700 {
+        color: var(--text-secondary) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList .text-gray-500 {
+        color: var(--text-tertiary) !important;
+    }
+
+    .dark #notificationsDropdown #notificationsList .border-gray-100 {
+        border-color: var(--border-primary) !important;
+    }
+
     /* Profile Section */
     .dark #professorName {
         color: var(--text-primary) !important;

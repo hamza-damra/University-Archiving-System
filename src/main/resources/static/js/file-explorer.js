@@ -287,8 +287,8 @@ export class FileExplorer {
     render() {
         // Build header message HTML if provided
         const headerMessageHtml = this.options.headerMessage ? `
-            <div class="bg-blue-50 border-b border-blue-200 px-4 py-2">
-                <p class="text-sm text-gray-600">${this.escapeHtml(this.options.headerMessage)}</p>
+            <div class="bg-blue-50 dark:bg-blue-900/20 border-b border-blue-200 dark:border-blue-800 px-4 py-2">
+                <p class="text-sm text-gray-600 dark:text-gray-300">${this.escapeHtml(this.options.headerMessage)}</p>
             </div>
         ` : '';
 
@@ -308,8 +308,8 @@ export class FileExplorer {
         // Empty string when hideTree is true, full tree HTML when false
         const treeViewHtml = this.options.hideTree ? '' : `
             <!-- Tree View -->
-            <div class="md:col-span-1 bg-white border border-gray-200 rounded-lg p-4">
-                <h3 class="text-sm font-semibold text-gray-700 mb-3">Folder Structure</h3>
+            <div class="md:col-span-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Folder Structure</h3>
                 <div id="fileExplorerTree" class="space-y-1">
                     ${this.renderNoSemesterSelected()}
                 </div>
@@ -321,11 +321,11 @@ export class FileExplorer {
                 ${headerMessageHtml}
                 
                 <!-- Breadcrumbs -->
-                <div id="fileExplorerBreadcrumbs" class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <div id="fileExplorerBreadcrumbs" class="bg-gray-50 dark:bg-gray-800 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                     <nav class="flex" aria-label="Breadcrumb">
                         <ol class="inline-flex items-center space-x-1 md:space-x-3">
                             <li class="inline-flex items-center">
-                                <span class="text-sm text-gray-500">Select a semester to browse files</span>
+                                <span class="text-sm text-gray-500 dark:text-gray-400">Select a semester to browse files</span>
                             </li>
                         </ol>
                     </nav>
@@ -336,8 +336,8 @@ export class FileExplorer {
                     ${treeViewHtml}
 
                     <!-- File List -->
-                    <div class="${fileListColSpan} bg-white border border-gray-200 rounded-lg p-4">
-                        <h3 class="text-sm font-semibold text-gray-700 mb-3">Files</h3>
+                    <div class="${fileListColSpan} bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                        <h3 class="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-3">Files</h3>
                         <div id="fileExplorerFileList" class="overflow-x-auto">
                             ${this.renderNoSemesterSelected()}
                         </div>
@@ -369,16 +369,21 @@ export class FileExplorer {
      * await fileExplorer.loadRoot(1, 1);
      */
     async loadRoot(academicYearId, semesterId, isBackground = false) {
+        // Minimum loading time in milliseconds to prevent flickering
+        const MIN_LOADING_TIME = 1000;
+        const startTime = Date.now();
+        
         // CRITICAL FIX: Clear BOTH folder structure and files section immediately
         // This prevents showing stale content from previous filter selections
         const treeContainer = document.getElementById('fileExplorerTree');
         const fileListContainer = document.getElementById('fileExplorerFileList');
         
+        // Show shimmer loading skeletons immediately
         if (treeContainer) {
-            treeContainer.innerHTML = this.renderEmptyState('Loading folders...', 'info');
+            treeContainer.innerHTML = this.renderLoadingSkeleton('tree', 5);
         }
         if (fileListContainer) {
-            fileListContainer.innerHTML = this.renderEmptyState('Loading files...', 'info');
+            fileListContainer.innerHTML = this.renderLoadingSkeleton('folders', 3);
         }
 
         // CRITICAL FIX: Clear breadcrumbs immediately to prevent showing stale path
@@ -394,6 +399,13 @@ export class FileExplorer {
         try {
             const response = await fileExplorer.getRoot(academicYearId, semesterId);
             this.treeRoot = response.data || response;
+            
+            // Wait for minimum loading time to prevent flickering
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = MIN_LOADING_TIME - elapsedTime;
+            if (remainingTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, remainingTime));
+            }
 
             // Handle empty or null response
             if (!this.treeRoot) {
@@ -488,6 +500,16 @@ export class FileExplorer {
      * await fileExplorer.loadNode("2024-2025/first/PBUS001");
      */
     async loadNode(path) {
+        // Minimum loading time in milliseconds to prevent flickering
+        const MIN_LOADING_TIME = 1000;
+        const startTime = Date.now();
+        
+        // Show shimmer loading skeleton in file list immediately
+        const fileListContainer = document.getElementById('fileExplorerFileList');
+        if (fileListContainer) {
+            fileListContainer.innerHTML = this.renderLoadingSkeleton('default', 4);
+        }
+        
         // Show loading state in file list only (tree stays visible)
         fileExplorerState.setFileListLoading(true);
 
@@ -496,6 +518,13 @@ export class FileExplorer {
             const newNode = response.data || response;
             this.currentNode = newNode;
             this.currentPath = path;
+            
+            // Wait for minimum loading time to prevent flickering
+            const elapsedTime = Date.now() - startTime;
+            const remainingTime = MIN_LOADING_TIME - elapsedTime;
+            if (remainingTime > 0) {
+                await new Promise(resolve => setTimeout(resolve, remainingTime));
+            }
 
             // Update state with new current node
             fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
@@ -615,10 +644,10 @@ export class FileExplorer {
                 <nav class="flex items-center" aria-label="Breadcrumb">
                     <ol class="inline-flex items-center space-x-1">
                         <li class="inline-flex items-center">
-                            <svg class="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                             </svg>
-                            <span class="text-sm text-gray-500">Select a folder to navigate</span>
+                            <span class="text-sm text-gray-500 dark:text-gray-400">Select a folder to navigate</span>
                         </li>
                     </ol>
                 </nav>
@@ -632,7 +661,7 @@ export class FileExplorer {
             const parentPath = this.breadcrumbs[this.breadcrumbs.length - 2].path;
             backButtonHtml = `
                 <button onclick="window.fileExplorerInstance.handleBreadcrumbClick(event, '${this.escapeHtml(parentPath)}')" 
-                        class="mr-2 p-1 rounded-full hover:bg-gray-200 text-gray-500 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        class="mr-2 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                         title="Go back">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -649,20 +678,20 @@ export class FileExplorer {
             return `
                 <li class="inline-flex items-center">
                     ${index > 0 ? `
-                        <svg class="w-5 h-5 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20">
+                        <svg class="w-5 h-5 text-gray-400 dark:text-gray-500 mx-1" fill="currentColor" viewBox="0 0 20 20">
                             <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"></path>
                         </svg>
                     ` : ''}
                     ${isFirst ? `
-                        <svg class="w-4 h-4 text-gray-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <svg class="w-4 h-4 text-gray-400 dark:text-gray-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
                         </svg>
                     ` : ''}
                     ${isLast ? `
-                        <span class="text-sm font-medium text-gray-700">${this.escapeHtml(crumb.name)}</span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-200">${this.escapeHtml(crumb.name)}</span>
                     ` : `
                         <a href="#" 
-                           class="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors"
+                           class="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline transition-colors"
                            data-path="${this.escapeHtml(crumb.path)}"
                            onclick="window.fileExplorerInstance.handleBreadcrumbClick(event, '${this.escapeHtml(crumb.path)}')">
                             ${this.escapeHtml(crumb.name)}
@@ -969,14 +998,14 @@ export class FileExplorer {
             if (node.type === 'PROFESSOR') {
                 container.innerHTML = `
                     <div class="text-center py-12">
-                        <svg class="mx-auto h-16 w-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="mx-auto h-16 w-16 text-gray-300 dark:text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
                         </svg>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">No Course Assignments</h3>
-                        <p class="text-sm text-gray-500">This professor has no course assignments in the selected semester.</p>
+                        <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No Course Assignments</h3>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">This professor has no course assignments in the selected semester.</p>
                         ${this.options.role === 'DEANSHIP' ? `
-                            <div class="mt-4 p-3 bg-blue-50 border border-blue-100 rounded-lg inline-block">
-                                <p class="text-xs text-blue-700">
+                            <div class="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-lg inline-block">
+                                <p class="text-xs text-blue-700 dark:text-blue-300">
                                     <svg class="inline-block w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
@@ -1222,29 +1251,29 @@ export class FileExplorer {
             const content = `
                 <div class="space-y-3">
                     <div>
-                        <label class="text-sm font-medium text-gray-700">File Name:</label>
-                        <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(file.originalFilename || 'Unknown')}</p>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">File Name:</label>
+                        <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${this.escapeHtml(file.originalFilename || 'Unknown')}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-medium text-gray-700">Size:</label>
-                        <p class="text-sm text-gray-900 mt-1">${file.fileSize ? this.formatFileSize(file.fileSize) : 'Unknown'}</p>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Size:</label>
+                        <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${file.fileSize ? this.formatFileSize(file.fileSize) : 'Unknown'}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-medium text-gray-700">Type:</label>
-                        <p class="text-sm text-gray-900 mt-1">${file.fileType || 'Unknown'}</p>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Type:</label>
+                        <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${file.fileType || 'Unknown'}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-medium text-gray-700">Uploaded:</label>
-                        <p class="text-sm text-gray-900 mt-1">${file.createdAt ? formatDate(file.createdAt) : 'Unknown'}</p>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Uploaded:</label>
+                        <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${file.createdAt ? formatDate(file.createdAt) : 'Unknown'}</p>
                     </div>
                     <div>
-                        <label class="text-sm font-medium text-gray-700">Uploaded By:</label>
-                        <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(uploaderName)}</p>
+                        <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Uploaded By:</label>
+                        <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${this.escapeHtml(uploaderName)}</p>
                     </div>
                     ${file.notes ? `
                         <div>
-                            <label class="text-sm font-medium text-gray-700">Notes:</label>
-                            <p class="text-sm text-gray-900 mt-1">${this.escapeHtml(file.notes)}</p>
+                            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Notes:</label>
+                            <p class="text-sm text-gray-900 dark:text-gray-100 mt-1">${this.escapeHtml(file.notes)}</p>
                         </div>
                     ` : ''}
                 </div>
@@ -1392,12 +1421,12 @@ export class FileExplorer {
     renderErrorState(message, secondaryMessage = null) {
         return `
             <div class="text-center py-8">
-                <svg class="mx-auto h-12 w-12 text-red-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-red-400 dark:text-red-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <p class="text-red-600 text-sm font-medium">${this.escapeHtml(message)}</p>
+                <p class="text-red-600 dark:text-red-400 text-sm font-medium">${this.escapeHtml(message)}</p>
                 ${secondaryMessage ? `
-                    <p class="text-gray-500 text-xs mt-2">${this.escapeHtml(secondaryMessage)}</p>
+                    <p class="text-gray-500 dark:text-gray-400 text-xs mt-2">${this.escapeHtml(secondaryMessage)}</p>
                 ` : ''}
             </div>
         `;
@@ -1521,7 +1550,7 @@ export class FileExplorer {
         if (this.options.role === 'PROFESSOR' && this.options.showOwnershipLabels) {
             if (folder.canWrite === true) {
                 labels += `
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 text-blue-800 ml-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 ml-2">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                         </svg>
@@ -1530,7 +1559,7 @@ export class FileExplorer {
                 `;
             } else if (folder.canRead === true && folder.canWrite === false) {
                 labels += `
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 ml-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 ml-2">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1545,7 +1574,7 @@ export class FileExplorer {
         if (this.options.role === 'HOD' && this.options.showDepartmentContext) {
             if (folder.canRead === true && folder.canWrite === false) {
                 labels += `
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 ml-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 ml-2">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
@@ -1560,7 +1589,7 @@ export class FileExplorer {
         if (this.options.role === 'DEANSHIP' && this.options.showProfessorLabels) {
             if (folder.type === 'PROFESSOR' && folder.metadata && folder.metadata.professorName) {
                 labels += `
-                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700 ml-2">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 ml-2">
                         <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                         </svg>
@@ -1584,17 +1613,17 @@ export class FileExplorer {
     renderEmptyState(message, iconType = 'folder') {
         const icons = {
             folder: `
-                <svg class="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                 </svg>
             `,
             file: `
-                <svg class="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                 </svg>
             `,
             info: `
-                <svg class="w-12 h-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-12 h-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
             `
@@ -1603,7 +1632,7 @@ export class FileExplorer {
         const icon = icons[iconType] || icons.folder;
 
         return `
-            <div class="text-sm text-gray-500 py-8 text-center">
+            <div class="text-sm text-gray-500 dark:text-gray-400 py-8 text-center">
                 ${icon}
                 <p>${this.escapeHtml(message)}</p>
             </div>
@@ -1720,14 +1749,14 @@ export class FileExplorer {
                 html = '<div class="space-y-2">';
                 for (let i = 0; i < count; i++) {
                     html += `
-                        <div class="flex items-center justify-between p-5 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                        <div class="flex items-center justify-between p-5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
                             <div class="flex items-center space-x-4 flex-1">
-                                <div class="w-8 h-8 bg-gray-300 rounded"></div>
+                                <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="h-5 bg-gray-300 rounded" style="width: 60%;"></div>
+                                    <div class="h-5 bg-gray-300 dark:bg-gray-600 rounded" style="width: 60%;"></div>
                                 </div>
                             </div>
-                            <div class="w-6 h-6 bg-gray-300 rounded"></div>
+                            <div class="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded"></div>
                         </div>
                     `;
                 }
@@ -1739,27 +1768,27 @@ export class FileExplorer {
                 // Maintains same table structure and dimensions
                 html = `
                     <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
-                            <thead class="bg-gray-50">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700 border border-gray-200 dark:border-gray-700 rounded-lg">
+                            <thead class="bg-gray-50 dark:bg-gray-800">
                                 <tr>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Name
                                     </th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Size
                                     </th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Uploaded
                                     </th>
-                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Uploader
                                     </th>
-                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                                         Actions
                                     </th>
                                 </tr>
                             </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
+                            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 `;
 
                 for (let i = 0; i < count; i++) {
@@ -1767,23 +1796,23 @@ export class FileExplorer {
                         <tr class="animate-pulse">
                             <td class="px-4 py-3 whitespace-nowrap">
                                 <div class="flex items-center">
-                                    <div class="w-14 h-14 bg-gray-300 rounded-lg mr-3"></div>
-                                    <div class="h-4 bg-gray-300 rounded" style="width: 50%;"></div>
+                                    <div class="w-14 h-14 bg-gray-300 dark:bg-gray-600 rounded-lg mr-3"></div>
+                                    <div class="h-4 bg-gray-300 dark:bg-gray-600 rounded" style="width: 50%;"></div>
                                 </div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="h-6 bg-gray-300 rounded" style="width: 4rem;"></div>
+                                <div class="h-6 bg-gray-300 dark:bg-gray-600 rounded" style="width: 4rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="h-6 bg-gray-300 rounded" style="width: 6rem;"></div>
+                                <div class="h-6 bg-gray-300 dark:bg-gray-600 rounded" style="width: 6rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap">
-                                <div class="h-6 bg-gray-300 rounded" style="width: 5rem;"></div>
+                                <div class="h-6 bg-gray-300 dark:bg-gray-600 rounded" style="width: 5rem;"></div>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 <div class="flex items-center justify-end space-x-2">
-                                    <div class="w-8 h-8 bg-gray-300 rounded"></div>
-                                    <div class="w-8 h-8 bg-gray-300 rounded"></div>
+                                    <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
+                                    <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
                                 </div>
                             </td>
                         </tr>
@@ -1805,8 +1834,8 @@ export class FileExplorer {
                     const indent = (i % 3) * 20; // Alternate indentation for visual hierarchy
                     html += `
                         <div class="flex items-center py-2.5 px-3 animate-pulse" style="padding-left: ${indent + 12}px;">
-                            <div class="w-5 h-5 bg-gray-300 rounded mr-2"></div>
-                            <div class="h-5 bg-gray-300 rounded flex-1" style="max-width: 70%;"></div>
+                            <div class="w-5 h-5 bg-gray-300 dark:bg-gray-600 rounded mr-2"></div>
+                            <div class="h-5 bg-gray-300 dark:bg-gray-600 rounded flex-1" style="max-width: 70%;"></div>
                         </div>
                     `;
                 }
@@ -1819,25 +1848,25 @@ export class FileExplorer {
                 html = '<div class="space-y-4">';
 
                 // Folder skeletons
-                html += '<div><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Folders</h4>';
+                html += '<div><h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Folders</h4>';
                 html += '<div class="space-y-2">';
                 for (let i = 0; i < Math.min(count, 2); i++) {
                     html += `
-                        <div class="flex items-center justify-between p-5 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                        <div class="flex items-center justify-between p-5 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
                             <div class="flex items-center space-x-4 flex-1">
-                                <div class="w-8 h-8 bg-gray-300 rounded"></div>
+                                <div class="w-8 h-8 bg-gray-300 dark:bg-gray-600 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="h-5 bg-gray-300 rounded" style="width: 60%;"></div>
+                                    <div class="h-5 bg-gray-300 dark:bg-gray-600 rounded" style="width: 60%;"></div>
                                 </div>
                             </div>
-                            <div class="w-6 h-6 bg-gray-300 rounded"></div>
+                            <div class="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded"></div>
                         </div>
                     `;
                 }
                 html += '</div></div>';
 
                 // File skeletons
-                html += '<div><h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">Files</h4>';
+                html += '<div><h4 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase mb-2">Files</h4>';
                 html += this.renderLoadingSkeleton('files', Math.min(count, 2));
                 html += '</div>';
 
@@ -1851,14 +1880,14 @@ export class FileExplorer {
                 html = '<div class="space-y-3">';
                 for (let i = 0; i < count; i++) {
                     html += `
-                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200 animate-pulse">
+                        <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 animate-pulse">
                             <div class="flex items-center space-x-3 flex-1">
-                                <div class="w-6 h-6 bg-gray-300 rounded"></div>
+                                <div class="w-6 h-6 bg-gray-300 dark:bg-gray-600 rounded"></div>
                                 <div class="flex-1">
-                                    <div class="h-4 bg-gray-300 rounded" style="width: 50%;"></div>
+                                    <div class="h-4 bg-gray-300 dark:bg-gray-600 rounded" style="width: 50%;"></div>
                                 </div>
                             </div>
-                            <div class="w-4 h-4 bg-gray-300 rounded"></div>
+                            <div class="w-4 h-4 bg-gray-300 dark:bg-gray-600 rounded"></div>
                         </div>
                     `;
                 }
@@ -1959,13 +1988,13 @@ export class FileExplorer {
 
         return `
             <div class="text-center py-12 upload-drop-zone" id="uploadDropZone">
-                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                    <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                     </svg>
                 </div>
-                <h3 class="text-lg font-medium text-gray-900 mb-2">No ${formattedType} uploaded yet</h3>
-                <p class="text-sm text-gray-500 mb-6">Upload your first ${formattedType.toLowerCase()} to get started</p>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No ${formattedType} uploaded yet</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Upload your first ${formattedType.toLowerCase()} to get started</p>
                 <button 
                     onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}')"
                     class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
@@ -1974,7 +2003,7 @@ export class FileExplorer {
                     </svg>
                     Upload ${formattedType}
                 </button>
-                <p class="text-xs text-gray-400 mt-4">Drag and drop files here or click to upload<br>Supported formats: PDF, ZIP • Max 10 files per upload</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-4">Drag and drop files here or click to upload<br>Supported formats: PDF, ZIP • Max 10 files per upload</p>
             </div>
         `;
     }
@@ -2143,13 +2172,13 @@ export class FileExplorer {
      */
     renderWritableEmptyState(node) {
         return `
-            <div class="text-center py-12 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 transition-colors cursor-pointer"
+            <div class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer"
                  onclick="window.dispatchEvent(new CustomEvent('fileExplorerUpload', { detail: { path: '${this.escapeHtml(node.path)}', documentType: '${node.name}', files: null } }))">
-                <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                 </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900">No files yet</h3>
-                <p class="mt-1 text-sm text-gray-500">Upload a file or drag and drop</p>
+                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No files yet</h3>
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload a file or drag and drop</p>
                 <div class="mt-6">
                     <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                         <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

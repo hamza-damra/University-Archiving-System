@@ -209,6 +209,16 @@ logoutBtn.addEventListener('click', () => {
     redirectToLogin();
 });
 
+// Show loading state for dashboard overview cards immediately
+function showDashboardLoadingState() {
+    const spinnerHtml = '<div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div>';
+    document.getElementById('totalCoursesCount').innerHTML = spinnerHtml;
+    document.getElementById('submittedDocsCount').innerHTML = spinnerHtml;
+    document.getElementById('pendingDocsCount').innerHTML = spinnerHtml;
+    document.getElementById('overdueDocsCount').innerHTML = spinnerHtml;
+    document.getElementById('dashboardSummary').textContent = 'Loading dashboard data...';
+}
+
 // Notifications dropdown toggle
 notificationsBtn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -237,6 +247,9 @@ async function handleSemesterChange(semesterId) {
     selectedSemesterId = semesterId;
 
     if (selectedSemesterId) {
+        // Immediately show loading spinners for dashboard overview
+        showDashboardLoadingState();
+        
         // Update FileExplorerState with new context
         const selectedYear = academicYears.find(y => y.id === selectedAcademicYearId);
         const selectedSemester = semesters.find(s => s.id === selectedSemesterId);
@@ -284,9 +297,12 @@ academicYearSelect.addEventListener('change', async (e) => {
     selectedSemesterId = null;
 
     if (selectedAcademicYearId) {
+        // Show loading state immediately
+        showDashboardLoadingState();
         await loadSemesters(selectedAcademicYearId);
     } else {
         semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
+        refreshDropdowns();
         courses = [];
         renderCourses();
     }
@@ -301,10 +317,23 @@ semesterSelect.addEventListener('change', async (e) => {
 // Load academic years
 async function loadAcademicYears() {
     try {
+        // Track start time to ensure minimum loading duration
+        const startTime = Date.now();
+        
         academicYears = await professor.getAcademicYears();
+
+        // Calculate remaining time to meet minimum loading duration
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = MIN_LOADING_TIME - elapsedTime;
+        
+        // Wait for remaining time if data loaded too quickly
+        if (remainingTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
         if (academicYears.length === 0) {
             academicYearSelect.innerHTML = '<option value="">No academic years available</option>';
+            refreshDropdowns();
             showToast('No academic years found. Please contact the administrator.', 'warning');
             return;
         }
@@ -380,6 +409,9 @@ async function loadSemesters(academicYearId) {
     }
 }
 
+// Minimum loading time in milliseconds to prevent flickering shimmer effect
+const MIN_LOADING_TIME = 1000;
+
 // Load courses for selected semester
 async function loadCourses(semesterId) {
     try {
@@ -392,7 +424,20 @@ async function loadCourses(semesterId) {
             </div>
         `;
 
+        // Track start time to ensure minimum loading duration
+        const startTime = Date.now();
+        
         courses = await professor.getMyCourses(semesterId);
+        
+        // Calculate remaining time to meet minimum loading duration
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = MIN_LOADING_TIME - elapsedTime;
+        
+        // Wait for remaining time if data loaded too quickly
+        if (remainingTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
+        
         renderCourses();
 
         // Also load dashboard overview if the dashboard tab is currently active
@@ -427,11 +472,11 @@ function createCourseSkeletonLoader() {
                 </div>
             </div>
             <div class="space-y-3">
-                <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="p-4 skeleton-inner-box rounded-lg">
                     <div class="skeleton-line h-4 w-1-4 mb-2"></div>
                     <div class="skeleton-line h-4 w-full"></div>
                 </div>
-                <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div class="p-4 skeleton-inner-box rounded-lg">
                     <div class="skeleton-line h-4 w-1-4 mb-2"></div>
                     <div class="skeleton-line h-4 w-full"></div>
                 </div>
@@ -447,14 +492,27 @@ async function loadDashboardOverview() {
     }
 
     try {
-        // Show loading spinners
-        document.getElementById('totalCoursesCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
-        document.getElementById('submittedDocsCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
-        document.getElementById('pendingDocsCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
-        document.getElementById('overdueDocsCount').innerHTML = '<div class="spinner spinner-sm mx-auto"></div>';
+        // Show loading spinners - wrapped to maintain consistent height with the number (text-3xl = ~36px)
+        const spinnerHtml = '<div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div>';
+        document.getElementById('totalCoursesCount').innerHTML = spinnerHtml;
+        document.getElementById('submittedDocsCount').innerHTML = spinnerHtml;
+        document.getElementById('pendingDocsCount').innerHTML = spinnerHtml;
+        document.getElementById('overdueDocsCount').innerHTML = spinnerHtml;
         document.getElementById('dashboardSummary').textContent = 'Loading dashboard data...';
 
+        // Track start time to ensure minimum loading duration
+        const startTime = Date.now();
+        
         const overview = await professor.getDashboardOverview(selectedSemesterId);
+
+        // Calculate remaining time to meet minimum loading duration
+        const elapsedTime = Date.now() - startTime;
+        const remainingTime = MIN_LOADING_TIME - elapsedTime;
+        
+        // Wait for remaining time if data loaded too quickly
+        if (remainingTime > 0) {
+            await new Promise(resolve => setTimeout(resolve, remainingTime));
+        }
 
         // Update overview cards
         document.getElementById('totalCoursesCount').textContent = overview.totalCourses || 0;

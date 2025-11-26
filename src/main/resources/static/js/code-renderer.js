@@ -72,7 +72,16 @@ export class CodeRenderer {
      */
     async fetchContent(fileId) {
         try {
-            const response = await fetch(`/api/file-explorer/files/${fileId}/content`);
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/file-explorer/files/${fileId}/content`, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 const error = new Error();

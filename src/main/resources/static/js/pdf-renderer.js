@@ -65,7 +65,16 @@ export class PDFRenderer {
      */
     async fetchPdfBlob(fileId) {
         try {
-            const response = await fetch(`/api/file-explorer/files/${fileId}/download`);
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
+            const response = await fetch(`/api/file-explorer/files/${fileId}/download`, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 const error = new Error();

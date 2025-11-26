@@ -10,30 +10,39 @@
 .file-preview-modal {
     position: fixed;
     inset: 0;
-    z-index: 50;
+    z-index: 9999; /* High z-index to ensure modal is above all other elements */
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 1rem;
+    isolation: isolate; /* Create new stacking context */
 }
 
 .preview-backdrop {
-    position: absolute;
+    position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    z-index: -1;
+    background-color: rgba(0, 0, 0, 0.7);
     backdrop-filter: blur(4px);
 }
 
 .preview-modal-content {
     position: relative;
+    z-index: 1;
     background-color: white;
     border-radius: 0.5rem;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    width: 100%;
-    max-width: 72rem; /* 1152px */
-    max-height: 90vh;
+    width: 80%;
+    min-width: 400px;
+    max-width: 95vw;
+    height: 80vh;
+    min-height: 300px;
+    max-height: 95vh;
     display: flex;
     flex-direction: column;
+    /* Enable resizing */
+    resize: both;
+    overflow: hidden;
 }
 
 /* Dark mode support */
@@ -41,13 +50,67 @@
     background-color: #1f2937; /* gray-800 */
 }
 
+/* Resize handle styling */
+.preview-modal-content::-webkit-resizer {
+    background-color: transparent;
+    border: 8px solid transparent;
+    border-right-color: #6b7280;
+    border-bottom-color: #6b7280;
+}
+
+.dark .preview-modal-content::-webkit-resizer {
+    border-right-color: #9ca3af;
+    border-bottom-color: #9ca3af;
+}
+
+/* Custom resize handle for better visibility */
+.preview-resize-handle {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 20px;
+    height: 20px;
+    cursor: nwse-resize;
+    z-index: 10;
+}
+
+.preview-resize-handle::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    right: 4px;
+    width: 10px;
+    height: 10px;
+    border-right: 2px solid #6b7280;
+    border-bottom: 2px solid #6b7280;
+}
+
+.dark .preview-resize-handle::before {
+    border-right-color: #9ca3af;
+    border-bottom-color: #9ca3af;
+}
+
+/* Dragging state */
+.preview-modal-content.dragging {
+    opacity: 0.9;
+    cursor: move;
+}
+
+/* Resizing state */
+.preview-modal-content.resizing {
+    opacity: 0.95;
+}
+
 /* ===== Modal Header ===== */
 .preview-modal-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 1rem;
+    padding: 0.5rem 1rem;
     border-bottom: 1px solid #e5e7eb; /* gray-200 */
+    cursor: move; /* Indicate draggable */
+    user-select: none;
+    min-height: 48px;
 }
 
 .dark .preview-modal-header {
@@ -55,7 +118,7 @@
 }
 
 .preview-modal-title {
-    font-size: 1.125rem; /* 18px */
+    font-size: 1rem; /* 16px */
     font-weight: 600;
     color: #111827; /* gray-900 */
     overflow: hidden;
@@ -67,17 +130,18 @@
     color: #f3f4f6; /* gray-100 */
 }
 
+/* Hide metadata by default - cleaner UI */
 .preview-metadata {
-    margin-top: 0.25rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    font-size: 0.75rem; /* 12px */
-    color: #6b7280; /* gray-600 */
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .dark .preview-metadata {
-    color: #9ca3af; /* gray-400 */
+    display: none !important;
 }
 
 /* ===== Action Buttons ===== */
@@ -207,13 +271,15 @@
     }
 
     .preview-modal-content {
+        width: 95%;
+        min-width: auto;
         max-width: 100%;
         max-height: 95vh;
         border-radius: 0.375rem;
     }
 
     .preview-modal-header {
-        padding: 0.75rem;
+        padding: 0.5rem 0.75rem;
         flex-wrap: wrap;
     }
 
@@ -290,17 +356,25 @@
     }
 
     .preview-modal-content {
+        width: 100% !important;
         max-width: 100%;
         max-height: 100vh;
-        height: 100vh;
+        height: 100vh !important;
+        min-width: auto;
+        min-height: auto;
         border-radius: 0;
+        resize: none; /* Disable resize on mobile */
+        left: 0 !important;
+        top: 0 !important;
     }
 
     .preview-modal-header {
         padding: 0.5rem;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
+        cursor: default; /* Disable drag cursor on mobile */
+    }
+    
+    .preview-resize-handle {
+        display: none; /* Hide resize handle on mobile */
     }
 
     .preview-modal-header > div:first-child {

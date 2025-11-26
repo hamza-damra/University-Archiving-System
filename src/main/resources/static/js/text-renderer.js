@@ -86,12 +86,22 @@ export class TextRenderer {
      */
     async fetchContent(fileId, partial = false) {
         try {
+            // Get auth token
+            const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = {};
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            
             // Add partial parameter to URL if requested
             const url = partial 
                 ? `/api/file-explorer/files/${fileId}/content?partial=true&lines=500`
                 : `/api/file-explorer/files/${fileId}/content`;
             
-            const response = await fetch(url);
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: headers
+            });
             
             if (!response.ok) {
                 const error = new Error();

@@ -7,10 +7,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/deanship-layout.css">
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <script src="/js/theme.js"></script>
     <style>
-        /* CRITICAL FIX: Ensure page content is visible */
+        /* Page content - Theme aware */
         #page-content {
-            background-color: #f5f5f5 !important;
+            background-color: var(--bg-secondary) !important;
             min-height: calc(100vh - 200px) !important;
         }
         
@@ -19,27 +21,28 @@
         }
         
         .page-title {
-            color: #333 !important;
+            color: var(--text-primary) !important;
             font-size: 24px;
             font-weight: 700;
             margin-bottom: 8px;
         }
         
         .page-description {
-            color: #666 !important;
+            color: var(--text-secondary) !important;
             font-size: 16px;
         }
         
         /* File Explorer specific styles */
         .file-explorer-container {
-            background-color: var(--color-bg-primary);
+            background-color: var(--bg-primary);
             border-radius: var(--radius-md);
             overflow: hidden;
         }
         
+        /* Context message - Theme aware */
         .context-message {
-            background-color: #FEF3C7;
-            border: 1px solid #FCD34D;
+            background-color: var(--status-warning-bg);
+            border: 1px solid var(--status-warning-text);
             border-radius: var(--radius-md);
             padding: var(--spacing-lg);
             margin-bottom: var(--spacing-lg);
@@ -52,19 +55,29 @@
             flex-shrink: 0;
             width: 24px;
             height: 24px;
-            color: #F59E0B;
+            color: var(--status-warning-text);
         }
         
         .context-message-text {
             font-size: var(--font-size-md);
-            color: #92400E;
+            color: var(--status-warning-text);
         }
         
-        /* Ensure file explorer container is visible */
+        /* File explorer container - Theme aware */
         .file-explorer-container {
-            background-color: white !important;
-            border: 1px solid #ddd !important;
+            background-color: var(--bg-primary) !important;
+            border: 1px solid var(--border-primary) !important;
             min-height: 400px;
+        }
+        
+        /* Dark mode overrides */
+        .dark #page-content {
+            background-color: var(--bg-secondary) !important;
+        }
+        
+        .dark .file-explorer-container {
+            background-color: var(--bg-secondary) !important;
+            border-color: var(--border-primary) !important;
         }
     </style>
 </head>
@@ -74,6 +87,17 @@
         <header class="deanship-header">
             <div class="header-title">Al-Quds University / Deanship Dashboard</div>
             <div class="header-user">
+                <!-- Theme Toggle -->
+                <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode" title="Toggle dark mode">
+                    <!-- Sun icon (shown in dark mode) -->
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <!-- Moon icon (shown in light mode) -->
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
                 <span class="header-user-name" id="deanshipName">Loading...</span>
                 <button class="header-logout-btn" id="logoutBtn">Logout</button>
             </div>

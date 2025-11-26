@@ -2830,3 +2830,909 @@ select.select-lg,
         transform: scale(1);
     }
 }
+
+
+/* ===================================
+   FILE EXPLORER LIGHT THEME SUPPORT
+   Ensures proper styling in light/white theme
+   across all dashboards (Professor, HOD, Deanship)
+   =================================== */
+
+/* File Explorer Container - Light Theme */
+.file-explorer {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Breadcrumb Navigation - Light Theme */
+#fileExplorerBreadcrumbs {
+    background-color: var(--bg-secondary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+#fileExplorerBreadcrumbs nav,
+#fileExplorerBreadcrumbs ol {
+    color: var(--text-secondary);
+}
+
+#fileExplorerBreadcrumbs a {
+    color: var(--accent-blue);
+}
+
+#fileExplorerBreadcrumbs a:hover {
+    color: var(--accent-blue-hover);
+    text-decoration: underline;
+}
+
+#fileExplorerBreadcrumbs span {
+    color: var(--text-tertiary);
+}
+
+/* Tree View Panel - Light Theme */
+#fileExplorerTree {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* Tree Node Items - Light Theme */
+.tree-node {
+    color: var(--text-primary);
+}
+
+.tree-node .flex.items-center {
+    color: var(--text-primary);
+}
+
+.tree-node .flex.items-center:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* Selected Tree Node - Light Theme */
+.tree-node .bg-blue-100 {
+    background-color: var(--accent-blue-light) !important;
+}
+
+/* File List Panel - Light Theme */
+#fileExplorerFileList {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+/* ===================================
+   FOLDER CARDS - LIGHT THEME (CRITICAL FIX)
+   These styles ensure folder cards display correctly
+   in light/white theme with proper colors
+   =================================== */
+
+/* Light theme folder cards - override Tailwind dark classes */
+:root:not(.dark) #fileExplorerFileList .bg-blue-50,
+html:not(.dark) #fileExplorerFileList .bg-blue-50,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+}
+
+:root:not(.dark) #fileExplorerFileList .bg-blue-50:hover,
+html:not(.dark) #fileExplorerFileList .bg-blue-50:hover,
+body:not(.dark) #fileExplorerFileList .bg-blue-50:hover {
+    background-color: #dbeafe !important;
+}
+
+/* Folder card text colors - Light Theme */
+:root:not(.dark) #fileExplorerFileList .bg-blue-50 p,
+:root:not(.dark) #fileExplorerFileList .bg-blue-50 span,
+html:not(.dark) #fileExplorerFileList .bg-blue-50 p,
+html:not(.dark) #fileExplorerFileList .bg-blue-50 span,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 p,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 span {
+    color: #111827 !important;
+}
+
+/* Folder name text - Light Theme */
+:root:not(.dark) #fileExplorerFileList .text-base.font-semibold,
+html:not(.dark) #fileExplorerFileList .text-base.font-semibold,
+body:not(.dark) #fileExplorerFileList .text-base.font-semibold {
+    color: #111827 !important;
+}
+
+/* Folder icon - Light Theme */
+:root:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-blue-600,
+html:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-blue-600,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-blue-600 {
+    color: #2563eb !important;
+}
+
+/* Arrow icon - Light Theme */
+:root:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-gray-400,
+html:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-gray-400,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 svg.text-gray-400 {
+    color: #9ca3af !important;
+}
+
+:root:not(.dark) #fileExplorerFileList .bg-blue-50:hover svg.text-gray-400,
+html:not(.dark) #fileExplorerFileList .bg-blue-50:hover svg.text-gray-400,
+body:not(.dark) #fileExplorerFileList .bg-blue-50:hover svg.text-gray-400 {
+    color: #374151 !important;
+}
+
+/* Role labels in folder cards - Light Theme */
+:root:not(.dark) #fileExplorerFileList .bg-blue-100,
+html:not(.dark) #fileExplorerFileList .bg-blue-100,
+body:not(.dark) #fileExplorerFileList .bg-blue-100 {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+}
+
+:root:not(.dark) #fileExplorerFileList .bg-gray-100,
+html:not(.dark) #fileExplorerFileList .bg-gray-100,
+body:not(.dark) #fileExplorerFileList .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+    color: #4b5563 !important;
+}
+
+:root:not(.dark) #fileExplorerFileList .bg-purple-100,
+html:not(.dark) #fileExplorerFileList .bg-purple-100,
+body:not(.dark) #fileExplorerFileList .bg-purple-100 {
+    background-color: #f3e8ff !important;
+    color: #7c3aed !important;
+}
+
+/* Section header "FOLDERS" - Light Theme */
+:root:not(.dark) #fileExplorerFileList h4,
+html:not(.dark) #fileExplorerFileList h4,
+body:not(.dark) #fileExplorerFileList h4 {
+    color: #6b7280 !important;
+}
+
+/* Folder description text - Light Theme */
+:root:not(.dark) #fileExplorerFileList .bg-blue-50 .text-gray-500,
+html:not(.dark) #fileExplorerFileList .bg-blue-50 .text-gray-500,
+body:not(.dark) #fileExplorerFileList .bg-blue-50 .text-gray-500 {
+    color: #6b7280 !important;
+}
+
+/* File Table - Light Theme */
+#fileExplorerFileList table {
+    background-color: var(--bg-primary);
+    border-color: var(--border-primary);
+}
+
+#fileExplorerFileList thead {
+    background-color: var(--bg-secondary) !important;
+}
+
+#fileExplorerFileList thead th {
+    color: var(--text-tertiary) !important;
+    border-color: var(--border-primary);
+}
+
+#fileExplorerFileList tbody {
+    background-color: var(--bg-primary) !important;
+}
+
+#fileExplorerFileList tbody tr {
+    border-color: var(--border-primary);
+}
+
+#fileExplorerFileList tbody tr:hover {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* File Name and Text - Light Theme */
+#fileExplorerFileList .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+#fileExplorerFileList .text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+#fileExplorerFileList .text-gray-500 {
+    color: var(--text-tertiary) !important;
+}
+
+/* File Icon Container - Light Theme */
+#fileExplorerFileList .file-icon-container {
+    background-color: var(--bg-secondary) !important;
+}
+
+/* File Metadata Badges - Light Theme */
+#fileExplorerFileList .file-metadata-badge {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Role-specific Labels - Light Theme */
+#fileExplorerFileList .bg-blue-100 {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+}
+
+#fileExplorerFileList .bg-gray-100 {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+#fileExplorerFileList .bg-purple-100 {
+    background-color: #f3e8ff !important;
+    color: #7c3aed !important;
+}
+
+/* Empty State - Light Theme */
+#fileExplorerFileList .text-center.py-8,
+#fileExplorerFileList .text-center.py-12 {
+    color: var(--text-secondary);
+}
+
+#fileExplorerFileList .text-center svg {
+    color: var(--text-tertiary);
+}
+
+/* Action Buttons - Light Theme */
+#fileExplorerFileList .download-button {
+    background-color: var(--accent-blue) !important;
+    color: white !important;
+}
+
+#fileExplorerFileList .download-button:hover {
+    background-color: var(--accent-blue-hover) !important;
+}
+
+/* View Button - Light Theme */
+#fileExplorerFileList button.text-gray-600 {
+    color: var(--text-secondary) !important;
+}
+
+#fileExplorerFileList button.text-gray-600:hover {
+    color: var(--text-primary) !important;
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* ===================================
+   FOLDER CARDS - EXPLICIT LIGHT THEME FALLBACK
+   These styles use higher specificity to ensure
+   light theme colors are applied correctly
+   =================================== */
+
+/* Folder card container - Light Theme (default) */
+#fileExplorerFileList > div > div.grid > div.flex.items-center.justify-between {
+    background-color: #eff6ff;
+    border-color: #bfdbfe;
+}
+
+#fileExplorerFileList > div > div.grid > div.flex.items-center.justify-between:hover {
+    background-color: #dbeafe;
+}
+
+/* Folder name text - Light Theme (default) */
+#fileExplorerFileList > div > div.grid > div.flex p.text-base.font-semibold {
+    color: #111827;
+}
+
+/* Folder icon - Light Theme (default) */
+#fileExplorerFileList > div > div.grid > div.flex svg.w-8.h-8 {
+    color: #2563eb;
+}
+
+/* Arrow icon - Light Theme (default) */
+#fileExplorerFileList > div > div.grid > div.flex svg.w-6.h-6 {
+    color: #9ca3af;
+}
+
+#fileExplorerFileList > div > div.grid > div.flex:hover svg.w-6.h-6 {
+    color: #374151;
+}
+
+/* Dark mode overrides for folder cards */
+.dark #fileExplorerFileList > div > div.grid > div.flex.items-center.justify-between {
+    background-color: #1E1F20 !important;
+    border-color: #444746 !important;
+}
+
+.dark #fileExplorerFileList > div > div.grid > div.flex.items-center.justify-between:hover {
+    background-color: #2D2E30 !important;
+}
+
+.dark #fileExplorerFileList > div > div.grid > div.flex p.text-base.font-semibold {
+    color: #C4C7C5 !important;
+}
+
+.dark #fileExplorerFileList > div > div.grid > div.flex svg.w-8.h-8 {
+    color: #60a5fa !important;
+}
+
+.dark #fileExplorerFileList > div > div.grid > div.flex svg.w-6.h-6 {
+    color: #6b7280 !important;
+}
+
+.dark #fileExplorerFileList > div > div.grid > div.flex:hover svg.w-6.h-6 {
+    color: #d1d5db !important;
+}
+
+/* Upload Area - Light Theme */
+.file-upload-area {
+    background-color: var(--bg-primary);
+    border-color: var(--border-secondary);
+}
+
+.file-upload-area:hover {
+    background-color: var(--accent-blue-light);
+    border-color: var(--accent-blue);
+}
+
+.file-upload-area.dragover {
+    background-color: #dbeafe;
+    border-color: var(--accent-blue);
+}
+
+/* Section Headers - Light Theme */
+#fileExplorerFileList h4.text-gray-500 {
+    color: var(--text-tertiary) !important;
+}
+
+/* Panel Borders and Backgrounds - Light Theme */
+#fileExplorerFileList > div.bg-white,
+#fileExplorerTree > div.bg-white {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+/* Grid Container Panels - Light Theme */
+.file-explorer .grid > div {
+    background-color: var(--bg-primary);
+    border-color: var(--border-primary);
+}
+
+/* Section Title in Panels - Light Theme */
+.file-explorer h3.text-gray-700 {
+    color: var(--text-secondary) !important;
+}
+
+/* ===================================
+   DARK MODE FILE EXPLORER OVERRIDES
+   Ensures dark mode still works correctly
+   =================================== */
+
+/* Breadcrumb Navigation - Dark Mode */
+.dark #fileExplorerBreadcrumbs {
+    background-color: var(--bg-tertiary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark #fileExplorerBreadcrumbs a {
+    color: var(--accent-blue);
+}
+
+.dark #fileExplorerBreadcrumbs span {
+    color: var(--text-tertiary);
+}
+
+/* Tree View Panel - Dark Mode */
+.dark #fileExplorerTree {
+    background-color: var(--bg-secondary);
+}
+
+.dark .tree-node .flex.items-center:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark .tree-node .bg-blue-100 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* File List Panel - Dark Mode */
+.dark #fileExplorerFileList {
+    background-color: var(--bg-secondary);
+}
+
+/* ===================================
+   FOLDER CARDS - DARK THEME
+   =================================== */
+
+/* Folder Cards - Dark Mode */
+.dark #fileExplorerFileList .bg-blue-50 {
+    background-color: #1E1F20 !important;
+    border-color: #444746 !important;
+}
+
+.dark #fileExplorerFileList .bg-blue-50:hover {
+    background-color: #2D2E30 !important;
+}
+
+.dark #fileExplorerFileList .bg-blue-50 p.text-gray-900,
+.dark #fileExplorerFileList .bg-blue-50 .text-base.font-semibold {
+    color: var(--text-primary) !important;
+}
+
+/* File Table - Dark Mode */
+.dark #fileExplorerFileList table {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+}
+
+.dark #fileExplorerFileList thead {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark #fileExplorerFileList tbody {
+    background-color: var(--bg-secondary) !important;
+}
+
+.dark #fileExplorerFileList tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* File Icon Container - Dark Mode */
+.dark #fileExplorerFileList .file-icon-container {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* File Metadata Badges - Dark Mode */
+.dark #fileExplorerFileList .file-metadata-badge {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+/* Role-specific Labels - Dark Mode */
+.dark #fileExplorerFileList .bg-blue-100 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    color: #93c5fd !important;
+}
+
+.dark #fileExplorerFileList .bg-gray-100 {
+    background-color: var(--bg-tertiary) !important;
+    color: var(--text-secondary) !important;
+}
+
+.dark #fileExplorerFileList .bg-purple-100 {
+    background-color: rgba(139, 92, 246, 0.2) !important;
+    color: #c4b5fd !important;
+}
+
+/* Upload Area - Dark Mode */
+.dark .file-upload-area {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+.dark .file-upload-area:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--accent-blue);
+}
+
+/* Grid Container Panels - Dark Mode */
+.dark .file-explorer .grid > div {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-primary);
+}
+
+/* ===================================
+   HOD DASHBOARD FILE EXPLORER FIXES
+   =================================== */
+
+#hodFileExplorer {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+#hodFileExplorer .file-explorer {
+    background-color: transparent;
+}
+
+.dark #hodFileExplorer {
+    background-color: var(--bg-secondary);
+}
+
+/* ===================================
+   DEANSHIP DASHBOARD FILE EXPLORER FIXES
+   =================================== */
+
+#deanshipFileExplorer,
+#deanship-layout .file-explorer {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+}
+
+.dark #deanshipFileExplorer,
+.dark #deanship-layout .file-explorer {
+    background-color: var(--bg-secondary);
+}
+
+/* ===================================
+   PROFESSOR DASHBOARD FILE EXPLORER FIXES
+   =================================== */
+
+#fileExplorerContainer {
+    background-color: transparent;
+    color: var(--text-primary);
+}
+
+#fileExplorerContainer .file-explorer {
+    background-color: transparent;
+}
+
+/* ===================================
+   COMMON FILE EXPLORER TABLE FIXES
+   Ensures tables look correct in both themes
+   =================================== */
+
+/* Table wrapper in file explorer */
+.file-explorer .overflow-x-auto {
+    background-color: var(--bg-primary);
+    border-radius: 0.5rem;
+}
+
+.dark .file-explorer .overflow-x-auto {
+    background-color: var(--bg-secondary);
+}
+
+/* Ensure divide colors work in both themes */
+.file-explorer .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border-primary);
+}
+
+.dark .file-explorer .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border-primary);
+}
+
+/* ===================================
+   FILE EXPLORER HOVER STATES
+   Consistent hover behavior across themes
+   =================================== */
+
+/* File row hover - Light Theme */
+.file-explorer tbody tr:hover {
+    background-color: var(--bg-secondary) !important;
+}
+
+.file-explorer tbody tr:hover td {
+    color: inherit;
+}
+
+.file-explorer tbody tr:hover .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+/* File row hover - Dark Theme */
+.dark .file-explorer tbody tr:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark .file-explorer tbody tr:hover .text-gray-900 {
+    color: var(--text-primary) !important;
+}
+
+/* Folder card hover - Light Theme */
+.file-explorer .cursor-pointer.transition-all:hover {
+    box-shadow: var(--shadow-md);
+}
+
+/* Folder card hover - Dark Theme */
+.dark .file-explorer .cursor-pointer.transition-all:hover {
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* ===================================
+   FILE EXPLORER LOADING STATES
+   =================================== */
+
+/* Loading skeleton in file explorer - Light Theme */
+.file-explorer .animate-pulse {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+/* Loading skeleton inner elements - Light Theme */
+.file-explorer .animate-pulse .bg-gray-300 {
+    background-color: #e5e7eb !important;
+}
+
+/* Loading skeleton in file explorer - Dark Theme */
+.dark .file-explorer .animate-pulse {
+    background-color: var(--bg-elevated) !important;
+    border-color: var(--border-primary) !important;
+}
+
+/* Loading skeleton inner elements - Dark Theme */
+.dark .file-explorer .animate-pulse .bg-gray-300 {
+    background-color: var(--bg-tertiary) !important;
+}
+
+/* ===================================
+   FILE EXPLORER EMPTY STATES
+   =================================== */
+
+/* Empty state container - Light Theme */
+.file-explorer .text-center.py-8,
+.file-explorer .text-center.py-12 {
+    background-color: transparent;
+    color: var(--text-secondary);
+}
+
+.file-explorer .text-center.py-8 svg,
+.file-explorer .text-center.py-12 svg {
+    color: var(--text-tertiary);
+}
+
+.file-explorer .text-center.py-8 h3,
+.file-explorer .text-center.py-12 h3 {
+    color: var(--text-primary);
+}
+
+/* Empty state container - Dark Theme */
+.dark .file-explorer .text-center.py-8,
+.dark .file-explorer .text-center.py-12 {
+    color: var(--text-secondary);
+}
+
+.dark .file-explorer .text-center.py-8 svg,
+.dark .file-explorer .text-center.py-12 svg {
+    color: var(--text-tertiary);
+}
+
+.dark .file-explorer .text-center.py-8 h3,
+.dark .file-explorer .text-center.py-12 h3 {
+    color: var(--text-primary);
+}
+
+/* Info box in empty state - Light Theme */
+.file-explorer .bg-blue-50.border.border-blue-100 {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+}
+
+.file-explorer .bg-blue-50.border.border-blue-100 p {
+    color: #1e40af !important;
+}
+
+/* Info box in empty state - Dark Theme */
+.dark .file-explorer .bg-blue-50.border.border-blue-100 {
+    background-color: rgba(59, 130, 246, 0.1) !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark .file-explorer .bg-blue-50.border.border-blue-100 p {
+    color: #93c5fd !important;
+}
+
+
+/* ===================================
+   CRITICAL: OVERRIDE TAILWIND DARK CLASSES
+   IN LIGHT MODE FOR FILE EXPLORER
+   =================================== */
+
+/* When NOT in dark mode, override Tailwind's dark: classes */
+/* Target folder cards with bg-blue-50 that also have dark:bg-gray-800 */
+#fileExplorerFileList [class*="bg-blue-50"][class*="dark:bg-gray-800"] {
+    background-color: #eff6ff !important;
+    border-color: #bfdbfe !important;
+}
+
+#fileExplorerFileList [class*="bg-blue-50"][class*="dark:bg-gray-800"]:hover {
+    background-color: #dbeafe !important;
+}
+
+/* Folder name text */
+#fileExplorerFileList [class*="bg-blue-50"] .text-gray-900,
+#fileExplorerFileList [class*="bg-blue-50"] p.text-base {
+    color: #111827 !important;
+}
+
+/* Folder icon */
+#fileExplorerFileList [class*="bg-blue-50"] .text-blue-600 {
+    color: #2563eb !important;
+}
+
+/* Arrow icon */
+#fileExplorerFileList [class*="bg-blue-50"] .text-gray-400 {
+    color: #9ca3af !important;
+}
+
+#fileExplorerFileList [class*="bg-blue-50"]:hover .text-gray-400 {
+    color: #374151 !important;
+}
+
+/* Role labels */
+#fileExplorerFileList [class*="bg-blue-50"] .bg-blue-100 {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+}
+
+/* Dark mode - override the light theme styles */
+.dark #fileExplorerFileList [class*="bg-blue-50"][class*="dark:bg-gray-800"] {
+    background-color: #1E1F20 !important;
+    border-color: #444746 !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"][class*="dark:bg-gray-800"]:hover {
+    background-color: #2D2E30 !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"] .text-gray-900,
+.dark #fileExplorerFileList [class*="bg-blue-50"] p.text-base {
+    color: #C4C7C5 !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"] .text-blue-600 {
+    color: #60a5fa !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"] .text-gray-400 {
+    color: #6b7280 !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"]:hover .text-gray-400 {
+    color: #d1d5db !important;
+}
+
+.dark #fileExplorerFileList [class*="bg-blue-50"] .bg-blue-100 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    color: #93c5fd !important;
+}
+
+/* ===================================
+   TREE VIEW TEXT COLORS - LIGHT THEME
+   =================================== */
+
+/* Tree node text - Light Theme */
+#fileExplorerTree .text-gray-800 {
+    color: #1f2937 !important;
+}
+
+#fileExplorerTree .text-blue-800 {
+    color: #1e40af !important;
+}
+
+/* Tree node text - Dark Theme */
+.dark #fileExplorerTree .text-gray-800 {
+    color: #e5e7eb !important;
+}
+
+.dark #fileExplorerTree .text-blue-800 {
+    color: #93c5fd !important;
+}
+
+/* ===================================
+   FILE TABLE TEXT COLORS - LIGHT THEME
+   =================================== */
+
+/* File name text - Light Theme */
+#fileExplorerFileList .text-sm.font-medium.text-gray-900 {
+    color: #111827 !important;
+}
+
+/* File notes text - Light Theme */
+#fileExplorerFileList .text-xs.text-gray-500 {
+    color: #6b7280 !important;
+}
+
+/* Dark mode file text */
+.dark #fileExplorerFileList .text-sm.font-medium.text-gray-900 {
+    color: #f3f4f6 !important;
+}
+
+.dark #fileExplorerFileList .text-xs.text-gray-500 {
+    color: #9ca3af !important;
+}
+
+
+/* ===================================
+   FOLDER CARD COMPONENT STYLES
+   Custom styles for file explorer folder cards
+   Supports both light and dark themes
+   =================================== */
+
+/* Folder Card - Light Theme (Default) */
+.folder-card {
+    background-color: #ffffff !important;
+    border-color: #e5e7eb !important;
+}
+
+.folder-card:hover {
+    background-color: #f9fafb !important;
+    border-color: #d1d5db !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+}
+
+/* Folder Icon - Light Theme */
+.folder-card .folder-icon {
+    color: #3b82f6 !important;
+}
+
+/* Folder Name - Light Theme */
+.folder-card .folder-name {
+    color: #111827 !important;
+}
+
+/* Folder Description - Light Theme */
+.folder-card .folder-description {
+    color: #6b7280 !important;
+}
+
+/* Folder Arrow - Light Theme */
+.folder-card .folder-arrow {
+    color: #9ca3af !important;
+}
+
+.folder-card:hover .folder-arrow {
+    color: #374151 !important;
+    transform: translateX(4px);
+}
+
+/* ===================================
+   FOLDER CARD - DARK THEME
+   =================================== */
+
+/* Folder Card - Dark Theme */
+.dark .folder-card {
+    background-color: #1E1F20 !important;
+    border-color: #444746 !important;
+}
+
+.dark .folder-card:hover {
+    background-color: #2D2E30 !important;
+}
+
+/* Folder Icon - Dark Theme */
+.dark .folder-card .folder-icon {
+    color: #60a5fa !important;
+}
+
+/* Folder Name - Dark Theme */
+.dark .folder-card .folder-name {
+    color: #C4C7C5 !important;
+}
+
+/* Folder Description - Dark Theme */
+.dark .folder-card .folder-description {
+    color: #8E918F !important;
+}
+
+/* Folder Arrow - Dark Theme */
+.dark .folder-card .folder-arrow {
+    color: #6b7280 !important;
+}
+
+.dark .folder-card:hover .folder-arrow {
+    color: #d1d5db !important;
+}
+
+/* ===================================
+   ROLE LABELS IN FOLDER CARDS
+   =================================== */
+
+/* Your Folder label - Light Theme */
+.folder-card .bg-blue-100 {
+    background-color: #dbeafe !important;
+    color: #1e40af !important;
+}
+
+/* Read Only label - Light Theme */
+.folder-card .bg-gray-100 {
+    background-color: #f3f4f6 !important;
+    color: #4b5563 !important;
+}
+
+/* Professor label - Light Theme */
+.folder-card .bg-purple-100 {
+    background-color: #f3e8ff !important;
+    color: #7c3aed !important;
+}
+
+/* Your Folder label - Dark Theme */
+.dark .folder-card .bg-blue-100 {
+    background-color: rgba(59, 130, 246, 0.2) !important;
+    color: #93c5fd !important;
+}
+
+/* Read Only label - Dark Theme */
+.dark .folder-card .bg-gray-100 {
+    background-color: #374151 !important;
+    color: #d1d5db !important;
+}
+
+/* Professor label - Dark Theme */
+.dark .folder-card .bg-purple-100 {
+    background-color: rgba(139, 92, 246, 0.2) !important;
+    color: #c4b5fd !important;
+}

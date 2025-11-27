@@ -37,4 +37,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(Role role);
     
     long countByRole(Role role);
+    
+    // ==================== Dashboard Analytics Queries ====================
+    
+    /**
+     * Count professors (active) by department
+     */
+    @Query("SELECT u.department.id, u.department.name, COUNT(u) " +
+           "FROM User u " +
+           "WHERE u.role = 'ROLE_PROFESSOR' AND u.isActive = true " +
+           "GROUP BY u.department.id, u.department.name")
+    List<Object[]> countActiveProfessorsByDepartment();
+    
+    /**
+     * Count active professors
+     */
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = 'ROLE_PROFESSOR' AND u.isActive = true")
+    long countActiveProfessors();
 }

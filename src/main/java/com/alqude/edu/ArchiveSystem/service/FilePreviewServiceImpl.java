@@ -27,6 +27,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class FilePreviewServiceImpl implements FilePreviewService {
     
     private final UploadedFileRepository uploadedFileRepository;

@@ -298,28 +298,221 @@
             <!-- Reports Tab -->
             <div id="reports-tab" class="tab-content hidden">
                 <div class="space-y-6">
+                    <!-- Report Filters Card -->
                     <div class="bg-white rounded-lg shadow-md p-6">
-                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Reports</h2>
-                        <p class="text-gray-600 mb-4">Generate and download reports for the selected semester.</p>
-                        <div class="flex space-x-2">
-                            <button id="viewReportBtnTab"
-                                class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                    </path>
-                                </svg>
-                                View Report
-                            </button>
-                            <button id="downloadReportBtnTab"
-                                class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                    </path>
-                                </svg>
-                                Download PDF
-                            </button>
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-gray-800">Generate Report</h2>
+                            <div class="flex space-x-2">
+                                <button id="btnClearReportFilters"
+                                    class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Clear Filters
+                                </button>
+                                <button id="btnGenerateReport"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Generate Report
+                                </button>
+                                <button id="btnExportPdf"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
+                                    disabled>
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Export PDF
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <p class="text-gray-600 text-sm mb-4">
+                            <svg class="w-4 h-4 inline-block mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Reports are filtered to your department only. Select filters below to customize your report.
+                        </p>
+                        
+                        <!-- Filters Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Course Filter -->
+                            <div>
+                                <label for="reportFilterCourse" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Course
+                                </label>
+                                <select id="reportFilterCourse"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Courses</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Professor Filter -->
+                            <div>
+                                <label for="reportFilterProfessor" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Professor
+                                </label>
+                                <select id="reportFilterProfessor"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Professors</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Document Type Filter -->
+                            <div>
+                                <label for="reportFilterDocType" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Document Type
+                                </label>
+                                <select id="reportFilterDocType"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Types</option>
+                                    <option value="SYLLABUS">Syllabus</option>
+                                    <option value="EXAM">Exam</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="PROJECT_DOCS">Project Docs</option>
+                                    <option value="LECTURE_NOTES">Lecture Notes</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Status Filter -->
+                            <div>
+                                <label for="reportFilterStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Status
+                                </label>
+                                <select id="reportFilterStatus"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                    <option value="">All Status</option>
+                                    <option value="UPLOADED">Uploaded</option>
+                                    <option value="NOT_UPLOADED">Not Uploaded</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Start Date Filter -->
+                            <div>
+                                <label for="reportFilterStartDate" class="block text-sm font-medium text-gray-700 mb-1">
+                                    Start Date
+                                </label>
+                                <input type="date" id="reportFilterStartDate"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                            </div>
+                            
+                            <!-- End Date Filter -->
+                            <div>
+                                <label for="reportFilterEndDate" class="block text-sm font-medium text-gray-700 mb-1">
+                                    End Date
+                                </label>
+                                <input type="date" id="reportFilterEndDate"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Statistics Summary -->
+                    <div id="reportStatsSummary" class="bg-white rounded-lg shadow-md p-6 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Report Summary</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center p-4 bg-blue-50 rounded-lg">
+                                <div class="text-2xl font-bold text-blue-600" id="reportTotalSubmissions">0</div>
+                                <div class="text-sm text-gray-600 mt-1">Total Expected</div>
+                            </div>
+                            <div class="text-center p-4 bg-green-50 rounded-lg">
+                                <div class="text-2xl font-bold text-green-600" id="reportCompletedSubmissions">0</div>
+                                <div class="text-sm text-gray-600 mt-1">Submitted</div>
+                            </div>
+                            <div class="text-center p-4 bg-yellow-50 rounded-lg">
+                                <div class="text-2xl font-bold text-yellow-600" id="reportPendingSubmissions">0</div>
+                                <div class="text-sm text-gray-600 mt-1">Pending</div>
+                            </div>
+                            <div class="text-center p-4 bg-purple-50 rounded-lg">
+                                <div class="text-2xl font-bold text-purple-600" id="reportCompletionRate">0%</div>
+                                <div class="text-sm text-gray-600 mt-1">Completion Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Results Table -->
+                    <div id="reportResultsSection" class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Report Results</h3>
+                            <div id="reportPaginationInfo" class="text-sm text-gray-500"></div>
+                        </div>
+                        
+                        <!-- Report Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Document Type
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Submitted At
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportResultsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                            <div class="flex flex-col items-center">
+                                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                                    </path>
+                                                </svg>
+                                                <p>Select a semester and click "Generate Report" to view results</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination Controls -->
+                        <div id="reportPagination" class="flex justify-between items-center mt-4 hidden">
+                            <div class="flex items-center space-x-2">
+                                <label for="reportPageSize" class="text-sm text-gray-600">Rows per page:</label>
+                                <select id="reportPageSize"
+                                    class="px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="reportPrevPage"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled>
+                                    Previous
+                                </button>
+                                <span id="reportPageIndicator" class="text-sm text-gray-600">Page 1 of 1</span>
+                                <button id="reportNextPage"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled>
+                                    Next
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -386,7 +579,17 @@
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+    <script src="/js/notifications.js"></script>
     <script type="module" src="/js/hod.js"></script>
+    <script>
+        // Initialize notifications for HOD dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a bit for the header to be fully rendered
+            setTimeout(() => {
+                NotificationManager.init('hod');
+            }, 100);
+        });
+    </script>
 </body>
 
 </html>

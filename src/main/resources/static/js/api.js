@@ -107,17 +107,19 @@ export async function apiRequest(endpoint, options = {}) {
 
         // Check if response is successful
         if (!response.ok) {
-            // Handle validation errors (400 with errors object)
-            if (response.status === 400 && responseData.errors) {
-                const validationErrors = formatValidationErrors(responseData.errors);
+            // Handle validation errors (400 with error.validationErrors object)
+            // Backend returns: { success: false, error: { validationErrors: {...}, message: "..." } }
+            const validationErrors = responseData.error?.validationErrors || responseData.errors;
+            if (response.status === 400 && validationErrors) {
+                const formattedErrors = formatValidationErrors(validationErrors);
                 const error = new Error('Validation failed');
-                error.validationErrors = responseData.errors;
-                error.formattedMessage = validationErrors;
+                error.validationErrors = validationErrors;
+                error.formattedMessage = formattedErrors;
                 throw error;
             }
 
-            // Handle general errors
-            const errorMessage = responseData.message || responseData.error || `Request failed with status ${response.status}`;
+            // Handle general errors - check all possible message locations
+            const errorMessage = responseData.error?.message || responseData.message || responseData.error || `Request failed with status ${response.status}`;
             throw new Error(errorMessage);
         }
 
@@ -385,6 +387,11 @@ export const hod = {
                 'Authorization': `Bearer ${getToken()}`,
             },
         }),
+
+    // Report Filter Options
+    getReportFilterOptions: () => apiRequest('/hod/reports/filter-options', {
+        method: 'GET',
+    }),
 
     // Legacy Reports (kept for backward compatibility)
     getSubmissionSummaryReport: () => apiRequest('/hod/reports/submission-summary', {

@@ -2,6 +2,7 @@ package com.alqude.edu.ArchiveSystem.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Pattern;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -27,6 +28,10 @@ public class Department implements Serializable {
     
     @Column(nullable = false, unique = true)
     private String name;
+    
+    @Column(name = "shortcut", nullable = false, unique = true, length = 20)
+    @Pattern(regexp = "^[a-z0-9]+$", message = "Shortcut must contain only lowercase letters and numbers")
+    private String shortcut;
     
     @Column(length = 500)
     private String description;

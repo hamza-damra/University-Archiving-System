@@ -36,17 +36,20 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/index.html", "/hod-dashboard.html", "/prof-dashboard.html", "/deanship-dashboard.html").permitAll()
+                        .requestMatchers("/", "/index.html", "/hod-dashboard.html", "/prof-dashboard.html", "/deanship-dashboard.html", "/admin-dashboard.html").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/*.png", "/*.jpg", "/*.jpeg", "/*.gif", "/*.ico").permitAll()
-                        .requestMatchers("/deanship/**", "/hod/**", "/professor/**").permitAll() // Allow HTML pages
+                        .requestMatchers("/deanship/**", "/hod/**", "/professor/**", "/admin/**").permitAll() // Allow HTML pages
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/public/**").permitAll()
                         .requestMatchers("/api/session/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/hod/**").hasRole("HOD")
-                        .requestMatchers("/api/professor/**").hasRole("PROFESSOR")
-                        .requestMatchers("/api/deanship/**").hasRole("DEANSHIP")
+                        // Admin endpoints - ROLE_ADMIN only
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // Role-specific endpoints - Admin can also access these
+                        .requestMatchers("/api/hod/**").hasAnyRole("ADMIN", "HOD")
+                        .requestMatchers("/api/professor/**").hasAnyRole("ADMIN", "PROFESSOR")
+                        .requestMatchers("/api/deanship/**").hasAnyRole("ADMIN", "DEANSHIP")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

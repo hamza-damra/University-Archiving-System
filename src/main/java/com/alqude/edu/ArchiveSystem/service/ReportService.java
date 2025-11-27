@@ -40,6 +40,53 @@ public class ReportService {
         private final UserService userService;
         private final UserRepository userRepository;
 
+        /**
+         * Generate department report with role-based filtering.
+         * For HOD users, automatically applies their department filter.
+         * For Dean/Admin users, uses the provided departmentId.
+         * 
+         * @param departmentId The department ID (optional for Dean/Admin)
+         * @return Report data map
+         */
+        @Deprecated
+        public Map<String, Object> generateDepartmentReportWithRoleFilter(Long departmentId) {
+                User currentUser = getCurrentUser();
+                Long effectiveDepartmentId = getEffectiveDepartmentId(departmentId, currentUser);
+                return generateDepartmentReport(effectiveDepartmentId);
+        }
+        
+        /**
+         * Get the effective department ID based on user role.
+         * For HOD users, always returns their own department ID.
+         * For Dean/Admin users, returns the provided departmentId.
+         */
+        private Long getEffectiveDepartmentId(Long requestedDepartmentId, User currentUser) {
+                switch (currentUser.getRole()) {
+                        case ROLE_ADMIN:
+                        case ROLE_DEANSHIP:
+                                // Admin and Dean can access any department
+                                return requestedDepartmentId;
+                                
+                        case ROLE_HOD:
+                        case ROLE_PROFESSOR:
+                                // HOD and Professor are restricted to their own department
+                                if (currentUser.getDepartment() == null) {
+                                        throw new IllegalStateException("User has no department assigned");
+                                }
+                                Long userDepartmentId = currentUser.getDepartment().getId();
+                                
+                                // If a different department was requested, log a warning and use user's department
+                                if (requestedDepartmentId != null && !requestedDepartmentId.equals(userDepartmentId)) {
+                                        log.warn("{} user {} attempted to access department {} but is restricted to department {}", 
+                                                        currentUser.getRole(), currentUser.getEmail(), requestedDepartmentId, userDepartmentId);
+                                }
+                                return userDepartmentId;
+                                
+                        default:
+                                throw new IllegalStateException("Invalid user role");
+                }
+        }
+
         @Deprecated
         public Map<String, Object> generateDepartmentReport(Long departmentId) {
                 log.info("Generating report for department id: {}", departmentId);

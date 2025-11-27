@@ -173,6 +173,16 @@
     <div id="modalsContainer"></div>
     
     <script src="/js/modern-dropdown.js"></script>
+    <script src="/js/notifications.js"></script>
     <script type="module" src="/js/dashboard.js"></script>
+    <script>
+        // Initialize notifications for Dean dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a bit for the header to be fully rendered
+            setTimeout(() => {
+                NotificationManager.init('deanship');
+            }, 100);
+        });
+    </script>
 </body>
 </html>

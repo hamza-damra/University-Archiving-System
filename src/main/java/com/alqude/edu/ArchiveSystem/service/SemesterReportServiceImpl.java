@@ -3,6 +3,7 @@ package com.alqude.edu.ArchiveSystem.service;
 import com.alqude.edu.ArchiveSystem.dto.report.*;
 import com.alqude.edu.ArchiveSystem.entity.*;
 import com.alqude.edu.ArchiveSystem.exception.EntityNotFoundException;
+import com.alqude.edu.ArchiveSystem.exception.UnauthorizedOperationException;
 import com.alqude.edu.ArchiveSystem.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,31 +34,39 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     @Override
     @Transactional(readOnly = true)
     public ProfessorSubmissionReport generateProfessorSubmissionReport(Long semesterId, Long departmentId) {
-        log.info("Generating professor submission report for semester {} and department {}", semesterId, departmentId);
+        User currentUser = getCurrentUser();
+        return generateProfessorSubmissionReportWithRoleFilter(semesterId, departmentId, currentUser);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public ProfessorSubmissionReport generateProfessorSubmissionReportWithRoleFilter(Long semesterId, Long departmentId, User currentUser) {
+        log.info("Generating professor submission report for semester {} and department {} with role-based filtering", semesterId, departmentId);
         
         // Validate semester exists
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new EntityNotFoundException("Semester not found with id: " + semesterId));
         
-        // Validate department exists
-        Department department = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> new EntityNotFoundException("Department not found with id: " + departmentId));
+        // Apply role-based department filtering
+        Long effectiveDepartmentId = getEffectiveDepartmentId(departmentId, currentUser);
         
-        // Get current user for report metadata
-        User currentUser = getCurrentUser();
+        // Validate department exists
+        Department department = departmentRepository.findById(effectiveDepartmentId)
+                .orElseThrow(() -> new EntityNotFoundException("Department not found with id: " + effectiveDepartmentId));
         
         // Validate department access for HOD and Professor roles
-        departmentScopedFilterService.validateDepartmentAccess(departmentId, currentUser);
+        departmentScopedFilterService.validateDepartmentAccess(effectiveDepartmentId, currentUser);
         
-        // Fetch all course assignments for this semester and department
-        List<CourseAssignment> courseAssignments = courseAssignmentRepository.findBySemesterId(semesterId)
+        // Fetch all course assignments for this semester and department using optimized query with eager loading
+        // This prevents N+1 query issues by loading all related entities in a single query
+        List<CourseAssignment> courseAssignments = courseAssignmentRepository.findBySemesterIdWithEagerLoading(semesterId)
                 .stream()
                 .filter(ca -> ca.getProfessor().getDepartment() != null && 
-                             ca.getProfessor().getDepartment().getId().equals(departmentId))
+                             ca.getProfessor().getDepartment().getId().equals(effectiveDepartmentId))
                 .collect(Collectors.toList());
         
-        log.debug("Found {} course assignments for semester {} and department {}", 
-                courseAssignments.size(), semesterId, departmentId);
+        log.debug("Found {} course assignments for semester {} and department {} (using optimized query)", 
+                courseAssignments.size(), semesterId, effectiveDepartmentId);
         
         // Build report rows
         List<ProfessorSubmissionRow> rows = new ArrayList<>();
@@ -167,7 +176,7 @@ public class SemesterReportServiceImpl implements SemesterReportService {
         ProfessorSubmissionReport report = ProfessorSubmissionReport.builder()
                 .semesterId(semesterId)
                 .semesterName(semesterName)
-                .departmentId(departmentId)
+                .departmentId(effectiveDepartmentId)
                 .departmentName(department.getName())
                 .generatedAt(LocalDateTime.now())
                 .generatedBy(currentUser.getFirstName() + " " + currentUser.getLastName())
@@ -179,6 +188,42 @@ public class SemesterReportServiceImpl implements SemesterReportService {
                 rows.size(), totalRequiredDocuments);
         
         return report;
+    }
+    
+    /**
+     * Get the effective department ID based on user role.
+     * For HOD users, always returns their own department ID.
+     * For Dean/Admin users, returns the provided departmentId.
+     * 
+     * @param requestedDepartmentId The requested department ID
+     * @param currentUser The current authenticated user
+     * @return The effective department ID to use for filtering
+     */
+    private Long getEffectiveDepartmentId(Long requestedDepartmentId, User currentUser) {
+        switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+            case ROLE_DEANSHIP:
+                // Admin and Dean can access any department
+                return requestedDepartmentId;
+                
+            case ROLE_HOD:
+            case ROLE_PROFESSOR:
+                // HOD and Professor are restricted to their own department
+                if (currentUser.getDepartment() == null) {
+                    throw new UnauthorizedOperationException("User has no department assigned");
+                }
+                Long userDepartmentId = currentUser.getDepartment().getId();
+                
+                // If a different department was requested, log a warning and use user's department
+                if (requestedDepartmentId != null && !requestedDepartmentId.equals(userDepartmentId)) {
+                    log.warn("{} user {} attempted to access department {} but is restricted to department {}", 
+                            currentUser.getRole(), currentUser.getEmail(), requestedDepartmentId, userDepartmentId);
+                }
+                return userDepartmentId;
+                
+            default:
+                throw new UnauthorizedOperationException("Invalid user role");
+        }
     }
 
     @Override
@@ -219,17 +264,21 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     @Override
     @Transactional(readOnly = true)
     public SystemWideReport generateSystemWideReport(Long semesterId) {
-        log.info("Generating system-wide report for semester {}", semesterId);
+        User currentUser = getCurrentUser();
+        return generateSystemWideReportWithRoleFilter(semesterId, currentUser);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public SystemWideReport generateSystemWideReportWithRoleFilter(Long semesterId, User currentUser) {
+        log.info("Generating system-wide report for semester {} with role-based filtering", semesterId);
         
         // Validate semester exists
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new EntityNotFoundException("Semester not found with id: " + semesterId));
         
-        // Get current user for report metadata
-        User currentUser = getCurrentUser();
-        
-        // Get all departments
-        List<Department> departments = departmentRepository.findAll();
+        // Get departments based on user role
+        List<Department> departments = getDepartmentsForUser(currentUser);
         
         // Generate summary for each department
         List<DepartmentReportSummary> departmentSummaries = new ArrayList<>();
@@ -240,10 +289,13 @@ public class SemesterReportServiceImpl implements SemesterReportService {
         int totalMissingDocuments = 0;
         int totalOverdueDocuments = 0;
         
+        // Fetch all course assignments once using optimized query with eager loading
+        // This prevents N+1 query issues by loading all related entities in a single query
+        List<CourseAssignment> allCourseAssignments = courseAssignmentRepository.findBySemesterIdWithEagerLoading(semesterId);
+        
         for (Department department : departments) {
-            // Get course assignments for this department
-            List<CourseAssignment> courseAssignments = courseAssignmentRepository.findBySemesterId(semesterId)
-                    .stream()
+            // Filter course assignments for this department from the pre-fetched list
+            List<CourseAssignment> courseAssignments = allCourseAssignments.stream()
                     .filter(ca -> ca.getProfessor().getDepartment() != null && 
                                  ca.getProfessor().getDepartment().getId().equals(department.getId()))
                     .collect(Collectors.toList());
@@ -442,6 +494,151 @@ public class SemesterReportServiceImpl implements SemesterReportService {
                 .submittedDocuments(submittedDocuments)
                 .missingDocuments(missingDocuments)
                 .overdueDocuments(overdueDocuments)
+                .build();
+    }
+    
+    /**
+     * Get departments based on user role.
+     * For Admin/Dean: returns all departments.
+     * For HOD: returns only their own department.
+     * 
+     * @param currentUser The current authenticated user
+     * @return List of departments the user can access
+     */
+    private List<Department> getDepartmentsForUser(User currentUser) {
+        switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+            case ROLE_DEANSHIP:
+                // Admin and Dean can see all departments
+                return departmentRepository.findAll();
+                
+            case ROLE_HOD:
+            case ROLE_PROFESSOR:
+                // HOD and Professor can only see their own department
+                if (currentUser.getDepartment() == null) {
+                    log.warn("User {} has no department assigned", currentUser.getEmail());
+                    return List.of();
+                }
+                return List.of(currentUser.getDepartment());
+                
+            default:
+                log.warn("Unknown role: {}", currentUser.getRole());
+                return List.of();
+        }
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public ReportFilterOptions getFilterOptions(User currentUser) {
+        log.info("Getting filter options for user {} with role {}", currentUser.getEmail(), currentUser.getRole());
+        
+        boolean canFilterByDepartment = currentUser.getRole() == Role.ROLE_ADMIN || 
+                                        currentUser.getRole() == Role.ROLE_DEANSHIP;
+        
+        // Get departments based on role
+        List<ReportFilterOptions.DepartmentOption> departmentOptions;
+        Long userDepartmentId = null;
+        String userDepartmentName = null;
+        
+        if (canFilterByDepartment) {
+            // Admin/Dean can see all departments
+            departmentOptions = departmentRepository.findAll().stream()
+                    .map(dept -> ReportFilterOptions.DepartmentOption.builder()
+                            .id(dept.getId())
+                            .name(dept.getName())
+                            .shortcut(dept.getShortcut())
+                            .build())
+                    .collect(Collectors.toList());
+        } else {
+            // HOD/Professor can only see their own department
+            departmentOptions = List.of();
+            if (currentUser.getDepartment() != null) {
+                userDepartmentId = currentUser.getDepartment().getId();
+                userDepartmentName = currentUser.getDepartment().getName();
+            }
+        }
+        
+        // Get courses based on role
+        List<Course> accessibleCourses;
+        if (canFilterByDepartment) {
+            accessibleCourses = courseAssignmentRepository.findAll().stream()
+                    .map(CourseAssignment::getCourse)
+                    .distinct()
+                    .collect(Collectors.toList());
+        } else if (currentUser.getDepartment() != null) {
+            accessibleCourses = courseAssignmentRepository.findAll().stream()
+                    .filter(ca -> ca.getProfessor().getDepartment() != null &&
+                                 ca.getProfessor().getDepartment().getId().equals(currentUser.getDepartment().getId()))
+                    .map(CourseAssignment::getCourse)
+                    .distinct()
+                    .collect(Collectors.toList());
+        } else {
+            accessibleCourses = List.of();
+        }
+        
+        List<ReportFilterOptions.CourseOption> courseOptions = accessibleCourses.stream()
+                .map(course -> ReportFilterOptions.CourseOption.builder()
+                        .id(course.getId())
+                        .courseCode(course.getCourseCode())
+                        .courseName(course.getCourseName())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Get professors based on role
+        List<User> accessibleProfessors;
+        if (canFilterByDepartment) {
+            accessibleProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR);
+        } else if (currentUser.getDepartment() != null) {
+            accessibleProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR).stream()
+                    .filter(prof -> prof.getDepartment() != null &&
+                                   prof.getDepartment().getId().equals(currentUser.getDepartment().getId()))
+                    .collect(Collectors.toList());
+        } else {
+            accessibleProfessors = List.of();
+        }
+        
+        List<ReportFilterOptions.ProfessorOption> professorOptions = accessibleProfessors.stream()
+                .map(prof -> ReportFilterOptions.ProfessorOption.builder()
+                        .id(prof.getId())
+                        .name(prof.getFirstName() + " " + prof.getLastName())
+                        .email(prof.getEmail())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Get academic years
+        List<ReportFilterOptions.AcademicYearOption> academicYearOptions = semesterRepository.findAll().stream()
+                .map(Semester::getAcademicYear)
+                .distinct()
+                .map(ay -> ReportFilterOptions.AcademicYearOption.builder()
+                        .id(ay.getId())
+                        .yearCode(ay.getYearCode())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Get semesters
+        List<ReportFilterOptions.SemesterOption> semesterOptions = semesterRepository.findAll().stream()
+                .map(sem -> ReportFilterOptions.SemesterOption.builder()
+                        .id(sem.getId())
+                        .name(sem.getAcademicYear().getYearCode() + " - " + sem.getType().toString())
+                        .academicYearId(sem.getAcademicYear().getId())
+                        .build())
+                .collect(Collectors.toList());
+        
+        // Get document types and submission statuses
+        List<DocumentTypeEnum> documentTypes = Arrays.asList(DocumentTypeEnum.values());
+        List<SubmissionStatus> submissionStatuses = Arrays.asList(SubmissionStatus.values());
+        
+        return ReportFilterOptions.builder()
+                .departments(departmentOptions)
+                .courses(courseOptions)
+                .professors(professorOptions)
+                .academicYears(academicYearOptions)
+                .semesters(semesterOptions)
+                .documentTypes(documentTypes)
+                .submissionStatuses(submissionStatuses)
+                .canFilterByDepartment(canFilterByDepartment)
+                .userDepartmentId(userDepartmentId)
+                .userDepartmentName(userDepartmentName)
                 .build();
     }
     

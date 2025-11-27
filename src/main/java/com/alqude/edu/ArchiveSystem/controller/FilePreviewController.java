@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/file-explorer/files")
 @RequiredArgsConstructor
 @Slf4j
+@SuppressWarnings("null")
 public class FilePreviewController {
     
     private final FilePreviewService filePreviewService;

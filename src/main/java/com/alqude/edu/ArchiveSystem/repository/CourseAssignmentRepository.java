@@ -15,6 +15,23 @@ public interface CourseAssignmentRepository extends JpaRepository<CourseAssignme
         @Query("SELECT ca FROM CourseAssignment ca " +
                         "WHERE ca.semester.id = :semesterId AND ca.isActive = true")
         List<CourseAssignment> findBySemesterId(@Param("semesterId") Long semesterId);
+        
+        /**
+         * Optimized query for report generation with eager loading.
+         * Fetches course assignments with all related entities in a single query
+         * to prevent N+1 query issues.
+         * 
+         * @param semesterId The semester ID
+         * @return List of course assignments with eagerly loaded relationships
+         */
+        @Query("SELECT DISTINCT ca FROM CourseAssignment ca " +
+                        "JOIN FETCH ca.course c " +
+                        "JOIN FETCH ca.professor p " +
+                        "LEFT JOIN FETCH p.department " +
+                        "JOIN FETCH ca.semester s " +
+                        "JOIN FETCH s.academicYear " +
+                        "WHERE ca.semester.id = :semesterId AND ca.isActive = true")
+        List<CourseAssignment> findBySemesterIdWithEagerLoading(@Param("semesterId") Long semesterId);
 
         @Query("SELECT ca FROM CourseAssignment ca " +
                         "JOIN FETCH ca.course c " +

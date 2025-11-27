@@ -44,6 +44,7 @@ public class UserService implements UserDetailsService {
     private final DocumentRequestRepository documentRequestRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
+    private final EmailValidationService emailValidationService;
     
     // Email validation pattern
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -72,16 +73,30 @@ public class UserService implements UserDetailsService {
             throw UserException.emailAlreadyExists(request.getEmail());
         }
         
-        // Validate and fetch department
+        // Validate and fetch department (optional for DEANSHIP role)
         Long departmentId = request.getDepartmentId();
-        if (departmentId == null) {
-            throw new IllegalArgumentException("Department ID cannot be null");
+        Department department = null;
+        
+        // DEANSHIP users don't require a department (they have access to all)
+        if (request.getRole() == Role.ROLE_DEANSHIP) {
+            if (departmentId != null) {
+                department = departmentRepository.findById(departmentId)
+                        .orElseThrow(() -> UserException.departmentNotFound(departmentId));
+            }
+        } else {
+            // Other roles require a department
+            if (departmentId == null) {
+                throw new IllegalArgumentException("Department ID is required for role: " + request.getRole());
+            }
+            department = departmentRepository.findById(departmentId)
+                    .orElseThrow(() -> UserException.departmentNotFound(departmentId));
         }
-        Department department = departmentRepository.findById(departmentId)
-                .orElseThrow(() -> UserException.departmentNotFound(departmentId));
         
         // Validate role
         validateRole(request.getRole());
+        
+        // Validate role-specific email format
+        validateRoleSpecificEmail(request.getEmail(), request.getRole());
         
         // Validate password strength
         validatePassword(request.getPassword());
@@ -302,15 +317,93 @@ public class UserService implements UserDetailsService {
         }
     }
     
+    /**
+     * Validates email format based on user role.
+     * - Professor emails must end with @stuff.alquds.edu
+     * - HOD emails must follow pattern hod.<department_shortcut>@dean.alquds.edu
+     * 
+     * @param email The email to validate
+     * @param role The role of the user being created
+     */
+    private void validateRoleSpecificEmail(String email, Role role) {
+        if (email == null || role == null) {
+            return; // Basic validation is handled elsewhere
+        }
+        
+        switch (role) {
+            case ROLE_PROFESSOR:
+                emailValidationService.validateProfessorEmail(email);
+                break;
+            case ROLE_HOD:
+                emailValidationService.validateHodEmail(email);
+                break;
+            default:
+                // No specific email validation for ADMIN and DEANSHIP roles
+                break;
+        }
+    }
+    
     private void validateRole(Role role) {
         if (role == null) {
             throw UserException.invalidRole("null");
         }
         
-        // Validate that role is one of the allowed values
+        // Get current user to check if they have Admin privileges
+        User currentUser = getCurrentUser();
+        boolean isAdmin = currentUser != null && currentUser.getRole() == Role.ROLE_ADMIN;
+        
+        // Admin can create users with any role
+        if (isAdmin) {
+            // All roles are valid for Admin
+            return;
+        }
+        
+        // Non-admin users (Dean) can only create PROFESSOR and HOD roles
         if (role != Role.ROLE_PROFESSOR && role != Role.ROLE_HOD) {
             throw UserException.invalidRole(role.toString());
         }
+    }
+    
+    /**
+     * Validates role for Admin user creation.
+     * Only Admin users can create other Admin users.
+     * 
+     * @param role The role to validate
+     * @param creatorRole The role of the user creating the new user
+     */
+    public void validateRoleForCreation(Role role, Role creatorRole) {
+        if (role == null) {
+            throw UserException.invalidRole("null");
+        }
+        
+        // Admin can create users with any role
+        if (creatorRole == Role.ROLE_ADMIN) {
+            return;
+        }
+        
+        // Non-admin users cannot create Admin users
+        if (role == Role.ROLE_ADMIN) {
+            throw UserException.invalidRole(role.toString() + " - Only Admin can create Admin users");
+        }
+        
+        // Dean can create PROFESSOR, HOD, and DEANSHIP roles
+        if (creatorRole == Role.ROLE_DEANSHIP) {
+            if (role != Role.ROLE_PROFESSOR && role != Role.ROLE_HOD && role != Role.ROLE_DEANSHIP) {
+                throw UserException.invalidRole(role.toString());
+            }
+            return;
+        }
+        
+        // HOD can only create PROFESSOR roles
+        if (creatorRole == Role.ROLE_HOD) {
+            if (role != Role.ROLE_PROFESSOR) {
+                throw UserException.invalidRole(role.toString() + " - HOD can only create Professor users");
+            }
+            return;
+        }
+        
+        // Professors cannot create users
+        throw UserException.invalidRole(role.toString() + " - Insufficient privileges to create users");
     }
     
     private void checkUserDependencies(Long userId) {

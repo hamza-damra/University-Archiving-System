@@ -41,10 +41,14 @@ public class ProfessorServiceImpl implements ProfessorService {
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final PasswordEncoder passwordEncoder;
     private final FolderService folderService;
+    private final EmailValidationService emailValidationService;
     
     @Override
     public User createProfessor(ProfessorDTO dto) {
         log.info("Creating new professor with email: {}", dto.getEmail());
+        
+        // Validate professor email format (must end with @stuff.alquds.edu)
+        emailValidationService.validateProfessorEmail(dto.getEmail());
         
         // Validate email uniqueness
         if (userRepository.existsByEmail(dto.getEmail())) {
@@ -101,6 +105,11 @@ public class ProfessorServiceImpl implements ProfessorService {
         // Validate role is professor
         if (professor.getRole() != Role.ROLE_PROFESSOR) {
             throw new BusinessException("INVALID_ROLE", "User with ID " + id + " is not a professor");
+        }
+        
+        // Validate professor email format if email is being changed
+        if (!professor.getEmail().equals(dto.getEmail())) {
+            emailValidationService.validateProfessorEmail(dto.getEmail());
         }
         
         // Check email uniqueness if email is being changed

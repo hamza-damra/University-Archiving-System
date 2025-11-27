@@ -294,6 +294,13 @@
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
     
+    <script src="/js/notifications.js"></script>
     <script type="module" src="/js/courses.js"></script>
+    <script>
+        // Initialize notifications for Dean dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => NotificationManager.init('deanship'), 100);
+        });
+    </script>
 </body>
 </html>

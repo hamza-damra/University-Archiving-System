@@ -625,12 +625,18 @@ class TableExportHelper {
 
     /**
      * Export table data
-     * @param {string} tableId - Table element ID
+     * @param {string} tableId - Table element ID or container ID
      * @param {string} tableName - Name for export file
      * @param {string} format - 'pdf' or 'excel'
      */
     static async exportTable(tableId, tableName, format) {
-        const table = document.getElementById(tableId);
+        // Try to find the table element directly, or look inside the container
+        let table = document.getElementById(tableId);
+        if (table && table.tagName !== 'TABLE') {
+            // If it's not a table, look for a table inside it
+            table = table.querySelector('table');
+        }
+        
         if (!table) {
             window.showToast?.('Table not found', 'error');
             return;
@@ -646,18 +652,13 @@ class TableExportHelper {
             }
 
             // Show loading indicator
-            const loadingToast = window.showToast?.('Generating export...', 'info', 0);
+            window.showToast?.('Generating export...', 'info');
 
             // Export using ExportService
             if (format === 'pdf') {
                 await window.ExportService.exportTableToPDF(data, columns, tableName);
             } else if (format === 'excel') {
                 await window.ExportService.exportTableToExcel(data, columns, tableName);
-            }
-
-            // Close loading toast
-            if (loadingToast && typeof loadingToast.close === 'function') {
-                loadingToast.close();
             }
 
             window.showToast?.(`Table exported successfully as ${format.toUpperCase()}`, 'success');
@@ -675,17 +676,20 @@ class TableExportHelper {
     static extractTableData(table) {
         const columns = [];
         const data = [];
+        const skipColumnIndices = new Set(); // Track which column indices to skip
 
-        // Extract headers (skip checkbox column if present)
+        // Extract headers (skip checkbox and action columns)
         const headerRow = table.querySelector('thead tr');
         if (headerRow) {
             headerRow.querySelectorAll('th').forEach((th, index) => {
-                // Skip checkbox columns
-                if (!th.querySelector('input[type="checkbox"]')) {
-                    const text = th.textContent.trim();
-                    if (text && text !== 'Actions') {
-                        columns.push(text);
-                    }
+                const text = th.textContent.trim().toUpperCase();
+                // Skip checkbox columns and Actions column
+                if (th.querySelector('input[type="checkbox"]') || 
+                    text === 'ACTIONS' || 
+                    text === 'ACTION') {
+                    skipColumnIndices.add(index);
+                } else if (text) {
+                    columns.push(th.textContent.trim());
                 }
             });
         }
@@ -693,32 +697,64 @@ class TableExportHelper {
         // Extract data rows
         const bodyRows = table.querySelectorAll('tbody tr');
         bodyRows.forEach(row => {
+            // Skip empty/loading rows
+            if (row.querySelector('.loading-spinner') || row.querySelector('.empty-state')) {
+                return;
+            }
+            
             const rowData = [];
-            row.querySelectorAll('td').forEach((td, index) => {
-                // Skip checkbox and action columns
-                if (!td.querySelector('input[type="checkbox"]') && !td.classList.contains('actions-cell')) {
-                    // Get text content, handling special cases
-                    let text = td.textContent.trim();
+            const cells = row.querySelectorAll('td');
+            
+            cells.forEach((td, index) => {
+                // Skip columns we identified as actions/checkbox
+                if (skipColumnIndices.has(index)) {
+                    return;
+                }
+                
+                // Skip action cells (buttons, links with onclick)
+                if (td.querySelector('button[onclick]') || 
+                    td.querySelectorAll('button').length > 1 ||
+                    td.classList.contains('actions-cell')) {
+                    return;
+                }
 
+                // Get text content, handling special cases
+                let text = '';
+
+                // Handle user avatars - get just the name
+                const avatarName = td.querySelector('.text-sm.font-medium');
+                if (avatarName) {
+                    text = avatarName.textContent.trim();
+                } else {
                     // Handle progress bars - extract percentage
                     const progressBar = td.querySelector('.progress-bar-text');
                     if (progressBar) {
                         text = progressBar.textContent.trim();
+                    } else {
+                        // Handle badges/status
+                        const badge = td.querySelector('[class*="badge"], [class*="status"], .rounded-full');
+                        if (badge) {
+                            text = badge.textContent.trim();
+                        } else {
+                            text = td.textContent.trim();
+                        }
                     }
+                }
 
-                    // Handle badges
-                    const badge = td.querySelector('.badge');
-                    if (badge) {
-                        text = badge.textContent.trim();
-                    }
-
-                    if (text) {
-                        rowData.push(text);
-                    }
+                // Clean up text (remove extra whitespace and newlines)
+                text = text.replace(/\s+/g, ' ').trim();
+                
+                if (text) {
+                    rowData.push(text);
                 }
             });
 
-            if (rowData.length > 0) {
+            // Only add rows with data and correct column count
+            if (rowData.length > 0 && rowData.length <= columns.length) {
+                // Pad with empty strings if needed
+                while (rowData.length < columns.length) {
+                    rowData.push('');
+                }
                 data.push(rowData);
             }
         });
@@ -730,21 +766,255 @@ class TableExportHelper {
      * Add export buttons to professors table
      */
     static addToProfessorsTable() {
-        this.addExportButtons('professorsTableContainer', 'professorsTable', 'Professors List');
+        const container = document.getElementById('professorsTableContainer');
+        if (!container) return;
+        
+        // Get the parent element to insert buttons before the container
+        const parentDiv = container.parentElement;
+        if (!parentDiv) return;
+        
+        // Check if export buttons already exist in the parent
+        if (parentDiv.querySelector('.table-export-buttons')) {
+            return;
+        }
+        
+        // Create export buttons container
+        const exportDiv = document.createElement('div');
+        exportDiv.className = 'table-export-buttons flex gap-2 mb-4';
+        exportDiv.innerHTML = `
+            <button class="export-table-pdf px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to PDF">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Export PDF
+            </button>
+            <button class="export-table-excel px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to Excel">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Excel
+            </button>
+        `;
+        
+        // Insert before the container
+        parentDiv.insertBefore(exportDiv, container);
+        
+        // Attach event listeners - use arrow functions to capture context
+        exportDiv.querySelector('.export-table-pdf').addEventListener('click', () => {
+            this.exportProfessorsTable('pdf');
+        });
+
+        exportDiv.querySelector('.export-table-excel').addEventListener('click', () => {
+            this.exportProfessorsTable('excel');
+        });
+    }
+    
+    /**
+     * Export professors table data
+     */
+    static async exportProfessorsTable(format) {
+        // Look for table in both enhanced wrapper and standard container
+        let table = document.querySelector('#professorsTableWrapper table');
+        if (!table) {
+            table = document.querySelector('#professorsTableContainer table');
+        }
+        if (!table) {
+            table = document.querySelector('#professorsTable table');
+        }
+        
+        if (!table) {
+            window.showToast?.('Professors table not found', 'error');
+            return;
+        }
+
+        try {
+            const { columns, data } = this.extractTableData(table);
+
+            if (data.length === 0) {
+                window.showToast?.('No data to export', 'warning');
+                return;
+            }
+
+            window.showToast?.('Generating export...', 'info');
+
+            if (format === 'pdf') {
+                await window.ExportService.exportTableToPDF(data, columns, 'Professors List');
+            } else if (format === 'excel') {
+                await window.ExportService.exportTableToExcel(data, columns, 'Professors List');
+            }
+
+            window.showToast?.(`Exported successfully as ${format.toUpperCase()}`, 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            window.showToast?.(`Export failed: ${error.message}`, 'error');
+        }
     }
 
     /**
      * Add export buttons to courses table
      */
     static addToCoursesTable() {
-        this.addExportButtons('coursesTableContainer', 'coursesTable', 'Courses List');
+        const container = document.getElementById('coursesTableContainer');
+        if (!container) return;
+        
+        const parentDiv = container.parentElement;
+        if (!parentDiv) return;
+        
+        if (parentDiv.querySelector('.table-export-buttons')) {
+            return;
+        }
+        
+        const exportDiv = document.createElement('div');
+        exportDiv.className = 'table-export-buttons flex gap-2 mb-4';
+        exportDiv.innerHTML = `
+            <button class="export-table-pdf px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to PDF">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Export PDF
+            </button>
+            <button class="export-table-excel px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to Excel">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Excel
+            </button>
+        `;
+        
+        parentDiv.insertBefore(exportDiv, container);
+        
+        exportDiv.querySelector('.export-table-pdf').addEventListener('click', () => {
+            this.exportCoursesTable('pdf');
+        });
+
+        exportDiv.querySelector('.export-table-excel').addEventListener('click', () => {
+            this.exportCoursesTable('excel');
+        });
+    }
+    
+    /**
+     * Export courses table data
+     */
+    static async exportCoursesTable(format) {
+        let table = document.querySelector('#coursesTableWrapper table');
+        if (!table) {
+            table = document.querySelector('#coursesTableContainer table');
+        }
+        if (!table) {
+            table = document.querySelector('#coursesTable table');
+        }
+        
+        if (!table) {
+            window.showToast?.('Courses table not found', 'error');
+            return;
+        }
+
+        try {
+            const { columns, data } = this.extractTableData(table);
+
+            if (data.length === 0) {
+                window.showToast?.('No data to export', 'warning');
+                return;
+            }
+
+            window.showToast?.('Generating export...', 'info');
+
+            if (format === 'pdf') {
+                await window.ExportService.exportTableToPDF(data, columns, 'Courses List');
+            } else if (format === 'excel') {
+                await window.ExportService.exportTableToExcel(data, columns, 'Courses List');
+            }
+
+            window.showToast?.(`Exported successfully as ${format.toUpperCase()}`, 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            window.showToast?.(`Export failed: ${error.message}`, 'error');
+        }
     }
 
     /**
      * Add export buttons to assignments table
      */
     static addToAssignmentsTable() {
-        this.addExportButtons('assignmentsTableContainer', 'assignmentsTable', 'Assignments List');
+        const container = document.getElementById('assignmentsTableContainer');
+        if (!container) return;
+        
+        const parentDiv = container.parentElement;
+        if (!parentDiv) return;
+        
+        if (parentDiv.querySelector('.table-export-buttons')) {
+            return;
+        }
+        
+        const exportDiv = document.createElement('div');
+        exportDiv.className = 'table-export-buttons flex gap-2 mb-4';
+        exportDiv.innerHTML = `
+            <button class="export-table-pdf px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to PDF">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Export PDF
+            </button>
+            <button class="export-table-excel px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm"
+                    title="Export table to Excel">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export Excel
+            </button>
+        `;
+        
+        parentDiv.insertBefore(exportDiv, container);
+        
+        exportDiv.querySelector('.export-table-pdf').addEventListener('click', () => {
+            this.exportAssignmentsTable('pdf');
+        });
+
+        exportDiv.querySelector('.export-table-excel').addEventListener('click', () => {
+            this.exportAssignmentsTable('excel');
+        });
+    }
+    
+    /**
+     * Export assignments table data
+     */
+    static async exportAssignmentsTable(format) {
+        let table = document.querySelector('#assignmentsTableContainer table');
+        if (!table) {
+            table = document.querySelector('#assignmentsTable table');
+        }
+        
+        if (!table) {
+            window.showToast?.('Assignments table not found', 'error');
+            return;
+        }
+
+        try {
+            const { columns, data } = this.extractTableData(table);
+
+            if (data.length === 0) {
+                window.showToast?.('No data to export', 'warning');
+                return;
+            }
+
+            window.showToast?.('Generating export...', 'info');
+
+            if (format === 'pdf') {
+                await window.ExportService.exportTableToPDF(data, columns, 'Course Assignments');
+            } else if (format === 'excel') {
+                await window.ExportService.exportTableToExcel(data, columns, 'Course Assignments');
+            }
+
+            window.showToast?.(`Exported successfully as ${format.toUpperCase()}`, 'success');
+        } catch (error) {
+            console.error('Export error:', error);
+            window.showToast?.(`Export failed: ${error.message}`, 'error');
+        }
     }
 }
 

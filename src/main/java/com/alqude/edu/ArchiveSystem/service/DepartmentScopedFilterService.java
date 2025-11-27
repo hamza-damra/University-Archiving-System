@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
  * Service for applying department-scoped filtering based on user role.
  * 
  * Rules:
+ * - Admin: No filtering, can access all departments (same as Deanship)
  * - Deanship: No filtering, can access all departments
  * - HOD: Filter all queries by their department
  * - Professor: Filter by department for read operations, by assignment for write operations
@@ -33,6 +34,11 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // Admin can see all assignments
+                log.debug("Admin user - no filtering applied to {} assignments", assignments.size());
+                return assignments;
+                
             case ROLE_DEANSHIP:
                 // Deanship can see all assignments
                 log.debug("Deanship user - no filtering applied to {} assignments", assignments.size());
@@ -79,6 +85,11 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // Admin can see all professors
+                log.debug("Admin user - no filtering applied to {} professors", professors.size());
+                return professors;
+                
             case ROLE_DEANSHIP:
                 // Deanship can see all professors
                 log.debug("Deanship user - no filtering applied to {} professors", professors.size());
@@ -121,6 +132,11 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // Admin can see all courses
+                log.debug("Admin user - no filtering applied to {} courses", courses.size());
+                return courses;
+                
             case ROLE_DEANSHIP:
                 // Deanship can see all courses
                 log.debug("Deanship user - no filtering applied to {} courses", courses.size());
@@ -163,6 +179,11 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // Admin can see all submissions
+                log.debug("Admin user - no filtering applied to {} submissions", submissions.size());
+                return submissions;
+                
             case ROLE_DEANSHIP:
                 // Deanship can see all submissions
                 log.debug("Deanship user - no filtering applied to {} submissions", submissions.size());
@@ -231,6 +252,11 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // Admin has access to all departments
+                log.debug("Admin user - access granted to department {}", departmentId);
+                return;
+                
             case ROLE_DEANSHIP:
                 // Deanship has access to all departments
                 log.debug("Deanship user - access granted to department {}", departmentId);
@@ -311,6 +337,10 @@ public class DepartmentScopedFilterService {
         }
         
         switch (currentUser.getRole()) {
+            case ROLE_ADMIN:
+                // No filtering for Admin
+                return null;
+                
             case ROLE_DEANSHIP:
                 // No filtering for Deanship
                 return null;

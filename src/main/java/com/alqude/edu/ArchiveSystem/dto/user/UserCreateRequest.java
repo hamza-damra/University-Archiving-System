@@ -31,6 +31,6 @@ public class UserCreateRequest {
     @NotNull(message = "Role is required")
     private Role role;
     
-    @NotNull(message = "Department ID is required")
+    // Department ID is optional for DEANSHIP role (they have access to all departments)
     private Long departmentId;
 }

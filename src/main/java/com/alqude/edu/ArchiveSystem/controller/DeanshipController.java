@@ -5,6 +5,14 @@ import com.alqude.edu.ArchiveSystem.dto.academic.CourseAssignmentDTO;
 import com.alqude.edu.ArchiveSystem.dto.academic.CourseDTO;
 import com.alqude.edu.ArchiveSystem.dto.academic.RequiredDocumentTypeDTO;
 import com.alqude.edu.ArchiveSystem.dto.common.ApiResponse;
+import com.alqude.edu.ArchiveSystem.dto.common.NotificationResponse;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.ChartDataPoint;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.DashboardStatistics;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.DepartmentChartData;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.RecentActivity;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.StatusDistribution;
+import com.alqude.edu.ArchiveSystem.dto.dashboard.TimeGrouping;
+import com.alqude.edu.ArchiveSystem.dto.report.ReportFilterOptions;
 import com.alqude.edu.ArchiveSystem.dto.report.SystemWideReport;
 import com.alqude.edu.ArchiveSystem.dto.user.ProfessorDTO;
 import com.alqude.edu.ArchiveSystem.entity.AcademicYear;
@@ -12,10 +20,16 @@ import com.alqude.edu.ArchiveSystem.entity.Course;
 import com.alqude.edu.ArchiveSystem.entity.CourseAssignment;
 import com.alqude.edu.ArchiveSystem.entity.RequiredDocumentType;
 import com.alqude.edu.ArchiveSystem.entity.User;
+import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import com.alqude.edu.ArchiveSystem.service.AcademicService;
 import com.alqude.edu.ArchiveSystem.service.CourseService;
+import com.alqude.edu.ArchiveSystem.service.DashboardWidgetService;
+import com.alqude.edu.ArchiveSystem.service.NotificationService;
 import com.alqude.edu.ArchiveSystem.service.ProfessorService;
 import com.alqude.edu.ArchiveSystem.service.SemesterReportService;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +38,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 /**
@@ -35,14 +50,17 @@ import java.util.List;
 @RequestMapping("/api/deanship")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('DEANSHIP')")
+@PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
 public class DeanshipController {
     
     private final AcademicService academicService;
     private final ProfessorService professorService;
     private final CourseService courseService;
     private final SemesterReportService semesterReportService;
+    private final DashboardWidgetService dashboardWidgetService;
+    private final NotificationService notificationService;
     private final com.alqude.edu.ArchiveSystem.repository.DepartmentRepository departmentRepository;
+    private final UserRepository userRepository;
     
     // ==================== Academic Year Management ====================
     
@@ -53,7 +71,7 @@ public class DeanshipController {
      * @return Created academic year with semesters
      */
     @PostMapping("/academic-years")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<AcademicYear>> createAcademicYear(@Valid @RequestBody AcademicYearDTO dto) {
         log.info("Deanship creating academic year: {}", dto.getYearCode());
         
@@ -76,7 +94,7 @@ public class DeanshipController {
      * @return Updated academic year
      */
     @PutMapping("/academic-years/{id}")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<AcademicYear>> updateAcademicYear(
             @PathVariable Long id,
             @Valid @RequestBody AcademicYearDTO dto) {
@@ -99,7 +117,7 @@ public class DeanshipController {
      * @return List of all academic years
      */
     @GetMapping("/academic-years")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<AcademicYear>>> getAllAcademicYears() {
         log.info("Deanship retrieving all academic years");
         
@@ -120,7 +138,7 @@ public class DeanshipController {
      * @return Success response
      */
     @PutMapping("/academic-years/{id}/activate")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<String>> activateAcademicYear(@PathVariable Long id) {
         log.info("Deanship activating academic year with id: {}", id);
         
@@ -141,7 +159,7 @@ public class DeanshipController {
      * @return List of semesters for the academic year
      */
     @GetMapping("/academic-years/{id}/semesters")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Semester>>> getSemestersByAcademicYear(@PathVariable Long id) {
         log.info("Deanship retrieving semesters for academic year: {}", id);
         
@@ -164,7 +182,7 @@ public class DeanshipController {
      * @return Created professor
      */
     @PostMapping("/professors")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<User>> createProfessor(@Valid @RequestBody ProfessorDTO dto) {
         log.info("Deanship creating professor with email: {}", dto.getEmail());
         
@@ -187,7 +205,7 @@ public class DeanshipController {
      * @return Updated professor
      */
     @PutMapping("/professors/{id}")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<User>> updateProfessor(
             @PathVariable Long id,
             @Valid @RequestBody ProfessorDTO dto) {
@@ -211,7 +229,7 @@ public class DeanshipController {
      * @return List of professors
      */
     @GetMapping("/professors")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<User>>> getAllProfessors(
             @RequestParam(required = false) Long departmentId) {
         
@@ -240,7 +258,7 @@ public class DeanshipController {
      * @return Success response
      */
     @PutMapping("/professors/{id}/deactivate")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<String>> deactivateProfessor(@PathVariable Long id) {
         log.info("Deanship deactivating professor with id: {}", id);
         
@@ -261,7 +279,7 @@ public class DeanshipController {
      * @return Success response
      */
     @PutMapping("/professors/{id}/activate")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<String>> activateProfessor(@PathVariable Long id) {
         log.info("Deanship activating professor with id: {}", id);
         
@@ -286,7 +304,7 @@ public class DeanshipController {
      * @return Created or existing folder information
      */
     @PostMapping("/professors/{id}/create-folder")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<com.alqude.edu.ArchiveSystem.entity.Folder>> createProfessorFolder(
             @PathVariable Long id,
             @RequestParam Long academicYearId,
@@ -316,7 +334,7 @@ public class DeanshipController {
      * @return Created course
      */
     @PostMapping("/courses")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<Course>> createCourse(@Valid @RequestBody CourseDTO dto) {
         log.info("Deanship creating course: {}", dto.getCourseCode());
         
@@ -339,7 +357,7 @@ public class DeanshipController {
      * @return Updated course
      */
     @PutMapping("/courses/{id}")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<Course>> updateCourse(
             @PathVariable Long id,
             @Valid @RequestBody CourseDTO dto) {
@@ -363,7 +381,7 @@ public class DeanshipController {
      * @return List of courses
      */
     @GetMapping("/courses")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<Course>>> getAllCourses(
             @RequestParam(required = false) Long departmentId) {
         
@@ -391,7 +409,7 @@ public class DeanshipController {
      * @return Success response
      */
     @PutMapping("/courses/{id}/deactivate")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<String>> deactivateCourse(@PathVariable Long id) {
         log.info("Deanship deactivating course with id: {}", id);
         
@@ -414,7 +432,7 @@ public class DeanshipController {
      * @return Created course assignment
      */
     @PostMapping("/course-assignments")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<CourseAssignment>> assignCourse(@Valid @RequestBody CourseAssignmentDTO dto) {
         log.info("Deanship assigning course {} to professor {} for semester {}", 
                 dto.getCourseId(), dto.getProfessorId(), dto.getSemesterId());
@@ -437,7 +455,7 @@ public class DeanshipController {
      * @return Success response
      */
     @DeleteMapping("/course-assignments/{id}")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<String>> unassignCourse(@PathVariable Long id) {
         log.info("Deanship unassigning course assignment with id: {}", id);
         
@@ -459,7 +477,7 @@ public class DeanshipController {
      * @return List of course assignments
      */
     @GetMapping("/course-assignments")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<CourseAssignment>>> getAssignments(
             @RequestParam Long semesterId,
             @RequestParam(required = false) Long professorId) {
@@ -491,7 +509,7 @@ public class DeanshipController {
      * @return List of created or existing folders
      */
     @PostMapping("/course-assignments/{id}/create-folders")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Folder>>> createCourseFolders(
             @PathVariable Long id) {
         
@@ -518,7 +536,7 @@ public class DeanshipController {
      * @return Created required document type
      */
     @PostMapping("/courses/{courseId}/required-documents")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<RequiredDocumentType>> addRequiredDocumentType(
             @PathVariable Long courseId,
             @Valid @RequestBody RequiredDocumentTypeDTO dto) {
@@ -544,7 +562,7 @@ public class DeanshipController {
      * @return List of all departments
      */
     @GetMapping("/departments")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<List<com.alqude.edu.ArchiveSystem.entity.Department>>> getAllDepartments() {
         log.info("Deanship retrieving all departments");
         
@@ -568,7 +586,7 @@ public class DeanshipController {
      * @return System-wide report
      */
     @GetMapping("/reports/system-wide")
-    @PreAuthorize("hasRole('DEANSHIP')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
     public ResponseEntity<ApiResponse<SystemWideReport>> getSystemWideReport(@RequestParam Long semesterId) {
         log.info("Deanship requesting system-wide report for semester: {}", semesterId);
         
@@ -580,5 +598,250 @@ public class DeanshipController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(ApiResponse.error("Failed to generate system-wide report: " + e.getMessage()));
         }
+    }
+    
+    /**
+     * Get available filter options for report generation.
+     * Dean users can filter by all departments.
+     * GET /api/deanship/reports/filter-options
+     * 
+     * @return Available filter options
+     */
+    @GetMapping("/reports/filter-options")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<ReportFilterOptions>> getReportFilterOptions() {
+        log.info("Deanship retrieving report filter options");
+        
+        try {
+            User currentUser = getCurrentUser();
+            ReportFilterOptions options = semesterReportService.getFilterOptions(currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Report filter options retrieved successfully", options));
+        } catch (Exception e) {
+            log.error("Error retrieving report filter options", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve report filter options: " + e.getMessage()));
+        }
+    }
+    
+    // ==================== Dashboard Statistics ====================
+    
+    /**
+     * Get dashboard statistics.
+     * GET /api/deanship/dashboard/statistics
+     * 
+     * @param academicYearId Optional academic year filter
+     * @param semesterId Optional semester filter
+     * @return Dashboard statistics
+     */
+    @GetMapping("/dashboard/statistics")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<DashboardStatistics>> getDashboardStatistics(
+            @RequestParam(required = false) Long academicYearId,
+            @RequestParam(required = false) Long semesterId) {
+        
+        log.info("Deanship retrieving dashboard statistics - academicYearId: {}, semesterId: {}", 
+                academicYearId, semesterId);
+        
+        try {
+            DashboardStatistics statistics = dashboardWidgetService.getStatistics(academicYearId, semesterId);
+            return ResponseEntity.ok(ApiResponse.success("Dashboard statistics retrieved successfully", statistics));
+        } catch (Exception e) {
+            log.error("Error retrieving dashboard statistics", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve dashboard statistics: " + e.getMessage()));
+        }
+    }
+    
+    // ==================== Chart Data ====================
+    
+    /**
+     * Get submissions over time chart data.
+     * GET /api/deanship/dashboard/charts/submissions
+     * 
+     * @param startDate Start date for the period (optional, defaults to 30 days ago)
+     * @param endDate End date for the period (optional, defaults to today)
+     * @param groupBy Time grouping (DAY, WEEK, MONTH)
+     * @return Chart data points
+     */
+    @GetMapping("/dashboard/charts/submissions")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<ChartDataPoint>>> getSubmissionsOverTime(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @RequestParam(defaultValue = "DAY") TimeGrouping groupBy) {
+        
+        // Set defaults if not provided
+        if (endDate == null) {
+            endDate = LocalDate.now();
+        }
+        if (startDate == null) {
+            startDate = endDate.minusDays(30);
+        }
+        
+        log.info("Deanship retrieving submissions chart data - startDate: {}, endDate: {}, groupBy: {}", 
+                startDate, endDate, groupBy);
+        
+        try {
+            List<ChartDataPoint> chartData = dashboardWidgetService.getSubmissionsOverTime(startDate, endDate, groupBy);
+            return ResponseEntity.ok(ApiResponse.success("Submissions chart data retrieved successfully", chartData));
+        } catch (Exception e) {
+            log.error("Error retrieving submissions chart data", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve submissions chart data: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get department distribution chart data.
+     * GET /api/deanship/dashboard/charts/departments
+     * 
+     * @param semesterId Optional semester filter
+     * @return Department chart data
+     */
+    @GetMapping("/dashboard/charts/departments")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<DepartmentChartData>>> getDepartmentDistribution(
+            @RequestParam(required = false) Long semesterId) {
+        
+        log.info("Deanship retrieving department distribution chart data - semesterId: {}", semesterId);
+        
+        try {
+            List<DepartmentChartData> chartData = dashboardWidgetService.getDepartmentDistribution(semesterId);
+            return ResponseEntity.ok(ApiResponse.success("Department distribution chart data retrieved successfully", chartData));
+        } catch (Exception e) {
+            log.error("Error retrieving department distribution chart data", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve department distribution chart data: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get status distribution chart data.
+     * GET /api/deanship/dashboard/charts/status-distribution
+     * 
+     * @param semesterId Optional semester filter
+     * @return Status distribution data (pending, uploaded, overdue, total)
+     */
+    @GetMapping("/dashboard/charts/status-distribution")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<StatusDistribution>> getStatusDistribution(
+            @RequestParam(required = false) Long semesterId) {
+        
+        log.info("Deanship retrieving status distribution chart data - semesterId: {}", semesterId);
+        
+        try {
+            StatusDistribution statusData = dashboardWidgetService.getStatusDistribution(semesterId);
+            return ResponseEntity.ok(ApiResponse.success("Status distribution chart data retrieved successfully", statusData));
+        } catch (Exception e) {
+            log.error("Error retrieving status distribution chart data", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve status distribution chart data: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get recent activity feed.
+     * GET /api/deanship/dashboard/activity
+     * 
+     * @param limit Maximum number of activity items to return (default: 10)
+     * @return List of recent activities
+     */
+    @GetMapping("/dashboard/activity")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<RecentActivity>>> getRecentActivity(
+            @RequestParam(defaultValue = "10") int limit) {
+        
+        log.info("Deanship retrieving recent activity - limit: {}", limit);
+        
+        try {
+            List<RecentActivity> activities = dashboardWidgetService.getRecentActivity(limit);
+            return ResponseEntity.ok(ApiResponse.success("Recent activity retrieved successfully", activities));
+        } catch (Exception e) {
+            log.error("Error retrieving recent activity", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve recent activity: " + e.getMessage()));
+        }
+    }
+    
+    // ==================== Notification Management ====================
+    
+    /**
+     * Get notifications for the current Dean user.
+     * Dean users see notifications from all departments.
+     * GET /api/deanship/notifications
+     * 
+     * @return List of notifications
+     */
+    @GetMapping("/notifications")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
+        log.info("Deanship retrieving notifications");
+        
+        try {
+            List<NotificationResponse> notifications = notificationService.getCurrentUserNotifications();
+            return ResponseEntity.ok(ApiResponse.success("Notifications retrieved successfully", notifications));
+        } catch (Exception e) {
+            log.error("Error retrieving notifications", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve notifications: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get unread notification count for the current Dean user.
+     * GET /api/deanship/notifications/unread-count
+     * 
+     * @return Unread notification count
+     */
+    @GetMapping("/notifications/unread-count")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<Long>> getUnreadNotificationCount() {
+        log.info("Deanship retrieving unread notification count");
+        
+        try {
+            User currentUser = getCurrentUser();
+            long unreadCount = notificationService.getUnreadCount(currentUser.getId());
+            return ResponseEntity.ok(ApiResponse.success("Unread count retrieved successfully", unreadCount));
+        } catch (Exception e) {
+            log.error("Error retrieving unread notification count", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve unread count: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Mark a notification as read.
+     * PUT /api/deanship/notifications/{id}/read
+     * 
+     * @param id Notification ID
+     * @return Success response
+     */
+    @PutMapping("/notifications/{id}/read")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEANSHIP')")
+    public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {
+        log.info("Deanship marking notification {} as read", id);
+        
+        try {
+            notificationService.markNotificationAsRead(id);
+            return ResponseEntity.ok(ApiResponse.success("Notification marked as read", "Success"));
+        } catch (Exception e) {
+            log.error("Error marking notification {} as read", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get current authenticated user
+     */
+    private User getCurrentUser() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new IllegalStateException("User is not authenticated");
+        }
+        
+        String email = authentication.getName();
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalStateException("Current user not found with email: " + email));
     }
 }

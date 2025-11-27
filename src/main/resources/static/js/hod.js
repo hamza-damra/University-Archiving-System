@@ -6,6 +6,7 @@ import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuth
 import { showToast, showModal, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
+import { hodReportsManager } from './hod-reports.js';
 
 // Check authentication
 if (!isAuthenticated()) {
@@ -65,6 +66,7 @@ initializeFileExplorer();
 initializeTabSwitching();
 initializeReportButtons();
 initializeSidebar();
+initializeReportsManager();
 
 // Initialize modern dropdowns after a short delay
 setTimeout(initializeModernDropdowns, 100);
@@ -107,6 +109,16 @@ function initializeTabSwitching() {
             switchTab(tabName);
         });
     });
+}
+
+// Initialize Reports Manager
+function initializeReportsManager() {
+    try {
+        hodReportsManager.initialize();
+        console.log('[HOD] Reports manager initialized');
+    } catch (error) {
+        console.error('[HOD] Error initializing reports manager:', error);
+    }
 }
 
 // Initialize file explorer on page load
@@ -206,6 +218,11 @@ function switchTab(tabName) {
     // Load data for specific tabs
     if (tabName === 'submission-status' && selectedSemester) {
         loadSubmissionStatus();
+    } else if (tabName === 'reports') {
+        // Load filter options for reports tab
+        if (selectedSemester) {
+            hodReportsManager.loadFilterOptions(selectedSemester);
+        }
     } else if (tabName === 'file-explorer') {
         if (selectedAcademicYear && selectedSemester) {
             // Initialize file explorer if not already initialized
@@ -317,6 +334,8 @@ async function loadSemesters(academicYearId) {
         // Auto-select first semester and load data
         if (semesters.length > 0) {
             selectedSemester = semesters[0].id;
+            // Expose selectedSemester globally for reports manager
+            window.selectedSemester = selectedSemester;
             await loadDashboardData();
         }
     } catch (error) {
@@ -348,6 +367,9 @@ academicYearSelect.addEventListener('change', async (e) => {
 // Semester change handler
 semesterSelect.addEventListener('change', async (e) => {
     selectedSemester = parseInt(e.target.value);
+    // Expose selectedSemester globally for reports manager
+    window.selectedSemester = selectedSemester;
+    
     if (selectedSemester) {
         // Update FileExplorerState with new context
         const selectedYear = academicYears.find(y => y.id === selectedAcademicYear);

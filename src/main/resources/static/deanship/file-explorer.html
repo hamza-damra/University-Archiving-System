@@ -157,6 +157,12 @@
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
     
+    <script src="/js/notifications.js"></script>
     <script type="module" src="/js/file-explorer-page.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => NotificationManager.init('deanship'), 100);
+        });
+    </script>
 </body>
 </html>

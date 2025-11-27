@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Courses - Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/deanship-layout.css">
+    <link rel="stylesheet" href="/css/deanship-dashboard.css">
+    <link rel="stylesheet" href="/css/admin-modals.css">
+    <script src="/js/theme.js"></script>
+    <style>
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .page-title {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+        }
+
+        .filters-row {
+            display: flex;
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 250px;
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            min-height: 40px;
+        }
+
+        .filter-select-sm {
+            padding: var(--spacing-sm) var(--spacing-md);
+            font-size: var(--font-size-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background-color: var(--color-bg-primary);
+            color: var(--color-text-primary);
+            min-width: 150px;
+            min-height: 40px;
+        }
+
+        .course-code {
+            font-family: monospace;
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: var(--radius-full);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+        }
+
+        .status-active {
+            background-color: #d1fae5;
+            color: #059669;
+        }
+
+        .status-inactive {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .btn-icon {
+            padding: var(--spacing-sm);
+            background: transparent;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            min-width: 36px;
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon:hover {
+            background-color: var(--color-bg-tertiary);
+        }
+
+        .btn-icon.danger:hover {
+            background-color: #fee2e2;
+            border-color: #dc2626;
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="admin-layout">
+        <!-- Header -->
+        <header class="deanship-header">
+            <div class="header-title">Al-Quds University / Admin Dashboard</div>
+            <div class="header-user">
+                <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode"
+                    title="Toggle dark mode">
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+                <span class="header-user-name" id="adminName">Loading...</span>
+                <button class="header-logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </header>
+
+        <!-- Navigation -->
+        <nav class="deanship-nav">
+            <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+            <a href="/admin/users" class="nav-link">Users</a>
+            <a href="/admin/departments" class="nav-link">Departments</a>
+            <a href="/admin/courses" class="nav-link">Courses</a>
+            <a href="/admin/reports" class="nav-link">Reports</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main id="page-content">
+            <div class="page-header">
+                <h1 class="page-title">Course Management</h1>
+                <button class="btn btn-primary" id="btnCreateCourse">
+                    + Create Course
+                </button>
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-row">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search by course code or name...">
+                <select class="filter-select-sm" id="departmentFilter">
+                    <option value="">All Departments</option>
+                </select>
+                <select class="filter-select-sm" id="statusFilter">
+                    <option value="">All Status</option>
+                    <option value="true">Active</option>
+                    <option value="false">Inactive</option>
+                </select>
+            </div>
+
+            <!-- Courses Table -->
+            <div class="table-wrapper">
+                <table class="data-table" id="coursesTable">
+                    <thead>
+                        <tr>
+                            <th>Course Code</th>
+                            <th>Course Name</th>
+                            <th>Department</th>
+                            <th>Credit Hours</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="coursesTableBody">
+                        <!-- Courses will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Create/Edit Course Modal -->
+    <div class="admin-modal-overlay" id="courseModal">
+        <div class="admin-modal" role="dialog" aria-labelledby="modalTitle" aria-modal="true">
+            <div class="admin-modal-header">
+                <h2 class="admin-modal-title">
+                    <span class="admin-modal-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        </svg>
+                    </span>
+                    <span id="modalTitle">Create Course</span>
+                </h2>
+                <button class="admin-modal-close" id="modalClose" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <form id="courseForm">
+                <div class="admin-modal-body">
+                    <input type="hidden" id="courseId">
+
+                    <div class="admin-form-row">
+                        <div class="admin-form-group">
+                            <label class="admin-form-label" for="courseCode">
+                                Course Code <span class="required">*</span>
+                            </label>
+                            <input type="text" class="admin-form-input" id="courseCode" placeholder="e.g., CS101" required autocomplete="off">
+                            <div class="admin-form-error" id="courseCodeError">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>Course code is required</span>
+                            </div>
+                        </div>
+                        <div class="admin-form-group">
+                            <label class="admin-form-label" for="creditHours">
+                                Credit Hours <span class="required">*</span>
+                            </label>
+                            <input type="number" class="admin-form-input" id="creditHours" min="1" max="6" placeholder="1-6" required>
+                            <div class="admin-form-error" id="creditHoursError">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>Enter a value between 1-6</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-label" for="courseName">
+                            Course Name <span class="required">*</span>
+                        </label>
+                        <input type="text" class="admin-form-input" id="courseName" placeholder="Enter course name" required>
+                        <div class="admin-form-error" id="courseNameError">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Course name is required</span>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-label" for="department">
+                            Department <span class="required">*</span>
+                        </label>
+                        <select class="admin-form-select" id="department" required>
+                            <option value="">Select a department</option>
+                        </select>
+                        <div class="admin-form-error" id="departmentError">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>Please select a department</span>
+                        </div>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-label" for="description">Description</label>
+                        <textarea class="admin-form-textarea" id="description" rows="3" placeholder="Enter course description (optional)"></textarea>
+                    </div>
+
+                    <div class="admin-form-group">
+                        <label class="admin-form-checkbox-group">
+                            <input type="checkbox" class="admin-form-checkbox" id="isActive" checked>
+                            <div class="admin-form-checkbox-content">
+                                <span class="admin-form-checkbox-label">Active Course</span>
+                                <p class="admin-form-checkbox-description">Students can enroll in this course</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="admin-modal-footer">
+                    <button type="button" class="admin-modal-btn admin-modal-btn-secondary" id="btnCancel">Cancel</button>
+                    <button type="submit" class="admin-modal-btn admin-modal-btn-primary" id="btnSubmit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 5v14M5 12h14" />
+                        </svg>
+                        <span id="btnSubmitText">Create Course</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="admin-modal-overlay" id="deleteModal">
+        <div class="admin-modal" role="alertdialog" aria-labelledby="deleteModalTitle" aria-describedby="deleteModalDesc" aria-modal="true">
+            <div class="admin-modal-header">
+                <h2 class="admin-modal-title" id="deleteModalTitle">Confirm Deactivation</h2>
+                <button class="admin-modal-close" id="deleteModalClose" aria-label="Close modal">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="admin-modal-body">
+                <div class="admin-delete-modal-content">
+                    <div class="admin-delete-modal-icon">⚠️</div>
+                    <h3 class="admin-delete-modal-title">Deactivate this course?</h3>
+                    <p class="admin-delete-modal-message" id="deleteModalDesc">
+                        This course will be marked as inactive and students won't be able to enroll. You can reactivate it later.
+                    </p>
+                </div>
+            </div>
+            <div class="admin-modal-footer">
+                <button type="button" class="admin-modal-btn admin-modal-btn-secondary" id="btnCancelDelete">Cancel</button>
+                <button type="button" class="admin-modal-btn admin-modal-btn-danger" id="btnConfirmDelete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path>
+                        <line x1="12" y1="2" x2="12" y2="12"></line>
+                    </svg>
+                    Deactivate
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script src="/js/modern-dropdown.js"></script>
+    <script type="module" src="/js/admin-courses.js"></script>
+</body>
+
+</html>

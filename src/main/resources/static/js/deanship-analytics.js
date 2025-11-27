@@ -95,24 +95,29 @@ export class DashboardAnalytics {
      * Only initializes when dashboard tab is activated
      */
     async initialize() {
-        // Prevent duplicate initialization
-        if (this.initialized) {
-            return;
-        }
-        
         try {
+            // Clear cache to always fetch fresh data
+            this.clearCache();
+            
             // Lazy load Chart.js library only when needed
-            await loadChartJS();
-            this.chartJSLoaded = true;
+            if (!this.chartJSLoaded) {
+                await loadChartJS();
+                this.chartJSLoaded = true;
+            }
+            
+            console.log('Initializing dashboard analytics...');
             
             // Initialize all analytics components
             await this.loadDashboardStats();
             await this.initializeCharts();
             
-            // Set up auto-refresh for activity feed
-            this.startAutoRefresh();
+            // Set up auto-refresh for activity feed (only once)
+            if (!this.initialized) {
+                this.startAutoRefresh();
+            }
             
             this.initialized = true;
+            console.log('Dashboard analytics initialized successfully');
         } catch (error) {
             console.error('Error initializing analytics:', error);
             showToast('Failed to initialize analytics', 'error');
@@ -215,7 +220,7 @@ export class DashboardAnalytics {
     }
     
     /**
-     * Fetch submission trends data
+     * Fetch submission trends data from API
      */
     async fetchSubmissionTrends(days = 30) {
         const cacheKey = `submission-trends-${days}`;
@@ -223,13 +228,38 @@ export class DashboardAnalytics {
         if (cached) return cached;
         
         try {
-            // TODO: Replace with actual API endpoint when available
-            // const data = await apiRequest(`/deanship/analytics/submission-trends?days=${days}`, { method: 'GET' });
+            // Calculate date range
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - days);
             
-            // Mock data for now
-            const data = this.generateMockSubmissionTrends(days);
-            this.setCachedData(cacheKey, data);
-            return data;
+            const startDateStr = startDate.toISOString().split('T')[0];
+            const endDateStr = endDate.toISOString().split('T')[0];
+            
+            console.log('Fetching submission trends:', { startDateStr, endDateStr });
+            
+            const response = await apiRequest(
+                `/deanship/dashboard/charts/submissions?startDate=${startDateStr}&endDate=${endDateStr}&groupBy=DAY`, 
+                { method: 'GET' }
+            );
+            
+            console.log('Submission trends response:', response);
+            
+            // API helper already unwraps the data, so response IS the array
+            if (response && Array.isArray(response) && response.length > 0) {
+                // Transform API response to chart format
+                const data = {
+                    labels: response.map(point => point.label),
+                    values: response.map(point => point.value)
+                };
+                console.log('Transformed submission trends data:', data);
+                this.setCachedData(cacheKey, data);
+                return data;
+            }
+            
+            console.warn('No submission trends data from API, using mock data');
+            // Fallback to mock data
+            return this.generateMockSubmissionTrends(days);
         } catch (error) {
             console.error('Error fetching submission trends:', error);
             // Return mock data as fallback
@@ -238,26 +268,45 @@ export class DashboardAnalytics {
     }
     
     /**
-     * Fetch department compliance data
+     * Fetch department compliance data from API
      */
     async fetchDepartmentCompliance() {
         const semesterId = dashboardState.getSelectedSemesterId();
-        if (!semesterId) {
-            return { labels: [], data: [] };
-        }
         
-        const cacheKey = `department-compliance-${semesterId}`;
+        const cacheKey = `department-compliance-${semesterId || 'all'}`;
         const cached = this.getCachedData(cacheKey);
         if (cached) return cached;
         
         try {
-            // TODO: Replace with actual API endpoint when available
-            // const data = await apiRequest(`/deanship/analytics/department-compliance?semesterId=${semesterId}`, { method: 'GET' });
+            const url = semesterId 
+                ? `/deanship/dashboard/charts/departments?semesterId=${semesterId}`
+                : '/deanship/dashboard/charts/departments';
             
-            // Mock data for now
-            const data = this.generateMockDepartmentCompliance();
-            this.setCachedData(cacheKey, data);
-            return data;
+            console.log('Fetching department compliance:', { url, semesterId });
+                
+            const response = await apiRequest(url, { method: 'GET' });
+            
+            console.log('Department compliance response:', response);
+            
+            // API helper already unwraps the data, so response IS the array
+            if (response && Array.isArray(response) && response.length > 0) {
+                // Transform API response to chart format
+                const data = {
+                    labels: response.map(dept => dept.departmentShortcut || dept.departmentName),
+                    values: response.map(dept => {
+                        // For pie chart, use professor count or submission count
+                        return dept.professorCount || dept.submissionCount || 1;
+                    }),
+                    departmentData: response // Keep full data for tooltips
+                };
+                console.log('Transformed department data:', data);
+                this.setCachedData(cacheKey, data);
+                return data;
+            }
+            
+            console.warn('No department data from API, using mock data');
+            // Fallback to mock data if no departments
+            return this.generateMockDepartmentCompliance();
         } catch (error) {
             console.error('Error fetching department compliance:', error);
             return this.generateMockDepartmentCompliance();
@@ -265,26 +314,38 @@ export class DashboardAnalytics {
     }
     
     /**
-     * Fetch status distribution data
+     * Fetch status distribution data from API
      */
     async fetchStatusDistribution() {
         const semesterId = dashboardState.getSelectedSemesterId();
-        if (!semesterId) {
-            return { pending: 0, uploaded: 0, overdue: 0 };
-        }
         
-        const cacheKey = `status-distribution-${semesterId}`;
+        const cacheKey = `status-distribution-${semesterId || 'all'}`;
         const cached = this.getCachedData(cacheKey);
         if (cached) return cached;
         
         try {
-            // TODO: Replace with actual API endpoint when available
-            // const data = await apiRequest(`/deanship/analytics/status-distribution?semesterId=${semesterId}`, { method: 'GET' });
+            const url = semesterId 
+                ? `/deanship/dashboard/charts/status-distribution?semesterId=${semesterId}`
+                : '/deanship/dashboard/charts/status-distribution';
+                
+            const response = await apiRequest(url, { method: 'GET' });
             
-            // Mock data for now
-            const data = this.generateMockStatusDistribution();
-            this.setCachedData(cacheKey, data);
-            return data;
+            console.log('Status distribution response:', response);
+            
+            // API helper already unwraps the data, so response IS the object
+            if (response && typeof response === 'object') {
+                const data = {
+                    pending: response.pending || 0,
+                    uploaded: response.uploaded || 0,
+                    overdue: response.overdue || 0,
+                    total: response.total || 0
+                };
+                this.setCachedData(cacheKey, data);
+                return data;
+            }
+            
+            // Fallback to mock data
+            return this.generateMockStatusDistribution();
         } catch (error) {
             console.error('Error fetching status distribution:', error);
             return this.generateMockStatusDistribution();
@@ -473,35 +534,98 @@ export class DashboardAnalytics {
     }
     
     /**
-     * Load dashboard statistics
+     * Load dashboard statistics from API
      */
     async loadDashboardStats() {
         try {
+            // Fetch real statistics from API
+            const semesterId = dashboardState.getSelectedSemesterId();
+            const academicYearId = dashboardState.getSelectedAcademicYearId?.() || null;
+            
+            let url = '/deanship/dashboard/statistics';
+            const params = [];
+            if (academicYearId) params.push(`academicYearId=${academicYearId}`);
+            if (semesterId) params.push(`semesterId=${semesterId}`);
+            if (params.length > 0) url += '?' + params.join('&');
+            
+            const response = await apiRequest(url, { method: 'GET' });
+            
+            console.log('Dashboard stats response:', response);
+            
+            // API helper already unwraps the data, so response IS the stats object
+            if (response && typeof response === 'object') {
+                this.updateStatsCards({
+                    totalProfessors: response.totalProfessors || 0,
+                    activeCourses: response.totalCourses || 0,
+                    pendingSubmissions: response.pendingSubmissions || 0,
+                    totalSubmissions: response.totalSubmissions || 0,
+                    recentSubmissions: response.recentSubmissions || 0,
+                    totalDepartments: response.totalDepartments || 0
+                });
+            } else {
+                // Fallback to cached state data
+                const professors = dashboardState.getProfessors();
+                const courses = dashboardState.getCourses();
+                
+                this.updateStatsCards({
+                    totalProfessors: professors.length,
+                    activeCourses: courses.length,
+                    pendingSubmissions: 0
+                });
+            }
+        } catch (error) {
+            console.error('Error loading dashboard stats:', error);
+            // Fallback to cached state data
             const professors = dashboardState.getProfessors();
             const courses = dashboardState.getCourses();
             
-            // Update dashboard cards
             this.updateStatsCards({
                 totalProfessors: professors.length,
                 activeCourses: courses.length,
-                pendingReports: 0 // Placeholder
+                pendingSubmissions: 0
             });
-        } catch (error) {
-            console.error('Error loading dashboard stats:', error);
-            showToast('Failed to load dashboard statistics', 'error');
         }
     }
     
     /**
-     * Update statistics cards
+     * Update statistics cards with real data
      */
     updateStatsCards(stats) {
-        const statCards = document.querySelectorAll('#dashboard-tab .card span.text-2xl');
+        // Find dashboard stat cards
+        const dashboardTab = document.getElementById('dashboard-tab');
+        if (!dashboardTab) return;
+        
+        // Update specific stat cards by their position or data attribute
+        const statCards = dashboardTab.querySelectorAll('.card span.text-2xl, .card h3.text-2xl');
         
         if (statCards.length >= 3) {
+            // First card: Total Professors
             statCards[0].textContent = stats.totalProfessors || 0;
+            
+            // Second card: Active Courses
             statCards[1].textContent = stats.activeCourses || 0;
-            statCards[2].textContent = stats.pendingReports || 0;
+            
+            // Third card: Pending Submissions (use real data)
+            statCards[2].textContent = stats.pendingSubmissions || 0;
+        }
+        
+        // Also update any stat cards with data attributes
+        const professorCard = dashboardTab.querySelector('[data-stat="professors"]');
+        if (professorCard) {
+            const valueEl = professorCard.querySelector('.text-2xl, h3');
+            if (valueEl) valueEl.textContent = stats.totalProfessors || 0;
+        }
+        
+        const coursesCard = dashboardTab.querySelector('[data-stat="courses"]');
+        if (coursesCard) {
+            const valueEl = coursesCard.querySelector('.text-2xl, h3');
+            if (valueEl) valueEl.textContent = stats.activeCourses || 0;
+        }
+        
+        const pendingCard = dashboardTab.querySelector('[data-stat="pending"]');
+        if (pendingCard) {
+            const valueEl = pendingCard.querySelector('.text-2xl, h3');
+            if (valueEl) valueEl.textContent = stats.pendingSubmissions || 0;
         }
     }
     
@@ -538,7 +662,7 @@ export class DashboardAnalytics {
     }
     
     /**
-     * Fetch recent activities
+     * Fetch recent activities from API
      */
     async fetchRecentActivities(limit = 10) {
         const cacheKey = `recent-activities-${limit}`;
@@ -546,13 +670,26 @@ export class DashboardAnalytics {
         if (cached) return cached;
         
         try {
-            // TODO: Replace with actual API endpoint when available
-            // const data = await apiRequest(`/deanship/activities/recent?limit=${limit}`, { method: 'GET' });
+            const response = await apiRequest(`/deanship/dashboard/activity?limit=${limit}`, { method: 'GET' });
             
-            // Mock data for now
-            const data = this.generateMockActivities(limit);
-            this.setCachedData(cacheKey, data);
-            return data;
+            console.log('Recent activities response:', response);
+            
+            // API helper already unwraps the data, so response IS the array
+            if (response && Array.isArray(response) && response.length > 0) {
+                // Transform API response - it already matches our format
+                const activities = response.map(activity => ({
+                    id: activity.entityId,
+                    type: activity.type === 'SUBMISSION' ? 'UPLOAD' : activity.type,
+                    message: activity.message,
+                    timestamp: activity.timestamp,
+                    timeAgo: activity.timeAgo
+                }));
+                this.setCachedData(cacheKey, activities);
+                return activities;
+            }
+            
+            // Fallback to mock data
+            return this.generateMockActivities(limit);
         } catch (error) {
             console.error('Error fetching recent activities:', error);
             return this.generateMockActivities(limit);
@@ -663,6 +800,12 @@ export class DashboardAnalytics {
     getActivityIcon(type) {
         const icons = {
             UPLOAD: `<div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+            </div>`,
+            SUBMISSION: `<div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
                         d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />

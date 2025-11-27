@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,4 +46,77 @@ public interface DocumentSubmissionRepository extends JpaRepository<DocumentSubm
            "LEFT JOIN FETCH ds.uploadedFiles " +
            "WHERE ds.courseAssignment.id IN :courseAssignmentIds")
     List<DocumentSubmission> findByCourseAssignmentIdIn(@Param("courseAssignmentIds") List<Long> courseAssignmentIds);
+    
+    // ==================== Dashboard Analytics Queries ====================
+    
+    /**
+     * Count submissions by status for a specific semester
+     */
+    @Query("SELECT ds.status, COUNT(ds) FROM DocumentSubmission ds " +
+           "WHERE ds.courseAssignment.semester.id = :semesterId " +
+           "GROUP BY ds.status")
+    List<Object[]> countByStatusAndSemesterId(@Param("semesterId") Long semesterId);
+    
+    /**
+     * Count all submissions by status (no filter)
+     */
+    @Query("SELECT ds.status, COUNT(ds) FROM DocumentSubmission ds GROUP BY ds.status")
+    List<Object[]> countByStatus();
+    
+    /**
+     * Count submissions by department for a specific semester
+     */
+    @Query("SELECT ds.professor.department.id, ds.professor.department.name, COUNT(ds) " +
+           "FROM DocumentSubmission ds " +
+           "WHERE ds.courseAssignment.semester.id = :semesterId " +
+           "GROUP BY ds.professor.department.id, ds.professor.department.name")
+    List<Object[]> countByDepartmentAndSemesterId(@Param("semesterId") Long semesterId);
+    
+    /**
+     * Count all submissions by department (no filter)
+     */
+    @Query("SELECT ds.professor.department.id, ds.professor.department.name, COUNT(ds) " +
+           "FROM DocumentSubmission ds " +
+           "GROUP BY ds.professor.department.id, ds.professor.department.name")
+    List<Object[]> countByDepartment();
+    
+    /**
+     * Count submissions per day within a date range
+     */
+    @Query("SELECT FUNCTION('DATE', ds.submittedAt), COUNT(ds) " +
+           "FROM DocumentSubmission ds " +
+           "WHERE ds.submittedAt BETWEEN :startDate AND :endDate " +
+           "GROUP BY FUNCTION('DATE', ds.submittedAt) " +
+           "ORDER BY FUNCTION('DATE', ds.submittedAt)")
+    List<Object[]> countSubmissionsPerDay(
+            @Param("startDate") LocalDateTime startDate, 
+            @Param("endDate") LocalDateTime endDate);
+    
+    /**
+     * Find submissions within a date range
+     */
+    @Query("SELECT ds FROM DocumentSubmission ds " +
+           "WHERE ds.submittedAt BETWEEN :startDate AND :endDate " +
+           "ORDER BY ds.submittedAt DESC")
+    List<DocumentSubmission> findBySubmittedAtBetween(
+            @Param("startDate") LocalDateTime startDate, 
+            @Param("endDate") LocalDateTime endDate);
+    
+    /**
+     * Count submissions by academic year and semester
+     */
+    @Query("SELECT COUNT(ds) FROM DocumentSubmission ds " +
+           "WHERE ds.courseAssignment.semester.academicYear.id = :academicYearId " +
+           "AND ds.courseAssignment.semester.id = :semesterId")
+    long countByAcademicYearAndSemester(
+            @Param("academicYearId") Long academicYearId, 
+            @Param("semesterId") Long semesterId);
+    
+    /**
+     * Get recent submissions (last N days) ordered by date
+     */
+    @Query("SELECT ds FROM DocumentSubmission ds " +
+           "WHERE ds.submittedAt >= :since " +
+           "ORDER BY ds.submittedAt DESC")
+    List<DocumentSubmission> findRecentSubmissions(@Param("since") LocalDateTime since);
 }

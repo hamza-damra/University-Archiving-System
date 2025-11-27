@@ -30,6 +30,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UploadedFileRepository uploadedFileRepository;
     private final FolderRepository folderRepository;
+    private final FileAccessService fileAccessService;
 
     @Override
     public FileExplorerNode getRootNode(Long academicYearId, Long semesterId, User currentUser) {
@@ -84,6 +85,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
     /**
      * Get professors based on user role:
+     * - Admin: all active professors (uses FileAccessService for admin-level check)
      * - Deanship: all active professors
      * - HOD: active professors in HOD's department only
      * - Professor: active professors in same department
@@ -91,43 +93,46 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     private List<User> getProfessorsForUser(Long semesterId, User currentUser) {
         List<User> professors;
 
-        // Apply role-based filtering
-        switch (currentUser.getRole()) {
-            case ROLE_DEANSHIP:
-                // Deanship sees all active professors
-                professors = userRepository.findByRole(Role.ROLE_PROFESSOR).stream()
-                        .filter(User::getIsActive)
-                        .collect(Collectors.toList());
-                log.debug("Deanship user - returning all {} active professors", professors.size());
-                break;
+        // Use FileAccessService to check for admin-level access (Admin or Dean)
+        if (fileAccessService.hasAdminLevelAccess(currentUser)) {
+            // Admin and Dean see all active professors
+            professors = userRepository.findByRole(Role.ROLE_PROFESSOR).stream()
+                    .filter(User::getIsActive)
+                    .collect(Collectors.toList());
+            log.debug("Admin-level user ({}) - returning all {} active professors", 
+                    currentUser.getRole(), professors.size());
+        } else {
+            // Apply role-based filtering for non-admin users
+            switch (currentUser.getRole()) {
+                case ROLE_HOD:
+                    // HOD sees only professors in their department
+                    if (currentUser.getDepartment() != null) {
+                        professors = userRepository.findActiveProfessorsByDepartment(
+                                currentUser.getDepartment().getId(), Role.ROLE_PROFESSOR);
+                        log.debug("HOD user - filtered to {} active professors in department", professors.size());
+                    } else {
+                        log.warn("HOD user has no department assigned");
+                        fileAccessService.logAccessDenial(currentUser, null, "HOD has no department assigned");
+                        professors = new ArrayList<>();
+                    }
+                    break;
 
-            case ROLE_HOD:
-                // HOD sees only professors in their department
-                if (currentUser.getDepartment() != null) {
-                    professors = userRepository.findActiveProfessorsByDepartment(
-                            currentUser.getDepartment().getId(), Role.ROLE_PROFESSOR);
-                    log.debug("HOD user - filtered to {} active professors in department", professors.size());
-                } else {
-                    log.warn("HOD user has no department assigned");
+                case ROLE_PROFESSOR:
+                    // Professor sees all professors in same department
+                    if (currentUser.getDepartment() != null) {
+                        professors = userRepository.findActiveProfessorsByDepartment(
+                                currentUser.getDepartment().getId(), Role.ROLE_PROFESSOR);
+                        log.debug("Professor user - filtered to {} active professors in department", professors.size());
+                    } else {
+                        log.warn("Professor user has no department assigned");
+                        professors = new ArrayList<>();
+                    }
+                    break;
+
+                default:
+                    log.warn("Unknown role: {}", currentUser.getRole());
                     professors = new ArrayList<>();
-                }
-                break;
-
-            case ROLE_PROFESSOR:
-                // Professor sees all professors in same department
-                if (currentUser.getDepartment() != null) {
-                    professors = userRepository.findActiveProfessorsByDepartment(
-                            currentUser.getDepartment().getId(), Role.ROLE_PROFESSOR);
-                    log.debug("Professor user - filtered to {} active professors in department", professors.size());
-                } else {
-                    log.warn("Professor user has no department assigned");
-                    professors = new ArrayList<>();
-                }
-                break;
-
-            default:
-                log.warn("Unknown role: {}", currentUser.getRole());
-                professors = new ArrayList<>();
+            }
         }
 
         // Sort by name
@@ -871,8 +876,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         try {
             PathInfo pathInfo = parsePath(nodePath);
 
-            // Deanship can read all
-            if (user.getRole() == Role.ROLE_DEANSHIP) {
+            // Admin and Dean can read all (using FileAccessService)
+            if (fileAccessService.hasAdminLevelAccess(user)) {
                 return true;
             }
 
@@ -881,14 +886,21 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 // Find the professor whose folder this is
                 Optional<User> professorOpt = userRepository.findByProfessorId(pathInfo.getProfessorId());
                 if (!professorOpt.isPresent()) {
+                    fileAccessService.logAccessDenial(user, null, 
+                        "Professor not found for path: " + nodePath);
                     return false;
                 }
 
                 User professor = professorOpt.get();
 
-                // Check if user is in same department
-                if (user.getDepartment() != null && professor.getDepartment() != null) {
-                    return user.getDepartment().getId().equals(professor.getDepartment().getId());
+                // Use FileAccessService to check department access
+                if (professor.getDepartment() != null) {
+                    boolean canAccess = fileAccessService.canAccessDepartmentFiles(user, professor.getDepartment().getId());
+                    if (!canAccess) {
+                        fileAccessService.logAccessDenial(user, null, 
+                            "User cannot access department files for path: " + nodePath);
+                    }
+                    return canAccess;
                 }
 
                 return false;

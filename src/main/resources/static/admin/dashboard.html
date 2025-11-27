@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Admin Dashboard</title>
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/deanship-layout.css">
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <script src="/js/theme.js"></script>
+    <style>
+        /* Dashboard-specific styles */
+        .dashboard-welcome {
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .dashboard-welcome h1 {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .dashboard-welcome p {
+            font-size: var(--font-size-lg);
+            color: var(--color-text-secondary);
+        }
+        
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: var(--spacing-lg);
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .dashboard-card {
+            background-color: var(--color-bg-primary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            box-shadow: var(--shadow-md);
+            transition: transform 0.2s, box-shadow 0.2s;
+            display: flex;
+            flex-direction: column;
+            min-height: 200px;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+        
+        .dashboard-card-icon {
+            font-size: 48px;
+            margin-bottom: var(--spacing-md);
+            color: var(--color-primary);
+        }
+        
+        .dashboard-card-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-semibold);
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-sm);
+        }
+        
+        .dashboard-card-description {
+            font-size: var(--font-size-md);
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-md);
+            flex: 1;
+        }
+        
+        .dashboard-card-stat {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-md);
+        }
+        
+        .dashboard-card-button {
+            width: 100%;
+            padding: var(--spacing-md);
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-md);
+            font-weight: var(--font-weight-medium);
+            cursor: pointer;
+            transition: background-color 0.2s;
+            min-height: 44px;
+        }
+        
+        .dashboard-card-button:hover {
+            background-color: var(--color-primary-dark);
+        }
+        
+        .dashboard-card-button:focus {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+        
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-2xl);
+        }
+        
+        .stat-card {
+            background-color: var(--color-bg-primary);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: var(--spacing-lg);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-primary);
+        }
+        
+        .stat-label {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            margin-top: var(--spacing-xs);
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-cards {
+                grid-template-columns: 1fr;
+            }
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="admin-layout">
+        <!-- Header -->
+        <header class="deanship-header">
+            <div class="header-title">Al-Quds University / Admin Dashboard</div>
+            <div class="header-user">
+                <!-- Theme Toggle -->
+                <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode" title="Toggle dark mode">
+                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                </button>
+                <span class="header-user-name" id="adminName">Loading...</span>
+                <button class="header-logout-btn" id="logoutBtn">Logout</button>
+            </div>
+        </header>
+        
+        <!-- Navigation -->
+        <nav class="deanship-nav">
+            <a href="/admin/dashboard" class="nav-link">Dashboard</a>
+            <a href="/admin/users" class="nav-link">Users</a>
+            <a href="/admin/departments" class="nav-link">Departments</a>
+            <a href="/admin/courses" class="nav-link">Courses</a>
+            <a href="/admin/reports" class="nav-link">Reports</a>
+        </nav>
+        
+        <!-- Global Filters -->
+        <div class="deanship-filters">
+            <label class="filter-label" for="academicYearSelect">Academic Year:</label>
+            <select id="academicYearSelect" class="filter-select">
+                <option value="">Select Academic Year</option>
+            </select>
+            
+            <label class="filter-label" for="semesterSelect">Semester:</label>
+            <select id="semesterSelect" class="filter-select">
+                <option value="">Select Semester</option>
+            </select>
+        </div>
+        
+        <!-- Main Content -->
+        <main id="page-content">
+            <div class="dashboard-welcome">
+                <h1>Welcome to Admin Dashboard</h1>
+                <p>Manage users, departments, courses, and monitor system-wide activities</p>
+            </div>
+            
+            <!-- Statistics Grid -->
+            <div id="statsGrid" class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statProfessors">-</div>
+                    <div class="stat-label">Total Professors</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statHods">-</div>
+                    <div class="stat-label">Total HODs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statDepartments">-</div>
+                    <div class="stat-label">Departments</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statCourses">-</div>
+                    <div class="stat-label">Courses</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statSubmissions">-</div>
+                    <div class="stat-label">Total Submissions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statRecentSubmissions">-</div>
+                    <div class="stat-label">Recent Submissions</div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Cards -->
+            <div id="dashboardCards" class="dashboard-cards">
+                <!-- Cards will be dynamically inserted here -->
+            </div>
+        </main>
+    </div>
+    
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+    
+    <script src="/js/modern-dropdown.js"></script>
+    <script type="module" src="/js/admin-dashboard.js"></script>
+</body>
+</html>

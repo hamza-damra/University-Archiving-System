@@ -1,11 +1,13 @@
 package com.alqude.edu.ArchiveSystem.controller;
 
 import com.alqude.edu.ArchiveSystem.dto.common.ApiResponse;
+import com.alqude.edu.ArchiveSystem.dto.common.NotificationResponse;
 import com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 import com.alqude.edu.ArchiveSystem.dto.report.DashboardOverview;
 import com.alqude.edu.ArchiveSystem.dto.report.DepartmentSubmissionReport;
 import com.alqude.edu.ArchiveSystem.dto.report.ProfessorSubmissionReport;
 import com.alqude.edu.ArchiveSystem.dto.report.ReportFilter;
+import com.alqude.edu.ArchiveSystem.dto.report.ReportFilterOptions;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestCreateRequest;
 import com.alqude.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alqude.edu.ArchiveSystem.dto.user.UserCreateRequest;
@@ -52,6 +54,8 @@ public class HodController {
     private final FileExplorerService fileExplorerService;
     private final FileService fileService;
     private final com.alqude.edu.ArchiveSystem.service.AcademicService academicService;
+    private final FileAccessService fileAccessService;
+    private final NotificationService notificationService;
     
     // ==================== Academic Year Management ====================
     
@@ -533,7 +537,8 @@ public class HodController {
     /**
      * Download a file (read-only access for HOD)
      * Security: HOD can only access files in their department
-     * Task 12.4
+     * Uses centralized FileAccessService for access control
+     * Task 12.4, Requirements: 10.4
      */
     @GetMapping("/files/{fileId}/download")
     @PreAuthorize("hasRole('HOD')")
@@ -544,17 +549,18 @@ public class HodController {
             User currentUser = getCurrentUser();
             if (currentUser.getDepartment() == null) {
                 log.error("HOD must be assigned to a department");
+                fileAccessService.logAccessDenial(currentUser, fileId, "HOD has no department assigned");
                 return ResponseEntity.badRequest().build();
             }
             
             // Get file metadata
             var uploadedFile = fileService.getFile(fileId);
             
-            // Check if HOD has permission to access this file (department-scoped)
-            // This check is performed in the FileExplorerService
-            String filePath = uploadedFile.getFileUrl();
-            if (!fileExplorerService.canRead(filePath, currentUser)) {
+            // Use centralized FileAccessService for access control (Requirements: 10.4, 13.1)
+            if (!fileAccessService.canAccessFile(currentUser, fileId)) {
                 log.error("HOD does not have permission to access file: {}", fileId);
+                fileAccessService.logAccessDenial(currentUser, fileId, 
+                    "HOD attempted to access file from different department");
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
@@ -587,6 +593,102 @@ public class HodController {
         } catch (Exception e) {
             log.error("Error downloading file with id: {}", fileId, e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    
+    /**
+     * Get available filter options for report generation.
+     * HOD users cannot filter by department (restricted to own department).
+     * GET /api/hod/reports/filter-options
+     * 
+     * @return Available filter options (excludes department filter for HOD)
+     */
+    @GetMapping("/reports/filter-options")
+    public ResponseEntity<ApiResponse<ReportFilterOptions>> getReportFilterOptions() {
+        log.info("HOD retrieving report filter options");
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("User not authenticated"));
+            }
+            
+            ReportFilterOptions options = semesterReportService.getFilterOptions(currentUser);
+            return ResponseEntity.ok(ApiResponse.success("Report filter options retrieved successfully", options));
+        } catch (Exception e) {
+            log.error("Error retrieving report filter options", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve report filter options: " + e.getMessage()));
+        }
+    }
+    
+    // ==================== Notification Management ====================
+    
+    /**
+     * Get notifications for the current HOD user.
+     * HOD users only see notifications for submissions from their department.
+     * GET /api/hod/notifications
+     * 
+     * @return List of notifications
+     */
+    @GetMapping("/notifications")
+    public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
+        log.info("HOD retrieving notifications");
+        
+        try {
+            List<NotificationResponse> notifications = notificationService.getCurrentUserNotifications();
+            return ResponseEntity.ok(ApiResponse.success("Notifications retrieved successfully", notifications));
+        } catch (Exception e) {
+            log.error("Error retrieving notifications", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve notifications: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Get unread notification count for the current HOD user.
+     * GET /api/hod/notifications/unread-count
+     * 
+     * @return Unread notification count
+     */
+    @GetMapping("/notifications/unread-count")
+    public ResponseEntity<ApiResponse<Long>> getUnreadNotificationCount() {
+        log.info("HOD retrieving unread notification count");
+        
+        try {
+            User currentUser = getCurrentUser();
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ApiResponse.error("User not authenticated"));
+            }
+            long unreadCount = notificationService.getUnreadCount(currentUser.getId());
+            return ResponseEntity.ok(ApiResponse.success("Unread count retrieved successfully", unreadCount));
+        } catch (Exception e) {
+            log.error("Error retrieving unread notification count", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ApiResponse.error("Failed to retrieve unread count: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Mark a notification as read.
+     * PUT /api/hod/notifications/{id}/read
+     * 
+     * @param id Notification ID
+     * @return Success response
+     */
+    @PutMapping("/notifications/{id}/read")
+    public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {
+        log.info("HOD marking notification {} as read", id);
+        
+        try {
+            notificationService.markNotificationAsRead(id);
+            return ResponseEntity.ok(ApiResponse.success("Notification marked as read", "Success"));
+        } catch (Exception e) {
+            log.error("Error marking notification {} as read", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
         }
     }
     

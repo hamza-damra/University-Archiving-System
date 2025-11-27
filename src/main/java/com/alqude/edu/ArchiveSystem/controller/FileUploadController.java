@@ -138,6 +138,13 @@ public class FileUploadController {
                 log.info("File count: {}", files != null ? files.length : 0);
                 log.info("Notes: {}", notes != null ? notes.substring(0, Math.min(notes.length(), 50)) : "null");
 
+                // Check if user is authenticated
+                if (userDetails == null) {
+                        log.error("User not authenticated");
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                        .body(ApiResponse.error("User not authenticated"));
+                }
+
                 if (files != null) {
                         for (int i = 0; i < files.length; i++) {
                                 MultipartFile file = files[i];
@@ -266,14 +273,17 @@ public class FileUploadController {
                         @RequestParam("folderId") Long folderId,
                         @AuthenticationPrincipal UserDetails userDetails) {
 
+                // Check if user is authenticated first
+                if (userDetails == null) {
+                        log.warn("Unauthorized access attempt - user not authenticated");
+                        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                                        .body(ApiResponse.error("User not authenticated"));
+                }
+
                 log.info("Get files request - User: {}, Folder ID: {}", userDetails.getUsername(), folderId);
 
                 try {
                         // Get current user from database
-                        if (userDetails == null) {
-                                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                                .body(ApiResponse.error("User not authenticated"));
-                        }
                         User currentUser = userRepository.findByEmail(userDetails.getUsername())
                                         .orElseThrow(() -> new RuntimeException(
                                                         "User not found: " + userDetails.getUsername()));

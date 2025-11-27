@@ -1,9 +1,6 @@
 package com.alqude.edu.ArchiveSystem.service;
 
-import com.alqude.edu.ArchiveSystem.entity.Folder;
-import com.alqude.edu.ArchiveSystem.entity.Role;
-import com.alqude.edu.ArchiveSystem.entity.UploadedFile;
-import com.alqude.edu.ArchiveSystem.entity.User;
+import com.alqude.edu.ArchiveSystem.entity.*;
 import com.alqude.edu.ArchiveSystem.exception.FileStorageException;
 import com.alqude.edu.ArchiveSystem.exception.FileValidationException;
 import com.alqude.edu.ArchiveSystem.exception.FolderNotFoundException;
@@ -24,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -50,6 +48,7 @@ public class FolderFileUploadServiceImpl implements FolderFileUploadService {
     private final UploadedFileRepository uploadedFileRepository;
     private final UserRepository userRepository;
     private final FolderService folderService;
+    private final NotificationService notificationService;
 
     @Value("${file.upload-dir:uploads}")
     private String uploadDir;
@@ -165,8 +164,92 @@ public class FolderFileUploadServiceImpl implements FolderFileUploadService {
         }
 
         log.info("✓ Upload complete: {} files uploaded to folder {}", uploadedFiles.size(), folderId);
+        
+        // Trigger notification for professor uploads
+        if (uploader.getRole() == Role.ROLE_PROFESSOR && !uploadedFiles.isEmpty()) {
+            try {
+                notifyFileUpload(uploader, folder, uploadedFiles);
+            } catch (Exception e) {
+                // Don't fail the upload if notification fails
+                log.warn("Failed to send notification for file upload: {}", e.getMessage());
+            }
+        }
+        
         log.info("=== SERVICE: UPLOAD FILES COMPLETE ===");
         return uploadedFiles;
+    }
+    
+    /**
+     * Creates notifications for HOD and Dean when a professor uploads files.
+     * 
+     * @param professor The professor who uploaded the files
+     * @param folder The folder where files were uploaded
+     * @param uploadedFiles The list of uploaded files
+     */
+    private void notifyFileUpload(User professor, Folder folder, List<UploadedFile> uploadedFiles) {
+        // Create a DocumentSubmission-like object for notification
+        String courseName = extractCourseNameFromFolder(folder);
+        
+        DocumentSubmission submission = new DocumentSubmission();
+        submission.setId(uploadedFiles.get(0).getId()); // Use first file ID as reference
+        submission.setProfessor(professor);
+        submission.setSubmittedAt(LocalDateTime.now());
+        submission.setStatus(SubmissionStatus.UPLOADED);
+        submission.setFileCount(uploadedFiles.size());
+        
+        // Create a placeholder course assignment with folder/course info
+        CourseAssignment placeholderAssignment = new CourseAssignment();
+        
+        if (folder.getCourse() != null) {
+            placeholderAssignment.setCourse(folder.getCourse());
+        } else {
+            // Create a placeholder course with folder info
+            Course placeholderCourse = new Course();
+            placeholderCourse.setCourseName(courseName != null ? courseName : folder.getName());
+            placeholderCourse.setCourseCode("N/A");
+            placeholderAssignment.setCourse(placeholderCourse);
+        }
+        
+        if (folder.getSemester() != null) {
+            placeholderAssignment.setSemester(folder.getSemester());
+        }
+        
+        placeholderAssignment.setProfessor(professor);
+        submission.setCourseAssignment(placeholderAssignment);
+        
+        notificationService.notifySubmission(submission);
+        log.info("Notification sent for file upload by professor {} to folder {}", 
+                professor.getEmail(), folder.getName());
+    }
+    
+    /**
+     * Extracts course name from folder path or name.
+     * Folder paths typically follow pattern: academicYear/semester/professorId/courseName
+     * 
+     * @param folder The folder
+     * @return The extracted course name or null
+     */
+    private String extractCourseNameFromFolder(Folder folder) {
+        if (folder == null) {
+            return null;
+        }
+        
+        // If folder has a course, use that
+        if (folder.getCourse() != null) {
+            return folder.getCourse().getCourseName();
+        }
+        
+        // Try to extract from folder name (often contains course info)
+        String folderName = folder.getName();
+        if (folderName != null && !folderName.isEmpty()) {
+            // Folder names often follow pattern "COURSECODE - Course Name"
+            if (folderName.contains(" - ")) {
+                return folderName.substring(folderName.indexOf(" - ") + 3);
+            }
+            return folderName;
+        }
+        
+        return null;
     }
 
     @Override

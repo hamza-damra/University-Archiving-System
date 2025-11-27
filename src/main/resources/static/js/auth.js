@@ -5,6 +5,28 @@
 import { auth, saveAuthData, isAuthenticated } from './api.js';
 import { showToast, isValidEmail } from './ui.js';
 
+// Helper function to redirect based on role - defined early to avoid reference errors
+function redirectToDashboard(role) {
+    if (role === 'ROLE_ADMIN') {
+        window.location.href = '/admin/dashboard.html';
+    } else if (role === 'ROLE_DEANSHIP') {
+        window.location.href = '/deanship/dashboard';
+    } else if (role === 'ROLE_HOD') {
+        window.location.href = '/hod-dashboard.html';
+    } else if (role === 'ROLE_PROFESSOR') {
+        window.location.href = '/prof-dashboard.html';
+    } else {
+        // DOM might not be ready, use alert as fallback
+        const errorEl = document.getElementById('generalError');
+        if (errorEl) {
+            errorEl.textContent = 'Unknown user role. Please contact administrator.';
+            errorEl.classList.remove('hidden');
+        } else {
+            alert('Unknown user role. Please contact administrator.');
+        }
+    }
+}
+
 // Check if already logged in
 if (isAuthenticated()) {
     const userInfo = JSON.parse(localStorage.getItem('userInfo'));
@@ -129,8 +151,11 @@ function clearFieldError(element) {
 }
 
 function showGeneralError(message) {
-    generalError.textContent = message;
-    generalError.classList.remove('hidden');
+    const errorEl = document.getElementById('generalError');
+    if (errorEl) {
+        errorEl.textContent = message;
+        errorEl.classList.remove('hidden');
+    }
 }
 
 function clearErrors() {
@@ -139,17 +164,7 @@ function clearErrors() {
     generalError.classList.add('hidden');
 }
 
-function redirectToDashboard(role) {
-    if (role === 'ROLE_DEANSHIP') {
-        window.location.href = '/deanship/dashboard';
-    } else if (role === 'ROLE_HOD') {
-        window.location.href = '/hod-dashboard.html';
-    } else if (role === 'ROLE_PROFESSOR') {
-        window.location.href = '/prof-dashboard.html';
-    } else {
-        showGeneralError('Unknown user role. Please contact administrator.');
-    }
-}
+
 
 // Handle Enter key
 emailInput.addEventListener('keypress', (e) => {

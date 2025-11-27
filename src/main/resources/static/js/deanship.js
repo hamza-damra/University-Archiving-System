@@ -20,6 +20,11 @@ window.LoadingIndicator = LoadingIndicator;
 window.EmptyState = EmptyState;
 window.SkeletonLoader = SkeletonLoader;
 
+// Expose UI functions globally for non-module scripts
+window.showToast = showToast;
+window.showModal = showModal;
+window.showConfirm = showConfirm;
+
 // State
 let currentTab = 'dashboard'; // Default to dashboard
 let selectedAcademicYear = null;
@@ -191,9 +196,11 @@ async function loadInitialDataSilent() {
             loadDepartments()
         ]);
         console.log('Initial data loaded (Academic Years & Departments).');
-        // Note: loadTabData is NOT called here because:
-        // 1. restoreActiveTab() calls it on startup.
-        // 2. loadAcademicYearsData() -> updateAcademicYearSelector() -> onContextChange() calls it when context is ready.
+        
+        // Load data for the current tab after initial data is ready
+        // This ensures the tab content is populated on page refresh
+        console.log('Loading data for current tab:', currentTab);
+        loadTabData(currentTab);
     } catch (error) {
         console.error('Error loading initial data:', error);
         showToast('Failed to load initial data', 'error');
@@ -1071,9 +1078,6 @@ async function loadProfessors() {
         const response = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
         professors = Array.isArray(response) ? response : (response?.content || []);
 
-        // Extract unique departments
-        departments = [...new Set(professors.map(p => p.department).filter(Boolean))];
-
         // Use enhanced table if available, otherwise fallback to basic rendering
         if (typeof tableEnhancementManager !== 'undefined') {
             tableEnhancementManager.enhanceProfessorsTable();
@@ -1104,11 +1108,16 @@ async function loadProfessors() {
 
 /**
  * Filter professors
- * Reloads professors with current filter settings
+ * Applies client-side filtering based on search and department filter
  * @returns {void}
  */
 function filterProfessors() {
-    loadProfessors();
+    // Use enhanced table if available, otherwise fallback to basic rendering
+    if (typeof tableEnhancementManager !== 'undefined' && tableEnhancementManager) {
+        tableEnhancementManager.renderEnhancedProfessorsTable();
+    } else {
+        renderProfessorsTable();
+    }
 }
 
 /**
@@ -1121,7 +1130,9 @@ function renderProfessorsTable() {
     if (!tbody) return;
 
     const searchInput = document.getElementById('professorSearch');
-    const searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+    const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const departmentFilter = document.getElementById('professorDepartmentFilter');
+    const selectedDeptId = departmentFilter && departmentFilter.value ? parseInt(departmentFilter.value) : null;
 
     // Ensure professors is an array
     if (!Array.isArray(professors)) {
@@ -1129,9 +1140,16 @@ function renderProfessorsTable() {
         professors = [];
     }
 
-    let filteredProfessors = professors;
+    let filteredProfessors = [...professors];
+    
+    // Apply department filter
+    if (selectedDeptId) {
+        filteredProfessors = filteredProfessors.filter(prof => prof.department?.id === selectedDeptId);
+    }
+    
+    // Apply search filter
     if (searchTerm) {
-        filteredProfessors = professors.filter(prof =>
+        filteredProfessors = filteredProfessors.filter(prof =>
             (prof.name && prof.name.toLowerCase().includes(searchTerm)) ||
             (prof.email && prof.email.toLowerCase().includes(searchTerm)) ||
             (prof.professorId && prof.professorId.toLowerCase().includes(searchTerm))
@@ -1139,7 +1157,7 @@ function renderProfessorsTable() {
     }
 
     if (filteredProfessors.length === 0) {
-        const isSearching = searchTerm.length > 0;
+        const isFiltering = searchTerm.length > 0 || selectedDeptId !== null;
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="px-6 py-4">
@@ -1148,14 +1166,14 @@ function renderProfessorsTable() {
             </tr>
         `;
         EmptyState.render('professorsEmpty', {
-            title: isSearching ? 'No Professors Found' : 'No Professors',
-            message: isSearching
+            title: isFiltering ? 'No Professors Found' : 'No Professors',
+            message: isFiltering
                 ? 'No professors match your search criteria. Try adjusting your filters.'
                 : 'Get started by adding professors to manage their courses and documents.',
-            illustration: isSearching ? 'no-search-results' : 'no-professors',
-            actionLabel: isSearching ? null : 'Add Professor',
+            illustration: isFiltering ? 'no-search-results' : 'no-professors',
+            actionLabel: isFiltering ? null : 'Add Professor',
             actionId: 'addProfessorBtnEmpty',
-            actionCallback: isSearching ? null : showAddProfessorModal
+            actionCallback: isFiltering ? null : showAddProfessorModal
         });
         return;
     }
@@ -2611,30 +2629,14 @@ class TableEnhancementManager {
         if (!tableContainer) return;
 
         try {
-            // Add filters container
+            // Only create the table wrapper, keep the existing search/filter controls
             const filtersHtml = `
                 <div class="enhanced-table-container">
-                    <div class="table-filters">
-                        <div id="professorDepartmentFilter"></div>
-                    </div>
                     <div id="professorsTableWrapper"></div>
                 </div>
             `;
 
             tableContainer.innerHTML = filtersHtml;
-
-            // Initialize department filter
-            if (departments.length > 0) {
-                const deptFilter = new MultiSelectFilter();
-                const deptOptions = departments.map(d => ({ value: d, label: d }));
-                deptFilter.render(
-                    document.getElementById('professorDepartmentFilter'),
-                    'Department',
-                    deptOptions,
-                    (selected) => this.applyProfessorFilters()
-                );
-                this.filters.set('professors-department', deptFilter);
-            }
 
             // Re-render table with enhancements
             this.renderEnhancedProfessorsTable();
@@ -2964,13 +2966,31 @@ class TableEnhancementManager {
     getFilteredProfessors() {
         let filtered = [...professors];
 
-        // Apply department filter
-        const deptFilter = this.filters.get('professors-department');
-        if (deptFilter) {
-            const selectedDepts = deptFilter.getSelectedValues();
+        // Apply department filter from the original dropdown
+        const deptFilter = document.getElementById('professorDepartmentFilter');
+        if (deptFilter && deptFilter.value) {
+            const selectedDeptId = parseInt(deptFilter.value);
+            filtered = filtered.filter(p => p.department?.id === selectedDeptId);
+        }
+
+        // Also check MultiSelectFilter if available
+        const multiDeptFilter = this.filters.get('professors-department');
+        if (multiDeptFilter) {
+            const selectedDepts = multiDeptFilter.getSelectedValues();
             if (selectedDepts.length > 0) {
-                filtered = filtered.filter(p => selectedDepts.includes(p.department));
+                filtered = filtered.filter(p => selectedDepts.includes(p.department?.name));
             }
+        }
+
+        // Apply search filter
+        const searchInput = document.getElementById('professorSearch');
+        if (searchInput && searchInput.value.trim()) {
+            const searchTerm = searchInput.value.toLowerCase().trim();
+            filtered = filtered.filter(prof =>
+                (prof.name && prof.name.toLowerCase().includes(searchTerm)) ||
+                (prof.email && prof.email.toLowerCase().includes(searchTerm)) ||
+                (prof.professorId && prof.professorId.toLowerCase().includes(searchTerm))
+            );
         }
 
         return filtered;

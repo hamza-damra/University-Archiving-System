@@ -73,23 +73,52 @@ public class UserService implements UserDetailsService {
             throw UserException.emailAlreadyExists(request.getEmail());
         }
         
-        // Validate and fetch department (optional for DEANSHIP role)
+        // Validate and fetch department based on role
         Long departmentId = request.getDepartmentId();
         Department department = null;
         
-        // DEANSHIP users don't require a department (they have access to all)
-        if (request.getRole() == Role.ROLE_DEANSHIP) {
-            if (departmentId != null) {
+        // Role-based department validation:
+        // - ADMIN: Should NOT have a department (system-wide access)
+        // - DEANSHIP (Dean): Should NOT have a department (faculty/college-wide access)
+        // - HOD: MUST have a department (manages a specific department)
+        // - PROFESSOR: MUST have a department (belongs to a specific department)
+        switch (request.getRole()) {
+            case ROLE_ADMIN:
+                // Admin should not have a department - ignore if provided
+                if (departmentId != null) {
+                    log.info("Admin user should not have a department. Ignoring provided departmentId: {}", departmentId);
+                }
+                department = null;
+                break;
+                
+            case ROLE_DEANSHIP:
+                // Dean should not have a department - ignore if provided
+                if (departmentId != null) {
+                    log.info("Dean user should not have a department. Ignoring provided departmentId: {}", departmentId);
+                }
+                department = null;
+                break;
+                
+            case ROLE_HOD:
+                // HOD must have a department
+                if (departmentId == null) {
+                    throw new IllegalArgumentException("Department is required for Head of Department (HOD) role");
+                }
                 department = departmentRepository.findById(departmentId)
                         .orElseThrow(() -> UserException.departmentNotFound(departmentId));
-            }
-        } else {
-            // Other roles require a department
-            if (departmentId == null) {
-                throw new IllegalArgumentException("Department ID is required for role: " + request.getRole());
-            }
-            department = departmentRepository.findById(departmentId)
-                    .orElseThrow(() -> UserException.departmentNotFound(departmentId));
+                break;
+                
+            case ROLE_PROFESSOR:
+                // Professor must have a department
+                if (departmentId == null) {
+                    throw new IllegalArgumentException("Department is required for Professor role");
+                }
+                department = departmentRepository.findById(departmentId)
+                        .orElseThrow(() -> UserException.departmentNotFound(departmentId));
+                break;
+                
+            default:
+                throw new IllegalArgumentException("Unknown role: " + request.getRole());
         }
         
         // Validate role
@@ -134,12 +163,32 @@ public class UserService implements UserDetailsService {
             validateEmail(request.getEmail());
         }
         
-        // Validate and update department if provided
+        // Validate and update department based on user's role
         Long departmentId = request.getDepartmentId();
-        if (departmentId != null) {
-            Department department = departmentRepository.findById(departmentId)
-                    .orElseThrow(() -> UserException.departmentNotFound(departmentId));
-            user.setDepartment(department);
+        Role userRole = user.getRole();
+        
+        // Role-based department validation for updates:
+        // - ADMIN and DEANSHIP: Should NOT have a department (set to null if provided)
+        // - HOD and PROFESSOR: Must have a department
+        if (userRole == Role.ROLE_ADMIN || userRole == Role.ROLE_DEANSHIP) {
+            // Admin and Dean should not have a department
+            if (departmentId != null) {
+                log.info("{} user should not have a department. Ignoring provided departmentId: {}", 
+                    userRole == Role.ROLE_ADMIN ? "Admin" : "Dean", departmentId);
+            }
+            user.setDepartment(null);
+        } else if (userRole == Role.ROLE_HOD || userRole == Role.ROLE_PROFESSOR) {
+            // HOD and Professor must have a department
+            if (departmentId != null) {
+                Department department = departmentRepository.findById(departmentId)
+                        .orElseThrow(() -> UserException.departmentNotFound(departmentId));
+                user.setDepartment(department);
+            } else if (user.getDepartment() == null) {
+                // If no department is provided and user doesn't have one, throw error
+                throw new IllegalArgumentException("Department is required for " + 
+                    (userRole == Role.ROLE_HOD ? "HOD" : "Professor") + " role");
+            }
+            // If departmentId is null but user already has a department, keep the existing one
         }
         
         // Update user entity
@@ -288,12 +337,19 @@ public class UserService implements UserDetailsService {
             errors.put("lastName", "Last name must not exceed 50 characters");
         }
         
-        if (request.getDepartmentId() == null) {
-            errors.put("departmentId", "Department is required");
-        }
-        
         if (request.getRole() == null) {
             errors.put("role", "Role is required");
+        }
+        
+        // Department validation is role-based:
+        // - HOD and Professor require a department
+        // - Admin and Dean should NOT have a department
+        if (request.getRole() != null) {
+            if ((request.getRole() == Role.ROLE_HOD || request.getRole() == Role.ROLE_PROFESSOR) 
+                && request.getDepartmentId() == null) {
+                errors.put("departmentId", "Department is required for " + 
+                    (request.getRole() == Role.ROLE_HOD ? "HOD" : "Professor") + " role");
+            }
         }
         
         if (!errors.isEmpty()) {
@@ -347,8 +403,11 @@ public class UserService implements UserDetailsService {
     
     /**
      * Validates email format based on user role.
-     * - Professor emails must end with @stuff.alquds.edu
-     * - HOD emails must follow pattern hod.<department_shortcut>@dean.alquds.edu
+     * Email format by role:
+     * - ADMIN: username@admin.alquds.edu
+     * - DEANSHIP: username@dean.alquds.edu
+     * - HOD: hod.department_shortcut@dean.alquds.edu
+     * - PROFESSOR: username@staff.alquds.edu
      * 
      * @param email The email to validate
      * @param role The role of the user being created
@@ -359,14 +418,17 @@ public class UserService implements UserDetailsService {
         }
         
         switch (role) {
-            case ROLE_PROFESSOR:
-                emailValidationService.validateProfessorEmail(email);
+            case ROLE_ADMIN:
+                emailValidationService.validateAdminEmail(email);
+                break;
+            case ROLE_DEANSHIP:
+                emailValidationService.validateDeanshipEmail(email);
                 break;
             case ROLE_HOD:
                 emailValidationService.validateHodEmail(email);
                 break;
-            default:
-                // No specific email validation for ADMIN and DEANSHIP roles
+            case ROLE_PROFESSOR:
+                emailValidationService.validateProfessorEmail(email);
                 break;
         }
     }

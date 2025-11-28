@@ -333,6 +333,40 @@ class ModernDropdown {
         return this.select.value;
     }
 
+    /**
+     * Enable or disable the dropdown
+     * @param {boolean} disabled - Whether to disable the dropdown
+     */
+    setDisabled(disabled) {
+        this.select.disabled = disabled;
+        if (disabled) {
+            this.wrapper.classList.add('disabled');
+            this.wrapper.style.pointerEvents = 'none';
+            this.wrapper.style.opacity = '0.5';
+            this.toggle.disabled = true;
+            this.toggle.style.cursor = 'not-allowed';
+            // Use darker background for dark mode compatibility
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            this.toggle.style.backgroundColor = isDarkMode ? '#374151' : '#e5e7eb';
+            this.closeDropdown();
+        } else {
+            this.wrapper.classList.remove('disabled');
+            this.wrapper.style.pointerEvents = '';
+            this.wrapper.style.opacity = '';
+            this.toggle.disabled = false;
+            this.toggle.style.cursor = '';
+            this.toggle.style.backgroundColor = '';
+        }
+    }
+
+    /**
+     * Check if dropdown is disabled
+     * @returns {boolean}
+     */
+    isDisabled() {
+        return this.select.disabled;
+    }
+
     destroy() {
         this.wrapper.remove();
         this.select.style.display = '';
@@ -378,11 +412,54 @@ function refreshModernDropdown(select) {
     }
 }
 
+/**
+ * Set the disabled state of a modern dropdown
+ * @param {HTMLSelectElement} select - The original select element
+ * @param {boolean} disabled - Whether to disable the dropdown
+ */
+function setModernDropdownDisabled(select, disabled) {
+    console.log('[ModernDropdown] setModernDropdownDisabled called', { selectId: select?.id, disabled, hasModernDropdown: !!select?._modernDropdown });
+    
+    if (select._modernDropdown) {
+        select._modernDropdown.setDisabled(disabled);
+    } else {
+        // Fallback for non-modern dropdowns - try to find the wrapper
+        const wrapper = select.nextElementSibling;
+        if (wrapper && wrapper.classList.contains('modern-dropdown-wrapper')) {
+            console.log('[ModernDropdown] Found wrapper via DOM, applying disabled state directly');
+            const toggle = wrapper.querySelector('.modern-dropdown-toggle');
+            if (disabled) {
+                wrapper.classList.add('disabled');
+                wrapper.style.pointerEvents = 'none';
+                wrapper.style.opacity = '0.5';
+                if (toggle) {
+                    toggle.disabled = true;
+                    toggle.style.cursor = 'not-allowed';
+                    const isDarkMode = document.documentElement.classList.contains('dark');
+                    toggle.style.backgroundColor = isDarkMode ? '#374151' : '#e5e7eb';
+                }
+            } else {
+                wrapper.classList.remove('disabled');
+                wrapper.style.pointerEvents = '';
+                wrapper.style.opacity = '';
+                if (toggle) {
+                    toggle.disabled = false;
+                    toggle.style.cursor = '';
+                    toggle.style.backgroundColor = '';
+                }
+            }
+        }
+        // Also set the native select
+        select.disabled = disabled;
+    }
+}
+
 // Auto-initialize on DOMContentLoaded if not using modules
 if (typeof window !== 'undefined') {
     window.ModernDropdown = ModernDropdown;
     window.initModernDropdowns = initModernDropdowns;
     window.refreshModernDropdown = refreshModernDropdown;
+    window.setModernDropdownDisabled = setModernDropdownDisabled;
 }
 
 // Export for module usage

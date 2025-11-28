@@ -413,6 +413,7 @@ class AdminDashboardPage {
         try {
             const response = await apiRequest('/admin/departments', { method: 'GET' });
             this.departments = response || [];
+            console.log('[AdminDashboard] Loaded departments:', this.departments);
             this.renderUserDepartmentOptions();
         } catch (error) {
             console.error('[AdminDashboard] Failed to load departments:', error);
@@ -426,17 +427,22 @@ class AdminDashboardPage {
         const filterSelect = document.getElementById('userDepartmentFilter');
         const formSelect = document.getElementById('userDepartment');
         
-        const options = this.departments.map(dept => 
+        const filterOptions = this.departments.map(dept => 
             `<option value="${dept.id}">${this.escapeHtml(dept.name)}</option>`
         ).join('');
         
+        // For the user form, include the shortcut as a data attribute for HOD email generation
+        const formOptions = this.departments.map(dept => 
+            `<option value="${dept.id}" data-shortcut="${this.escapeHtml(dept.shortcut || '')}">${this.escapeHtml(dept.name)}</option>`
+        ).join('');
+        
         if (filterSelect) {
-            filterSelect.innerHTML = '<option value="">All Departments</option>' + options;
+            filterSelect.innerHTML = '<option value="">All Departments</option>' + filterOptions;
             this.refreshDropdown(filterSelect);
         }
         
         if (formSelect) {
-            formSelect.innerHTML = '<option value="">No Department</option>' + options;
+            formSelect.innerHTML = '<option value="">No Department</option>' + formOptions;
             this.refreshDropdown(formSelect);
         }
     }
@@ -704,11 +710,548 @@ class AdminDashboardPage {
         if (userModalClose) userModalClose.addEventListener('click', () => this.closeUserModal());
         if (userModalCancel) userModalCancel.addEventListener('click', () => this.closeUserModal());
         
+        // Role change handler for email domain and field visibility
+        const userRoleSelect = document.getElementById('userRole');
+        if (userRoleSelect) {
+            // Handle change event (native select)
+            userRoleSelect.addEventListener('change', (e) => {
+                console.log('[AdminDashboard] Role change event fired. New value:', e.target.value);
+                this.handleRoleChangeForEmail(e.target.value);
+            });
+            
+            // Also use input event as some dropdowns trigger that
+            userRoleSelect.addEventListener('input', (e) => {
+                console.log('[AdminDashboard] Role input event fired. New value:', e.target.value);
+                this.handleRoleChangeForEmail(e.target.value);
+            });
+            
+            // Use event delegation on document to catch modern dropdown clicks
+            document.addEventListener('click', (e) => {
+                const option = e.target.closest('.modern-dropdown-option');
+                if (option) {
+                    // Find which dropdown wrapper this option belongs to
+                    const wrapper = option.closest('.modern-dropdown-wrapper');
+                    if (wrapper) {
+                        // The original select is the previous sibling of the wrapper
+                        const select = wrapper.previousElementSibling;
+                        // Check if this is the userRole select
+                        if (select && select.id === 'userRole') {
+                            // Wait a tick for the value to update
+                            setTimeout(() => {
+                                const role = userRoleSelect.value;
+                                console.log('[AdminDashboard] Modern dropdown option clicked for userRole. Role value:', role);
+                                if (role) {
+                                    this.handleRoleChangeForEmail(role);
+                                }
+                            }, 50);
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Email prefix input handler
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        if (emailPrefixInput) {
+            emailPrefixInput.addEventListener('input', () => this.updateFullEmail());
+        }
+        
+        // Department change handler for HOD email
+        const userDepartmentSelect = document.getElementById('userDepartment');
+        if (userDepartmentSelect) {
+            userDepartmentSelect.addEventListener('change', (e) => {
+                console.log('[AdminDashboard] Department change event fired. New value:', e.target.value);
+                this.updateEmailForHod();
+            });
+            
+            // Also use input event as some dropdowns trigger that
+            userDepartmentSelect.addEventListener('input', (e) => {
+                console.log('[AdminDashboard] Department input event fired. New value:', e.target.value);
+                this.updateEmailForHod();
+            });
+            
+            // Observe for any attribute/value changes via MutationObserver as fallback
+            const observer = new MutationObserver((mutations) => {
+                console.log('[AdminDashboard] MutationObserver detected change on department select');
+                const role = document.getElementById('userRole')?.value;
+                if (role === 'ROLE_HOD') {
+                    this.updateEmailForHod();
+                }
+            });
+            observer.observe(userDepartmentSelect, { 
+                attributes: true, 
+                attributeFilter: ['value'],
+                childList: true,
+                subtree: true
+            });
+        }
+        
         // Form submission
         const userForm = document.getElementById('userForm');
         if (userForm) {
             userForm.addEventListener('submit', (e) => this.handleUserFormSubmit(e));
         }
+    }
+    
+    /**
+     * Handle role change to update department field visibility and email domain suffix
+     */
+    handleRoleChangeForEmail(role) {
+        // First, update department field visibility based on role
+        this.updateDepartmentFieldForRole(role);
+        
+        const emailDomainSpan = document.getElementById('userEmailDomain');
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        const emailFormatHint = document.getElementById('emailFormatHint');
+        const emailHintText = document.getElementById('emailHintText');
+        const emailInputWrapper = document.getElementById('emailInputWrapper');
+        const emailAutoDisplay = document.getElementById('emailAutoDisplay');
+        
+        if (!emailDomainSpan || !emailPrefixInput) return;
+        
+        // Get pending display element
+        const emailPendingDisplay = document.getElementById('emailPendingDisplay');
+        
+        // Reset hint styling
+        if (emailFormatHint) {
+            emailFormatHint.classList.remove('text-red-500', 'dark:text-red-400', 'text-amber-500', 'dark:text-amber-400', 'text-green-500', 'dark:text-green-400');
+            emailFormatHint.classList.add('text-gray-500', 'dark:text-gray-400');
+        }
+        
+        // Define email domains for each role
+        const emailConfig = {
+            'ROLE_ADMIN': { domain: '@admin.alquds.edu', hint: 'Format: username@admin.alquds.edu', placeholder: 'username', prefix: '' },
+            'ROLE_DEANSHIP': { domain: '@dean.alquds.edu', hint: 'Format: username@dean.alquds.edu', placeholder: 'username', prefix: '' },
+            'ROLE_HOD': { domain: '@dean.alquds.edu', hint: 'Email auto-generated based on department', placeholder: 'department_shortcut', prefix: 'hod.' },
+            'ROLE_PROFESSOR': { domain: '@staff.alquds.edu', hint: 'Format: username@staff.alquds.edu', placeholder: 'username', prefix: '' }
+        };
+        
+        const config = emailConfig[role] || { domain: '@alquds.edu', hint: 'Select a role to see the required email format', placeholder: 'username', prefix: '' };
+        
+        // Store the current config for email generation
+        this.currentEmailConfig = config;
+        
+        // For HOD, hide the input and show auto-generated display
+        if (role === 'ROLE_HOD') {
+            // Hide input wrapper
+            if (emailInputWrapper) emailInputWrapper.classList.add('hidden');
+            
+            // Check if departments are available
+            if (!this.departments || this.departments.length === 0) {
+                if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
+                if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
+                if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
+                emailPrefixInput.style.display = 'none';
+                emailDomainSpan.textContent = 'hod.<shortcut>@dean.alquds.edu';
+                if (emailHintText) emailHintText.textContent = '⚠️ No departments available. Please create a department first.';
+                if (emailFormatHint) {
+                    emailFormatHint.classList.remove('text-gray-500', 'dark:text-gray-400');
+                    emailFormatHint.classList.add('text-red-500', 'dark:text-red-400');
+                }
+            } else {
+                this.updateEmailForHod();
+            }
+        } else {
+            // For other roles, show the input wrapper with prefix input and domain
+            if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
+            if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
+            if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
+            
+            emailPrefixInput.style.display = 'block';
+            emailPrefixInput.placeholder = config.placeholder;
+            emailDomainSpan.textContent = config.domain;
+            if (emailHintText) emailHintText.textContent = config.hint;
+            this.updateFullEmail();
+        }
+    }
+    
+    /**
+     * Update email for HOD based on department selection
+     */
+    updateEmailForHod() {
+        const role = document.getElementById('userRole')?.value;
+        if (role !== 'ROLE_HOD') return;
+        
+        const departmentSelect = document.getElementById('userDepartment');
+        const emailDomainSpan = document.getElementById('userEmailDomain');
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        const emailFormatHint = document.getElementById('emailFormatHint');
+        const emailHintText = document.getElementById('emailHintText');
+        const emailHidden = document.getElementById('userEmail');
+        const emailInputWrapper = document.getElementById('emailInputWrapper');
+        const emailAutoDisplay = document.getElementById('emailAutoDisplay');
+        const emailPendingDisplay = document.getElementById('emailPendingDisplay');
+        const emailAutoValue = document.getElementById('emailAutoValue');
+        
+        if (!departmentSelect || !emailDomainSpan) return;
+        
+        const selectedDepartmentId = departmentSelect.value;
+        const selectedOption = departmentSelect.options[departmentSelect.selectedIndex];
+        
+        console.log('[AdminDashboard] HOD email update - Selected department ID:', selectedDepartmentId);
+        console.log('[AdminDashboard] Selected option:', selectedOption?.text, 'data-shortcut:', selectedOption?.dataset?.shortcut);
+        console.log('[AdminDashboard] Available departments:', this.departments);
+        
+        // Find department shortcut - try multiple sources
+        let departmentShortcut = '';
+        
+        // First try from the cached departments array
+        if (selectedDepartmentId && this.departments && this.departments.length > 0) {
+            const selectedDept = this.departments.find(d => String(d.id) === String(selectedDepartmentId));
+            console.log('[AdminDashboard] Found department from cache:', selectedDept);
+            if (selectedDept && selectedDept.shortcut) {
+                departmentShortcut = selectedDept.shortcut.toLowerCase();
+            }
+        }
+        
+        // Fallback: try from the data-shortcut attribute on the option
+        if (!departmentShortcut && selectedOption && selectedOption.dataset && selectedOption.dataset.shortcut) {
+            departmentShortcut = selectedOption.dataset.shortcut.toLowerCase();
+            console.log('[AdminDashboard] Got shortcut from data attribute:', departmentShortcut);
+        }
+        
+        console.log('[AdminDashboard] Final department shortcut:', departmentShortcut);
+        
+        // Reset hint styling
+        if (emailFormatHint) {
+            emailFormatHint.classList.remove('text-red-500', 'dark:text-red-400', 'text-green-500', 'dark:text-green-400');
+            emailFormatHint.classList.add('text-gray-500', 'dark:text-gray-400');
+        }
+        
+        // Check if there are no departments available at all
+        if (!this.departments || this.departments.length === 0) {
+            if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
+            if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
+            if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
+            emailDomainSpan.textContent = 'hod.<shortcut>@dean.alquds.edu';
+            emailPrefixInput.style.display = 'none';
+            emailPrefixInput.value = '';
+            if (emailHidden) emailHidden.value = '';
+            if (emailHintText) emailHintText.textContent = '⚠️ No departments available. Please create a department first.';
+            if (emailFormatHint) {
+                emailFormatHint.classList.remove('text-gray-500', 'dark:text-gray-400');
+                emailFormatHint.classList.add('text-red-500', 'dark:text-red-400');
+            }
+            return;
+        }
+        
+        if (departmentShortcut && selectedDepartmentId) {
+            // We have a department selected, show the auto-generated email in the nice display
+            const fullEmail = `hod.${departmentShortcut}@dean.alquds.edu`;
+            
+            // Show the auto display with the email, hide others
+            if (emailInputWrapper) emailInputWrapper.classList.add('hidden');
+            if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
+            if (emailAutoDisplay) emailAutoDisplay.classList.remove('hidden');
+            if (emailAutoValue) emailAutoValue.textContent = fullEmail;
+            
+            emailPrefixInput.style.display = 'none';
+            emailPrefixInput.value = '';
+            
+            // Set the full email
+            if (emailHidden) emailHidden.value = fullEmail;
+            
+            // Update hint with success styling
+            if (emailHintText) emailHintText.textContent = '✓ Email auto-generated from department';
+            if (emailFormatHint) {
+                emailFormatHint.classList.remove('text-gray-500', 'dark:text-gray-400');
+                emailFormatHint.classList.add('text-green-500', 'dark:text-green-400');
+            }
+            
+            console.log('[AdminDashboard] Set HOD email to:', fullEmail);
+        } else {
+            // No department selected, show the pending display
+            if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
+            if (emailInputWrapper) emailInputWrapper.classList.add('hidden');
+            if (emailPendingDisplay) emailPendingDisplay.classList.remove('hidden');
+            
+            emailPrefixInput.style.display = 'none';
+            emailPrefixInput.value = '';
+            if (emailHidden) emailHidden.value = '';
+            if (emailHintText) emailHintText.textContent = '👆 Select a department above to generate email';
+            if (emailFormatHint) {
+                emailFormatHint.classList.remove('text-gray-500', 'dark:text-gray-400', 'text-green-500', 'dark:text-green-400');
+                emailFormatHint.classList.add('text-amber-500', 'dark:text-amber-400');
+            }
+        }
+    }
+    
+    /**
+     * Update the full email based on prefix and domain
+     */
+    updateFullEmail() {
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        const emailHidden = document.getElementById('userEmail');
+        const role = document.getElementById('userRole')?.value;
+        
+        if (!emailPrefixInput || !emailHidden) return;
+        
+        const prefix = emailPrefixInput.value.trim().toLowerCase();
+        
+        if (!prefix || !role) {
+            emailHidden.value = '';
+            return;
+        }
+        
+        const emailConfig = {
+            'ROLE_ADMIN': '@admin.alquds.edu',
+            'ROLE_DEANSHIP': '@dean.alquds.edu',
+            'ROLE_HOD': '@dean.alquds.edu',
+            'ROLE_PROFESSOR': '@staff.alquds.edu'
+        };
+        
+        const domain = emailConfig[role] || '@alquds.edu';
+        
+        // For HOD, the email is handled separately by updateEmailForHod
+        if (role === 'ROLE_HOD') return;
+        
+        emailHidden.value = prefix + domain;
+    }
+    
+    /**
+     * Update department field and name fields based on selected role
+     * - ADMIN and DEANSHIP (Dean): Disable department field (not applicable)
+     * - HOD: Disable first/last name fields (auto-generated), require department
+     * - PROFESSOR: Show department field as required, enable name fields
+     */
+    updateDepartmentFieldForRole(role) {
+        console.log('[AdminDashboard] Updating fields for role:', role);
+        
+        const departmentContainer = document.getElementById('departmentFieldContainer');
+        const departmentSelect = document.getElementById('userDepartment');
+        const departmentRequired = document.getElementById('departmentRequired');
+        const departmentHint = document.getElementById('departmentHint');
+        const firstNameField = document.getElementById('userFirstName');
+        const lastNameField = document.getElementById('userLastName');
+        
+        if (!departmentContainer) return;
+        
+        // Define role configurations
+        const roleConfig = {
+            'ROLE_ADMIN': { 
+                departmentEnabled: false, 
+                departmentRequired: false, 
+                hint: 'Admin has system-wide access - no department needed',
+                nameFieldsEnabled: true
+            },
+            'ROLE_DEANSHIP': { 
+                departmentEnabled: false, 
+                departmentRequired: false, 
+                hint: 'Dean has faculty-wide access - no department needed',
+                nameFieldsEnabled: false  // Dean name fields disabled
+            },
+            'ROLE_HOD': { 
+                departmentEnabled: true, 
+                departmentRequired: true, 
+                hint: 'Select the department this HOD will manage',
+                nameFieldsEnabled: false  // HOD name fields disabled
+            },
+            'ROLE_PROFESSOR': { 
+                departmentEnabled: true, 
+                departmentRequired: true, 
+                hint: 'Select the department this professor belongs to',
+                nameFieldsEnabled: true
+            }
+        };
+        
+        const config = roleConfig[role] || { departmentEnabled: true, departmentRequired: false, hint: '', nameFieldsEnabled: true };
+        
+        console.log('[AdminDashboard] Config for role:', config);
+        
+        // Always show the department container, just enable/disable it
+        departmentContainer.classList.remove('hidden');
+        departmentContainer.style.display = '';
+        
+        // Handle department dropdown (use modern dropdown helper if available)
+        if (departmentSelect) {
+            console.log('[AdminDashboard] About to disable department dropdown. departmentEnabled:', config.departmentEnabled);
+            console.log('[AdminDashboard] setModernDropdownDisabled available:', typeof window.setModernDropdownDisabled === 'function');
+            
+            if (typeof window.setModernDropdownDisabled === 'function') {
+                // Use the modern dropdown API
+                window.setModernDropdownDisabled(departmentSelect, !config.departmentEnabled);
+            }
+            
+            // Also set the native select properties
+            departmentSelect.disabled = !config.departmentEnabled;
+            departmentSelect.required = config.departmentRequired;
+            
+            if (!config.departmentEnabled) {
+                departmentSelect.value = ''; // Clear selection
+            }
+        }
+        
+        // Show/hide required asterisk based on whether department is required
+        if (departmentRequired) {
+            if (config.departmentRequired) {
+                departmentRequired.classList.remove('hidden');
+            } else {
+                departmentRequired.classList.add('hidden');
+            }
+        }
+        
+        // Show hint
+        if (departmentHint && config.hint) {
+            departmentHint.textContent = config.hint;
+            departmentHint.classList.remove('hidden');
+        }
+        
+        // Get hint elements for name fields
+        const firstNameHint = document.getElementById('firstNameHint');
+        const lastNameHint = document.getElementById('lastNameHint');
+        
+        // Handle first/last name fields for HOD/Dean role
+        if (firstNameField) {
+            firstNameField.disabled = !config.nameFieldsEnabled;
+            firstNameField.readOnly = !config.nameFieldsEnabled;
+            if (!config.nameFieldsEnabled) {
+                firstNameField.style.setProperty('pointer-events', 'none', 'important');
+                firstNameField.style.setProperty('opacity', '0.5', 'important');
+                // Use a distinct background color for disabled state
+                // Dark mode: bg-gray-800 (#1f2937), Light mode: bg-gray-200 (#e5e7eb)
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                firstNameField.style.setProperty('background-color', isDarkMode ? '#1f2937' : '#e5e7eb', 'important');
+                firstNameField.style.setProperty('color', '#9ca3af', 'important'); // Dimmed text
+                firstNameField.style.setProperty('cursor', 'not-allowed', 'important');
+                
+                // Show hint for HOD
+                if (firstNameHint && role === 'ROLE_HOD') {
+                    firstNameHint.textContent = 'Name is auto-generated from department (e.g., "HOD Computer Science")';
+                    firstNameHint.classList.remove('hidden');
+                } else if (firstNameHint) {
+                    firstNameHint.classList.add('hidden');
+                }
+            } else {
+                firstNameField.style.removeProperty('pointer-events');
+                firstNameField.style.removeProperty('opacity');
+                firstNameField.style.removeProperty('background-color');
+                firstNameField.style.removeProperty('color');
+                firstNameField.style.removeProperty('cursor');
+                if (firstNameHint) firstNameHint.classList.add('hidden');
+            }
+        }
+        
+        if (lastNameField) {
+            lastNameField.disabled = !config.nameFieldsEnabled;
+            lastNameField.readOnly = !config.nameFieldsEnabled;
+            if (!config.nameFieldsEnabled) {
+                lastNameField.style.setProperty('pointer-events', 'none', 'important');
+                lastNameField.style.setProperty('opacity', '0.5', 'important');
+                const isDarkMode = document.documentElement.classList.contains('dark');
+                lastNameField.style.setProperty('background-color', isDarkMode ? '#1f2937' : '#e5e7eb', 'important');
+                lastNameField.style.setProperty('color', '#9ca3af', 'important'); // Dimmed text
+                lastNameField.style.setProperty('cursor', 'not-allowed', 'important');
+                
+                // Show hint for HOD
+                if (lastNameHint && role === 'ROLE_HOD') {
+                    lastNameHint.textContent = 'Name is auto-generated from department';
+                    lastNameHint.classList.remove('hidden');
+                } else if (lastNameHint) {
+                    lastNameHint.classList.add('hidden');
+                }
+            } else {
+                lastNameField.style.removeProperty('pointer-events');
+                lastNameField.style.removeProperty('opacity');
+                lastNameField.style.removeProperty('background-color');
+                lastNameField.style.removeProperty('color');
+                lastNameField.style.removeProperty('cursor');
+                if (lastNameHint) lastNameHint.classList.add('hidden');
+            }
+        }
+        
+        console.log('[AdminDashboard] Fields updated for role:', role, 'departmentEnabled:', config.departmentEnabled, 'nameFieldsEnabled:', config.nameFieldsEnabled);
+    }
+    
+    /**
+     * Reset department field and name fields to default state
+     */
+    resetDepartmentField() {
+        const departmentContainer = document.getElementById('departmentFieldContainer');
+        const departmentSelect = document.getElementById('userDepartment');
+        const departmentRequired = document.getElementById('departmentRequired');
+        const departmentHint = document.getElementById('departmentHint');
+        const firstNameField = document.getElementById('userFirstName');
+        const lastNameField = document.getElementById('userLastName');
+        
+        if (departmentContainer) {
+            departmentContainer.classList.remove('hidden');
+            departmentContainer.style.display = '';
+        }
+        if (departmentSelect) {
+            departmentSelect.value = '';
+            departmentSelect.required = false;
+            departmentSelect.disabled = false;
+            
+            // Use modern dropdown API if available
+            if (typeof window.setModernDropdownDisabled === 'function') {
+                window.setModernDropdownDisabled(departmentSelect, false);
+            }
+        }
+        if (departmentRequired) {
+            departmentRequired.classList.add('hidden');
+        }
+        if (departmentHint) {
+            departmentHint.classList.add('hidden');
+            departmentHint.textContent = '';
+        }
+        // Reset first/last name fields to enabled state
+        if (firstNameField) {
+            firstNameField.disabled = false;
+            firstNameField.readOnly = false;
+            firstNameField.style.removeProperty('pointer-events');
+            firstNameField.style.removeProperty('opacity');
+            firstNameField.style.removeProperty('background-color');
+            firstNameField.style.removeProperty('color');
+            firstNameField.style.removeProperty('cursor');
+        }
+        if (lastNameField) {
+            lastNameField.disabled = false;
+            lastNameField.readOnly = false;
+            lastNameField.style.removeProperty('pointer-events');
+            lastNameField.style.removeProperty('opacity');
+            lastNameField.style.removeProperty('background-color');
+            lastNameField.style.removeProperty('color');
+            lastNameField.style.removeProperty('cursor');
+        }
+        
+        // Hide name field hints
+        const firstNameHint = document.getElementById('firstNameHint');
+        const lastNameHint = document.getElementById('lastNameHint');
+        if (firstNameHint) firstNameHint.classList.add('hidden');
+        if (lastNameHint) lastNameHint.classList.add('hidden');
+    }
+    
+    /**
+     * Reset email fields to default state
+     */
+    resetEmailFields() {
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        const emailDomainSpan = document.getElementById('userEmailDomain');
+        const emailHidden = document.getElementById('userEmail');
+        const emailFormatHint = document.getElementById('emailFormatHint');
+        const emailHintText = document.getElementById('emailHintText');
+        const emailInputWrapper = document.getElementById('emailInputWrapper');
+        const emailAutoDisplay = document.getElementById('emailAutoDisplay');
+        const emailPendingDisplay = document.getElementById('emailPendingDisplay');
+        const emailAutoValue = document.getElementById('emailAutoValue');
+        
+        if (emailPrefixInput) {
+            emailPrefixInput.value = '';
+            emailPrefixInput.style.display = 'block';
+            emailPrefixInput.placeholder = 'username';
+        }
+        if (emailDomainSpan) emailDomainSpan.textContent = '@alquds.edu';
+        if (emailHidden) emailHidden.value = '';
+        if (emailHintText) emailHintText.textContent = 'Select a role to see the required email format';
+        if (emailFormatHint) {
+            emailFormatHint.classList.remove('text-red-500', 'dark:text-red-400', 'text-green-500', 'dark:text-green-400', 'text-amber-500', 'dark:text-amber-400');
+            emailFormatHint.classList.add('text-gray-500', 'dark:text-gray-400');
+        }
+        // Reset to show input wrapper, hide auto display and pending display
+        if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
+        if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
+        if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
+        if (emailAutoValue) emailAutoValue.textContent = '';
     }
 
     /**
@@ -728,6 +1271,7 @@ class AdminDashboardPage {
         const firstNameField = document.getElementById('userFirstName');
         const lastNameField = document.getElementById('userLastName');
         const emailField = document.getElementById('userEmail');
+        const emailPrefixField = document.getElementById('userEmailPrefix');
         const roleField = document.getElementById('userRole');
         const departmentField = document.getElementById('userDepartment');
         const isActiveField = document.getElementById('userIsActive');
@@ -739,10 +1283,17 @@ class AdminDashboardPage {
         if (passwordRequired) passwordRequired.style.display = 'inline';
         if (passwordHelper) passwordHelper.textContent = 'At least 8 characters';
         
+        // Reset email fields
+        this.resetEmailFields();
+        
+        // Reset department field
+        this.resetDepartmentField();
+        
         // Enable all fields (in case they were disabled from self-edit)
         if (firstNameField) { firstNameField.disabled = false; firstNameField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (lastNameField) { lastNameField.disabled = false; lastNameField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (emailField) { emailField.disabled = false; emailField.classList.remove('opacity-50', 'cursor-not-allowed'); }
+        if (emailPrefixField) { emailPrefixField.disabled = false; emailPrefixField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (roleField) { roleField.disabled = false; roleField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (departmentField) { departmentField.disabled = false; departmentField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (isActiveField) { isActiveField.disabled = false; isActiveField.classList.remove('opacity-50', 'cursor-not-allowed'); }
@@ -760,6 +1311,8 @@ class AdminDashboardPage {
                 if (typeof window.initModernDropdowns === 'function') {
                     window.initModernDropdowns('#userRole, #userDepartment');
                 }
+                // Re-apply reset after dropdowns are initialized to ensure proper state
+                this.resetDepartmentField();
             }, 50);
         }
     }
@@ -782,6 +1335,7 @@ class AdminDashboardPage {
         const firstNameField = document.getElementById('userFirstName');
         const lastNameField = document.getElementById('userLastName');
         const emailField = document.getElementById('userEmail');
+        const emailPrefixField = document.getElementById('userEmailPrefix');
         const roleField = document.getElementById('userRole');
         const departmentField = document.getElementById('userDepartment');
         const isActiveField = document.getElementById('userIsActive');
@@ -796,6 +1350,7 @@ class AdminDashboardPage {
             if (firstNameField) { firstNameField.disabled = true; firstNameField.classList.add('opacity-50', 'cursor-not-allowed'); }
             if (lastNameField) { lastNameField.disabled = true; lastNameField.classList.add('opacity-50', 'cursor-not-allowed'); }
             if (emailField) { emailField.disabled = true; emailField.classList.add('opacity-50', 'cursor-not-allowed'); }
+            if (emailPrefixField) { emailPrefixField.disabled = true; emailPrefixField.classList.add('opacity-50', 'cursor-not-allowed'); }
             if (roleField) { roleField.disabled = true; roleField.classList.add('opacity-50', 'cursor-not-allowed'); }
             if (departmentField) { departmentField.disabled = true; departmentField.classList.add('opacity-50', 'cursor-not-allowed'); }
             if (isActiveField) { isActiveField.disabled = true; isActiveField.classList.add('opacity-50', 'cursor-not-allowed'); }
@@ -813,6 +1368,7 @@ class AdminDashboardPage {
             if (firstNameField) { firstNameField.disabled = false; firstNameField.classList.remove('opacity-50', 'cursor-not-allowed'); }
             if (lastNameField) { lastNameField.disabled = false; lastNameField.classList.remove('opacity-50', 'cursor-not-allowed'); }
             if (emailField) { emailField.disabled = false; emailField.classList.remove('opacity-50', 'cursor-not-allowed'); }
+            if (emailPrefixField) { emailPrefixField.disabled = false; emailPrefixField.classList.remove('opacity-50', 'cursor-not-allowed'); }
             if (roleField) { roleField.disabled = false; roleField.classList.remove('opacity-50', 'cursor-not-allowed'); }
             if (departmentField) { departmentField.disabled = false; departmentField.classList.remove('opacity-50', 'cursor-not-allowed'); }
             if (isActiveField) { isActiveField.disabled = false; isActiveField.classList.remove('opacity-50', 'cursor-not-allowed'); }
@@ -825,15 +1381,28 @@ class AdminDashboardPage {
         // Fill form
         document.getElementById('userFirstName').value = user.firstName || '';
         document.getElementById('userLastName').value = user.lastName || '';
-        document.getElementById('userEmail').value = user.email || '';
         document.getElementById('userPassword').value = '';
         document.getElementById('userRole').value = user.role || '';
         document.getElementById('userDepartment').value = user.departmentId || '';
         document.getElementById('userIsActive').checked = user.isActive !== false;
         
+        // Update department field visibility based on user's role
+        // Note: This will be called again after modern dropdowns are initialized
+        this.updateDepartmentFieldForRole(user.role);
+        
+        // Set the hidden email field and parse email prefix for display
+        const fullEmail = user.email || '';
+        document.getElementById('userEmail').value = fullEmail;
+        
+        // Parse email to show prefix and domain correctly
+        this.setEmailFieldsForEdit(fullEmail, user.role);
+        
         if (modal) {
             modal.classList.remove('hidden');
             modal.classList.add('active');
+            
+            // Store the role for later use
+            const userRole = user.role;
             
             // Initialize modern dropdowns in modal after it's visible
             setTimeout(() => {
@@ -843,7 +1412,49 @@ class AdminDashboardPage {
                 // Refresh dropdowns with current values
                 this.refreshDropdown(document.getElementById('userRole'));
                 this.refreshDropdown(document.getElementById('userDepartment'));
+                
+                // Re-apply field states after dropdowns are initialized
+                this.updateDepartmentFieldForRole(userRole);
             }, 50);
+        }
+    }
+    
+    /**
+     * Set email fields for editing an existing user
+     */
+    setEmailFieldsForEdit(email, role) {
+        const emailPrefixInput = document.getElementById('userEmailPrefix');
+        const emailDomainSpan = document.getElementById('userEmailDomain');
+        const emailFormatHint = document.getElementById('emailFormatHint');
+        
+        if (!emailPrefixInput || !emailDomainSpan || !email) return;
+        
+        // Email domain patterns for each role
+        const domainPatterns = {
+            'ROLE_ADMIN': '@admin.alquds.edu',
+            'ROLE_DEANSHIP': '@dean.alquds.edu',
+            'ROLE_HOD': '@dean.alquds.edu',
+            'ROLE_PROFESSOR': '@staff.alquds.edu'
+        };
+        
+        const domain = domainPatterns[role] || '@alquds.edu';
+        const atIndex = email.indexOf('@');
+        
+        if (atIndex > 0) {
+            const prefix = email.substring(0, atIndex);
+            const emailDomain = email.substring(atIndex);
+            
+            if (role === 'ROLE_HOD') {
+                // For HOD, show full email format
+                emailPrefixInput.style.display = 'none';
+                emailDomainSpan.textContent = email;
+                if (emailFormatHint) emailFormatHint.textContent = 'HOD email is auto-generated based on department';
+            } else {
+                emailPrefixInput.value = prefix;
+                emailPrefixInput.style.display = 'block';
+                emailDomainSpan.textContent = emailDomain;
+                if (emailFormatHint) emailFormatHint.textContent = `Current email: ${email}`;
+            }
         }
     }
 
@@ -943,13 +1554,40 @@ class AdminDashboardPage {
             }
         }
         
+        // Validate role is selected
+        const role = document.getElementById('userRole').value;
+        if (!role) {
+            showToast('Please select a role', 'error');
+            return;
+        }
+        
+        // Validate email based on role
+        const email = document.getElementById('userEmail').value;
+        if (!email) {
+            if (role === 'ROLE_HOD') {
+                showToast('Please select a department for HOD email', 'error');
+            } else {
+                showToast('Please enter an email username', 'error');
+            }
+            return;
+        }
+        
+        // Validate department for roles that require it
+        const departmentId = document.getElementById('userDepartment').value || null;
+        if ((role === 'ROLE_HOD' || role === 'ROLE_PROFESSOR') && !departmentId) {
+            showToast(`Please select a department for ${role === 'ROLE_HOD' ? 'HOD' : 'Professor'}`, 'error');
+            return;
+        }
+        
         // For editing other users or creating new users
         const formData = {
             firstName: document.getElementById('userFirstName').value,
             lastName: document.getElementById('userLastName').value,
-            email: document.getElementById('userEmail').value,
-            role: document.getElementById('userRole').value,
-            departmentId: document.getElementById('userDepartment').value || null,
+            email: email,
+            role: role,
+            // Only include departmentId for roles that require it (HOD and Professor)
+            // For Admin and Dean, explicitly set to null
+            departmentId: (role === 'ROLE_HOD' || role === 'ROLE_PROFESSOR') ? departmentId : null,
             isActive: document.getElementById('userIsActive').checked,
         };
         
@@ -997,7 +1635,7 @@ class AdminDashboardPage {
             });
             
             showToast('User deleted successfully', 'success');
-            this.closeDeleteUserModal();
+            this.closeDeleteModal();
             this.loadUsers();
             
         } catch (error) {

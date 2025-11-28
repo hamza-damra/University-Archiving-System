@@ -2,16 +2,40 @@ package com.alqude.edu.ArchiveSystem.service;
 
 /**
  * Service interface for email validation operations.
- * Provides validation for Professor and HOD email formats according to university standards.
+ * Provides validation for all role-specific email formats according to university standards.
+ * 
+ * Email format by role:
+ * - ADMIN: username@admin.alquds.edu
+ * - DEANSHIP: username@dean.alquds.edu
+ * - HOD: hod.department_shortcut@dean.alquds.edu
+ * - PROFESSOR: username@staff.alquds.edu
  */
 public interface EmailValidationService {
     
     /**
-     * Validates professor email format.
-     * Professor emails must end with @stuff.alquds.edu
+     * Validates admin email format.
+     * Admin emails must end with @admin.alquds.edu
      * 
      * @param email The email to validate
-     * @throws com.alqude.edu.ArchiveSystem.exception.ValidationException if email doesn't end with @stuff.alquds.edu
+     * @throws com.alqude.edu.ArchiveSystem.exception.ValidationException if email doesn't end with @admin.alquds.edu
+     */
+    void validateAdminEmail(String email);
+    
+    /**
+     * Validates deanship email format.
+     * Deanship emails must end with @dean.alquds.edu
+     * 
+     * @param email The email to validate
+     * @throws com.alqude.edu.ArchiveSystem.exception.ValidationException if email doesn't end with @dean.alquds.edu
+     */
+    void validateDeanshipEmail(String email);
+    
+    /**
+     * Validates professor email format.
+     * Professor emails must end with @staff.alquds.edu
+     * 
+     * @param email The email to validate
+     * @throws com.alqude.edu.ArchiveSystem.exception.ValidationException if email doesn't end with @staff.alquds.edu
      */
     void validateProfessorEmail(String email);
     
@@ -33,10 +57,26 @@ public interface EmailValidationService {
     String extractDepartmentShortcut(String email);
     
     /**
+     * Checks if an email is a valid admin email format.
+     * 
+     * @param email The email to check
+     * @return true if email ends with @admin.alquds.edu
+     */
+    boolean isValidAdminEmailFormat(String email);
+    
+    /**
+     * Checks if an email is a valid deanship email format.
+     * 
+     * @param email The email to check
+     * @return true if email ends with @dean.alquds.edu
+     */
+    boolean isValidDeanshipEmailFormat(String email);
+    
+    /**
      * Checks if an email is a valid professor email format.
      * 
      * @param email The email to check
-     * @return true if email ends with @stuff.alquds.edu
+     * @return true if email ends with @staff.alquds.edu
      */
     boolean isValidProfessorEmailFormat(String email);
     

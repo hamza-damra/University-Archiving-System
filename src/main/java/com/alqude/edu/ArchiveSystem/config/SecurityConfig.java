@@ -44,6 +44,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/session/**").permitAll()
                         .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll() // Health check endpoint for Docker
                         // Admin endpoints - ROLE_ADMIN only
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // Role-specific endpoints - Admin can also access these

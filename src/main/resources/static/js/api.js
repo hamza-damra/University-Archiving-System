@@ -3,8 +3,8 @@
  * Centralized API calls with token management and error handling
  */
 
-// Default base URL - adjust this to match your backend
-const API_BASE_URL = 'http://localhost:8080/api';
+// Dynamic base URL - uses current host to support external access
+const API_BASE_URL = `${window.location.origin}/api`;
 
 /**
  * Get authentication token from localStorage

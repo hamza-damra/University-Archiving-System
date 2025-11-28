@@ -3,8 +3,8 @@
  * Handles interactive reports dashboard and export functionality
  */
 
-// API base URL for deanship endpoints
-const REPORTS_API_BASE_URL = 'http://localhost:8080/api';
+// Dynamic API base URL - uses current host to support external access
+const REPORTS_API_BASE_URL = `${window.location.origin}/api`;
 
 // Minimum loading time in milliseconds to prevent flickering shimmer effect
 const MIN_LOADING_TIME = 800;

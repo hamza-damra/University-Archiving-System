@@ -90,6 +90,12 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- Spring Boot Actuator for health checks and monitoring -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+
 		<!-- MapStruct for mapping -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>

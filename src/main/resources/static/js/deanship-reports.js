@@ -3,6 +3,72 @@
  * Handles interactive reports dashboard and export functionality
  */
 
+// API base URL for deanship endpoints
+const REPORTS_API_BASE_URL = 'http://localhost:8080/api';
+
+// Minimum loading time in milliseconds to prevent flickering shimmer effect
+const MIN_LOADING_TIME = 800;
+
+/**
+ * Get authentication token from localStorage
+ */
+function getAuthToken() {
+    return localStorage.getItem('token');
+}
+
+/**
+ * Execute an async operation with a minimum loading time
+ * Prevents flickering when data loads too quickly
+ * @param {Function|Promise} asyncOperation - Async function or promise to execute
+ * @param {number} minTime - Minimum time in milliseconds
+ * @returns {Promise} The result of the async operation
+ */
+async function withMinLoadingTime(asyncOperation, minTime = MIN_LOADING_TIME) {
+    const startTime = Date.now();
+    
+    const promise = typeof asyncOperation === 'function' 
+        ? asyncOperation() 
+        : asyncOperation;
+    
+    const result = await promise;
+    
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = minTime - elapsedTime;
+    
+    if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
+    
+    return result;
+}
+
+/**
+ * Make an authenticated API request
+ * @param {string} endpoint - API endpoint (relative to base URL)
+ * @param {object} options - Fetch options
+ * @returns {Promise} Response data
+ */
+async function authenticatedFetch(endpoint, options = {}) {
+    const url = `${REPORTS_API_BASE_URL}${endpoint}`;
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+    
+    const token = getAuthToken();
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const config = {
+        ...options,
+        headers,
+    };
+    
+    return fetch(url, config);
+}
+
 /**
  * Reports Dashboard Component
  * Provides view toggle and interactive report generation
@@ -38,12 +104,13 @@ class ReportsDashboard {
 
     /**
      * Load data for the current view
+     * Uses minimum loading time to prevent flickering shimmer effect
      */
     async loadData() {
         if (this.isLoading) return;
         
-        // Check if semester is selected
-        const semesterId = window.dashboardState?.getSelectedSemester()?.id;
+        // Check if semester is selected - use getSelectedSemesterId() for direct ID access
+        const semesterId = window.dashboardState?.getSelectedSemesterId?.() || document.getElementById('semesterSelect')?.value;
         if (!semesterId) {
             const content = document.getElementById('report-content');
             if (content) {
@@ -60,14 +127,17 @@ class ReportsDashboard {
         this.showLoadingState();
 
         try {
+            // Use minimum loading time to prevent flickering shimmer effect
             const endpoint = this.getEndpointForView();
-            const response = await fetch(endpoint);
-            
-            if (!response.ok) {
-                throw new Error(`Failed to load report data: ${response.statusText}`);
-            }
+            const response = await withMinLoadingTime(async () => {
+                const res = await authenticatedFetch(endpoint);
+                if (!res.ok) {
+                    throw new Error(`Failed to load report data: ${res.statusText}`);
+                }
+                return res.json();
+            });
 
-            this.currentData = await response.json();
+            this.currentData = response;
             this.renderReport();
         } catch (error) {
             console.error('Error loading report data:', error);
@@ -81,19 +151,20 @@ class ReportsDashboard {
      * Get API endpoint based on current view
      */
     getEndpointForView() {
-        const semesterId = window.dashboardState?.getSelectedSemester()?.id || '';
+        // Use getSelectedSemesterId() for direct ID access, fallback to DOM select value
+        const semesterId = window.dashboardState?.getSelectedSemesterId?.() || document.getElementById('semesterSelect')?.value || '';
         
         if (!semesterId) {
             console.warn('No semester selected for reports');
         }
         
-        // Use the actual backend endpoint that exists
+        // Use the actual backend endpoint that exists (without /api prefix as authenticatedFetch adds it)
         switch (this.currentView) {
             case 'department':
             case 'level':
             case 'semester':
             default:
-                return `/api/deanship/reports/system-wide?semesterId=${semesterId}`;
+                return `/deanship/reports/system-wide?semesterId=${semesterId}`;
         }
     }
 
@@ -106,15 +177,15 @@ class ReportsDashboard {
                 <!-- Header with view toggle and export buttons -->
                 <div class="flex justify-between items-center mb-6">
                     <div class="view-toggle flex gap-2">
-                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'department' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" 
+                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'department' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" 
                                 data-view="department">
                             By Department
                         </button>
-                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'level' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" 
+                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'level' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" 
                                 data-view="level">
                             By Course Level
                         </button>
-                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'semester' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}" 
+                        <button class="view-btn px-4 py-2 rounded-lg font-medium transition-colors ${this.currentView === 'semester' ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600'}" 
                                 data-view="semester">
                             By Semester
                         </button>
@@ -139,7 +210,7 @@ class ReportsDashboard {
                 </div>
 
                 <!-- Report content area -->
-                <div id="report-content" class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <div id="report-content" class="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
                     <!-- Content will be rendered here -->
                 </div>
             </div>
@@ -179,21 +250,86 @@ class ReportsDashboard {
             if (view === this.currentView) {
                 btn.className = 'view-btn px-4 py-2 rounded-lg font-medium transition-colors bg-blue-600 text-white';
             } else {
-                btn.className = 'view-btn px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200';
+                btn.className = 'view-btn px-4 py-2 rounded-lg font-medium transition-colors bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-600';
             }
         });
     }
 
     /**
-     * Show loading state
+     * Show loading state with professional skeleton
      */
     showLoadingState() {
         const content = document.getElementById('report-content');
         if (!content) return;
 
+        // Generate random bar widths for visual variety
+        const barWidths = [85, 72, 95, 60, 78, 88, 65, 92, 70, 55];
+        const progressWidths = [75, 88, 62, 95, 70, 82, 58, 90, 68, 85];
+        
         content.innerHTML = `
-            <div class="p-8">
-                ${window.SkeletonLoader?.table(10, 5) || '<div class="text-center text-gray-500">Loading...</div>'}
+            <div class="reports-skeleton-container">
+                <!-- Stats Summary Cards -->
+                <div class="skeleton-stats-grid">
+                    <div class="skeleton-stat-card">
+                        <div class="skeleton-stat-icon"></div>
+                        <div class="skeleton-stat-value"></div>
+                        <div class="skeleton-stat-label"></div>
+                    </div>
+                    <div class="skeleton-stat-card">
+                        <div class="skeleton-stat-icon"></div>
+                        <div class="skeleton-stat-value"></div>
+                        <div class="skeleton-stat-label"></div>
+                    </div>
+                    <div class="skeleton-stat-card">
+                        <div class="skeleton-stat-icon"></div>
+                        <div class="skeleton-stat-value"></div>
+                        <div class="skeleton-stat-label"></div>
+                    </div>
+                    <div class="skeleton-stat-card">
+                        <div class="skeleton-stat-icon"></div>
+                        <div class="skeleton-stat-value"></div>
+                        <div class="skeleton-stat-label"></div>
+                    </div>
+                </div>
+
+                <!-- Professional Bar Chart Skeleton -->
+                <div class="skeleton-chart-container mb-8">
+                    ${barWidths.map(width => `
+                        <div class="skeleton-bar-row">
+                            <div class="skeleton-bar-label"></div>
+                            <div class="skeleton-bar-track">
+                                <div class="skeleton-bar-fill" style="width: ${width}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Table Skeleton -->
+                <div class="skeleton-table-container">
+                    <div class="skeleton-table-header">
+                        <div class="skeleton-table-header-cell" style="width: 70%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 80%"></div>
+                    </div>
+                    ${[0,1,2,3,4,5,6,7].map((_, i) => `
+                        <div class="skeleton-table-row">
+                            <div class="skeleton-table-cell" style="width: ${70 + Math.random() * 20}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${50 + Math.random() * 30}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${40 + Math.random() * 40}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${45 + Math.random() * 35}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${50 + Math.random() * 30}%"></div>
+                            <div class="skeleton-progress-cell">
+                                <div class="skeleton-progress-bar">
+                                    <div class="skeleton-progress-fill" style="width: ${progressWidths[i] || 70}%"></div>
+                                </div>
+                                <div class="skeleton-progress-text"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
             </div>
         `;
     }
@@ -207,13 +343,13 @@ class ReportsDashboard {
 
         content.innerHTML = `
             <div class="p-8 text-center">
-                <div class="text-red-600 mb-4">
+                <div class="text-red-600 dark:text-red-400 mb-4">
                     <svg class="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                 </div>
-                <h3 class="text-lg font-semibold text-gray-900 mb-2">Failed to Load Report</h3>
-                <p class="text-gray-600 mb-4">${message}</p>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Failed to Load Report</h3>
+                <p class="text-gray-600 dark:text-gray-400 mb-4">${message}</p>
                 <button onclick="window.reportsDashboard?.loadData()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                     Retry
                 </button>
@@ -257,13 +393,13 @@ class ReportsDashboard {
         }
 
         const tableRows = data.map(dept => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${dept.departmentName || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dept.totalCourses || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dept.totalProfessors || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dept.uploadedDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dept.pendingDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${dept.overdueDocuments || 0}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${dept.departmentName || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${dept.totalCourses || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${dept.totalProfessors || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${dept.uploadedDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${dept.pendingDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${dept.overdueDocuments || 0}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${this.renderProgressBar(dept.compliancePercentage || 0)}
                 </td>
@@ -272,19 +408,19 @@ class ReportsDashboard {
 
         container.innerHTML = `
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professors</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overdue</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Department</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Courses</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Professors</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overdue</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Compliance</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                         ${tableRows}
                     </tbody>
                 </table>
@@ -308,12 +444,12 @@ class ReportsDashboard {
         }
 
         const tableRows = data.map(level => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${level.courseLevel || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${level.totalCourses || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${level.uploadedDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${level.pendingDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${level.overdueDocuments || 0}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${level.courseLevel || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${level.totalCourses || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${level.uploadedDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${level.pendingDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${level.overdueDocuments || 0}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${this.renderProgressBar(level.compliancePercentage || 0)}
                 </td>
@@ -322,18 +458,18 @@ class ReportsDashboard {
 
         container.innerHTML = `
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course Level</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overdue</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Course Level</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Courses</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overdue</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Compliance</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                         ${tableRows}
                     </tbody>
                 </table>
@@ -357,14 +493,14 @@ class ReportsDashboard {
         }
 
         const tableRows = data.map(sem => `
-            <tr class="hover:bg-gray-50">
-                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${sem.semesterName || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.academicYear || 'N/A'}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.totalCourses || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.totalProfessors || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.uploadedDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.pendingDocuments || 0}</td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">${sem.overdueDocuments || 0}</td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-100">${sem.semesterName || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.academicYear || 'N/A'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.totalCourses || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.totalProfessors || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.uploadedDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.pendingDocuments || 0}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">${sem.overdueDocuments || 0}</td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     ${this.renderProgressBar(sem.compliancePercentage || 0)}
                 </td>
@@ -373,20 +509,20 @@ class ReportsDashboard {
 
         container.innerHTML = `
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Semester</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professors</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Uploaded</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overdue</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Compliance</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Semester</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Academic Year</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Courses</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Professors</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Uploaded</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pending</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Overdue</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Compliance</th>
                         </tr>
                     </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
+                    <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                         ${tableRows}
                     </tbody>
                 </table>
@@ -408,9 +544,9 @@ class ReportsDashboard {
         }
 
         return `
-            <div class="w-full bg-gray-200 rounded-full h-6 relative">
+            <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-6 relative">
                 <div class="${colorClass} h-6 rounded-full transition-all duration-500" style="width: ${percent}%"></div>
-                <span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-700">
+                <span class="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-700 dark:text-gray-200">
                     ${percent}%
                 </span>
             </div>

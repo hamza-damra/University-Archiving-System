@@ -70,6 +70,12 @@ import { fileExplorerState } from './file-explorer-state.js';
 import { FilePreviewButton } from './file-preview-button.js';
 
 /**
+ * Minimum loading time in milliseconds to prevent flickering/flash effect
+ * This ensures skeleton loaders are visible for at least this duration
+ */
+const MIN_LOADING_TIME = 600;
+
+/**
  * FileExplorer class
  * Manages the file explorer UI and interactions
  * 
@@ -369,10 +375,6 @@ export class FileExplorer {
      * await fileExplorer.loadRoot(1, 1);
      */
     async loadRoot(academicYearId, semesterId, isBackground = false) {
-        // Minimum loading time in milliseconds to prevent flickering
-        const MIN_LOADING_TIME = 1000;
-        const startTime = Date.now();
-        
         // CRITICAL FIX: Clear BOTH folder structure and files section immediately
         // This prevents showing stale content from previous filter selections
         const treeContainer = document.getElementById('fileExplorerTree');
@@ -396,16 +398,12 @@ export class FileExplorer {
             fileExplorerState.setLoading(true);
         }
 
+        // Wait minimum time to prevent flash effect - ensure skeleton is visible
+        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME));
+
         try {
             const response = await fileExplorer.getRoot(academicYearId, semesterId);
             this.treeRoot = response.data || response;
-            
-            // Wait for minimum loading time to prevent flickering
-            const elapsedTime = Date.now() - startTime;
-            const remainingTime = MIN_LOADING_TIME - elapsedTime;
-            if (remainingTime > 0) {
-                await new Promise(resolve => setTimeout(resolve, remainingTime));
-            }
 
             // Handle empty or null response
             if (!this.treeRoot) {
@@ -500,10 +498,6 @@ export class FileExplorer {
      * await fileExplorer.loadNode("2024-2025/first/PBUS001");
      */
     async loadNode(path) {
-        // Minimum loading time in milliseconds to prevent flickering
-        const MIN_LOADING_TIME = 1000;
-        const startTime = Date.now();
-        
         // Show shimmer loading skeleton in file list immediately
         const fileListContainer = document.getElementById('fileExplorerFileList');
         if (fileListContainer) {
@@ -512,19 +506,15 @@ export class FileExplorer {
         
         // Show loading state in file list only (tree stays visible)
         fileExplorerState.setFileListLoading(true);
+        
+        // Always wait minimum loading time first to ensure skeleton is visible (600ms)
+        await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME));
 
         try {
             const response = await fileExplorer.getNode(path);
             const newNode = response.data || response;
             this.currentNode = newNode;
             this.currentPath = path;
-            
-            // Wait for minimum loading time to prevent flickering
-            const elapsedTime = Date.now() - startTime;
-            const remainingTime = MIN_LOADING_TIME - elapsedTime;
-            if (remainingTime > 0) {
-                await new Promise(resolve => setTimeout(resolve, remainingTime));
-            }
 
             // Update state with new current node
             fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
@@ -890,6 +880,9 @@ export class FileExplorer {
             if (node && (!node.children || node.children.length === 0)) {
                 // Show loading indicator in tree while fetching
                 this.renderTree(this.treeRoot);
+
+                // Wait minimum time to prevent flash effect
+                await new Promise(resolve => setTimeout(resolve, MIN_LOADING_TIME));
 
                 try {
                     const response = await fileExplorer.getNode(path);

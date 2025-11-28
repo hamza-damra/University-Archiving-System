@@ -345,8 +345,10 @@ class ModernDropdown {
  * @param {string} selector - CSS selector for select elements to transform
  * @param {object} options - Configuration options
  */
-function initModernDropdowns(selector = 'select.modern-dropdown, #academicYearSelect, #semesterSelect', options = {}) {
-    const selects = document.querySelectorAll(selector);
+function initModernDropdowns(selector = 'select.modern-dropdown, #academicYearSelect, #semesterSelect, #professorDepartmentFilter, #courseDepartmentFilter, #assignmentProfessorFilter, #assignmentCourseFilter, #filterCourse, #filterDocType, #filterStatus, #reportFilterCourse, #reportFilterProfessor, #reportFilterDocType, #reportFilterStatus, #reportPageSize', options = {}) {
+    // Also initialize any select with class .modern-dropdown
+    const allSelectors = selector + ', select.modern-dropdown';
+    const selects = document.querySelectorAll(allSelectors);
     const instances = [];
     
     selects.forEach(select => {

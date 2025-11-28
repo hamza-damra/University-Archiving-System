@@ -7,7 +7,7 @@ import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessag
 import { showToast, showModal, showConfirm, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
-import { SkeletonLoader, EmptyState, EnhancedToast, Tooltip, LoadingIndicator } from './deanship-feedback.js';
+import { SkeletonLoader, EmptyState, EnhancedToast, Tooltip, LoadingIndicator, withMinLoadingTime, MIN_LOADING_TIME } from './deanship-feedback.js';
 import { dashboardNavigation } from './deanship-navigation.js';
 import { dashboardAnalytics } from './deanship-analytics.js';
 import { dashboardState } from './deanship-state.js';
@@ -19,6 +19,8 @@ window.Tooltip = Tooltip;
 window.LoadingIndicator = LoadingIndicator;
 window.EmptyState = EmptyState;
 window.SkeletonLoader = SkeletonLoader;
+window.withMinLoadingTime = withMinLoadingTime;
+window.MIN_LOADING_TIME = MIN_LOADING_TIME;
 
 // Expose UI functions globally for non-module scripts
 window.showToast = showToast;
@@ -39,6 +41,51 @@ let fileExplorerInstance = null;
 let reportsDashboardInstance = null;
 
 /**
+ * Get current date/time in Palestine timezone (Asia/Jerusalem)
+ * @returns {Date} Current date in Palestine timezone
+ */
+function getPalestineDate() {
+    const palestineTimeString = new Date().toLocaleString('en-US', { 
+        timeZone: 'Asia/Jerusalem' 
+    });
+    return new Date(palestineTimeString);
+}
+
+/**
+ * Calculate the current academic year code based on Palestine timezone
+ * Academic year starts in September and ends in August
+ * @returns {string} Academic year code (e.g., "2024-2025")
+ */
+function getCurrentAcademicYearCode() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth();
+    const year = palestineDate.getFullYear();
+    
+    if (month >= 8) { // September or later
+        return `${year}-${year + 1}`;
+    } else {
+        return `${year - 1}-${year}`;
+    }
+}
+
+/**
+ * Determine the current semester type based on Palestine timezone
+ * @returns {string} Semester type: "FIRST", "SECOND", or "SUMMER"
+ */
+function getCurrentSemesterType() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth();
+    
+    if (month >= 8 || month === 0) { // Sep-Jan = FIRST
+        return 'FIRST';
+    } else if (month >= 1 && month <= 5) { // Feb-Jun = SECOND
+        return 'SECOND';
+    } else { // Jul-Aug = SUMMER
+        return 'SUMMER';
+    }
+}
+
+/**
  * Initialize modern dropdowns
  * Transforms native select elements into modern styled dropdowns
  */
@@ -54,10 +101,19 @@ function initializeModernDropdowns() {
  */
 function refreshDropdowns() {
     if (typeof window.refreshModernDropdown === 'function') {
-        const academicYearSelect = document.getElementById('academicYearSelect');
-        const semesterSelect = document.getElementById('semesterSelect');
-        if (academicYearSelect) window.refreshModernDropdown(academicYearSelect);
-        if (semesterSelect) window.refreshModernDropdown(semesterSelect);
+        const dropdownIds = [
+            'academicYearSelect',
+            'semesterSelect',
+            'professorDepartmentFilter',
+            'courseDepartmentFilter',
+            'assignmentProfessorFilter',
+            'assignmentCourseFilter'
+        ];
+        
+        dropdownIds.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) window.refreshModernDropdown(select);
+        });
     }
 }
 
@@ -158,9 +214,23 @@ function initializeEventListeners() {
     const courseSearch = document.getElementById('courseSearch');
     const courseDepartmentFilter = document.getElementById('courseDepartmentFilter');
 
+    console.log('Setting up courses tab listeners, courseDepartmentFilter:', courseDepartmentFilter);
+
     if (addCourseBtn) addCourseBtn.addEventListener('click', showAddCourseModal);
-    if (courseSearch) courseSearch.addEventListener('input', filterCourses);
-    if (courseDepartmentFilter) courseDepartmentFilter.addEventListener('change', filterCourses);
+    if (courseSearch) {
+        let searchDebounceTimer;
+        courseSearch.addEventListener('input', () => {
+            clearTimeout(searchDebounceTimer);
+            searchDebounceTimer = setTimeout(filterCoursesBySearch, 300);
+        });
+    }
+    if (courseDepartmentFilter) {
+        console.log('Adding change listener to courseDepartmentFilter');
+        courseDepartmentFilter.addEventListener('change', (e) => {
+            console.log('courseDepartmentFilter change event fired, value:', e.target.value);
+            filterCoursesByDepartment();
+        });
+    }
 
     // Assignments tab
     const addAssignmentBtn = document.getElementById('addAssignmentBtn');
@@ -306,7 +376,7 @@ function switchTab(tabName) {
         // Toggle context bar visibility
         const contextBar = document.getElementById('contextBar');
         if (contextBar) {
-            if (tabName === 'professors') {
+            if (tabName === 'professors' || tabName === 'academic-years' || tabName === 'courses') {
                 contextBar.classList.add('hidden');
             } else {
                 contextBar.classList.remove('hidden');
@@ -594,6 +664,7 @@ async function loadAcademicYearsData() {
 /**
  * Load academic years (full load with UI update)
  * Fetches academic years and renders table with skeleton loader
+ * Uses minimum loading time to prevent flickering shimmer effect
  * @returns {Promise<void>}
  */
 async function loadAcademicYears() {
@@ -603,7 +674,10 @@ async function loadAcademicYears() {
     if (tbody) tbody.innerHTML = SkeletonLoader.table(5, 5);
 
     try {
-        const response = await apiRequest('/deanship/academic-years', { method: 'GET' });
+        // Use minimum loading time to prevent flickering shimmer effect
+        const response = await withMinLoadingTime(() => 
+            apiRequest('/deanship/academic-years', { method: 'GET' })
+        );
         academicYears = Array.isArray(response) ? response : (response?.content || []);
         renderAcademicYearsTable();
         updateAcademicYearSelector();
@@ -711,7 +785,11 @@ function updateAcademicYearSelector() {
         yearToSelect = academicYears.find(y => y.id.toString() === storedYearId);
     }
 
-    // Fallback to active or first year
+    // Fallback to current academic year based on Palestine timezone, then active, then first
+    if (!yearToSelect) {
+        const currentYearCode = getCurrentAcademicYearCode();
+        yearToSelect = academicYears.find(y => y.yearCode === currentYearCode);
+    }
     if (!yearToSelect) {
         yearToSelect = academicYears.find(y => y.isActive) || academicYears[0];
     }
@@ -770,7 +848,11 @@ async function loadSemesters(academicYearId) {
             semesterToSelect = semesters.find(s => s.id.toString() === storedSemesterId);
         }
 
-        // Fallback to first semester
+        // Fallback to current semester based on Palestine timezone, then first semester
+        if (!semesterToSelect) {
+            const currentSemesterType = getCurrentSemesterType();
+            semesterToSelect = semesters.find(s => s.type === currentSemesterType);
+        }
         if (!semesterToSelect && semesters.length > 0) {
             semesterToSelect = semesters[0];
         }
@@ -1041,6 +1123,8 @@ async function loadDepartments() {
  * @returns {void}
  */
 function updateDepartmentFilters() {
+    console.log('updateDepartmentFilters called, departments:', departments);
+    
     const filters = [
         document.getElementById('professorDepartmentFilter'),
         document.getElementById('courseDepartmentFilter')
@@ -1049,11 +1133,17 @@ function updateDepartmentFilters() {
     filters.forEach(filter => {
         if (filter) {
             const currentValue = filter.value;
+            console.log(`Updating filter ${filter.id} with ${departments.length} departments`);
             filter.innerHTML = '<option value="">All Departments</option>' +
                 departments.map(dept =>
                     `<option value="${dept.id}">${dept.name}</option>`
                 ).join('');
             filter.value = currentValue;
+            
+            // Refresh modern dropdown if it exists
+            if (typeof window.refreshModernDropdown === 'function') {
+                window.refreshModernDropdown(filter);
+            }
         }
     });
 }
@@ -1061,6 +1151,7 @@ function updateDepartmentFilters() {
 /**
  * Load professors
  * Fetches professors with optional department filter and renders table
+ * Uses minimum loading time to prevent flickering shimmer effect
  * @returns {Promise<void>}
  */
 async function loadProfessors() {
@@ -1075,7 +1166,10 @@ async function loadProfessors() {
         const departmentId = document.getElementById('professorDepartmentFilter')?.value;
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
-        const response = await apiRequest(`/deanship/professors${params}`, { method: 'GET' });
+        // Use minimum loading time to prevent flickering shimmer effect
+        const response = await withMinLoadingTime(() => 
+            apiRequest(`/deanship/professors${params}`, { method: 'GET' })
+        );
         professors = Array.isArray(response) ? response : (response?.content || []);
 
         // Use enhanced table if available, otherwise fallback to basic rendering
@@ -1581,6 +1675,7 @@ window.deanship.deleteProfessor = function (profId, btnElement) {
 /**
  * Load courses
  * Fetches courses with optional department filter and renders table
+ * Uses minimum loading time to prevent flickering shimmer effect
  * @returns {Promise<void>}
  */
 async function loadCourses() {
@@ -1600,7 +1695,10 @@ async function loadCourses() {
         const params = departmentId ? `?departmentId=${departmentId}` : '';
 
         console.log(`loadCourses: Fetching from /deanship/courses${params}`);
-        const response = await apiRequest(`/deanship/courses${params}`, { method: 'GET' });
+        // Use minimum loading time to prevent flickering shimmer effect
+        const response = await withMinLoadingTime(() => 
+            apiRequest(`/deanship/courses${params}`, { method: 'GET' })
+        );
         console.log('loadCourses: Response received', response);
         
         courses = Array.isArray(response) ? response : (response?.content || []);
@@ -1642,11 +1740,27 @@ async function loadCourses() {
 }
 
 /**
- * Filter courses
- * Reloads courses with current filter settings
+ * Filter courses by search term (client-side filtering)
+ * Re-renders the courses table with the current search filter
  * @returns {void}
  */
-function filterCourses() {
+function filterCoursesBySearch() {
+    // Use enhanced table if available, otherwise fallback to basic rendering
+    if (typeof tableEnhancementManager !== 'undefined') {
+        tableEnhancementManager.enhanceCoursesTable();
+    } else {
+        renderCoursesTable();
+    }
+}
+
+/**
+ * Filter courses by department (server-side filtering)
+ * Reloads courses from API with the selected department filter
+ * @returns {void}
+ */
+function filterCoursesByDepartment() {
+    const filter = document.getElementById('courseDepartmentFilter');
+    console.log('filterCoursesByDepartment called, value:', filter?.value);
     loadCourses();
 }
 
@@ -2068,7 +2182,10 @@ async function loadAssignments() {
         if (professorId) params.append('professorId', professorId);
 
         console.log(`loadAssignments: Fetching from /deanship/course-assignments?${params}`);
-        const response = await apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' });
+        // Use minimum loading time to prevent flickering shimmer effect
+        const response = await withMinLoadingTime(() => 
+            apiRequest(`/deanship/course-assignments?${params}`, { method: 'GET' })
+        );
         console.log('loadAssignments: Response received', response);
         
         assignments = Array.isArray(response) ? response : (response?.content || []);
@@ -2108,6 +2225,11 @@ function updateAssignmentFilters() {
     profFilter.innerHTML = '<option value="">All Professors</option>' +
         professors.map(prof => `<option value="${prof.id}">${prof.name}</option>`).join('');
     profFilter.value = currentProfValue;
+    
+    // Refresh modern dropdown for professor filter
+    if (typeof window.refreshModernDropdown === 'function') {
+        window.refreshModernDropdown(profFilter);
+    }
 
     // Update course filter
     const courseFilter = document.getElementById('assignmentCourseFilter');
@@ -2115,6 +2237,11 @@ function updateAssignmentFilters() {
     courseFilter.innerHTML = '<option value="">All Courses</option>' +
         courses.map(course => `<option value="${course.id}">${course.courseCode} - ${course.courseName}</option>`).join('');
     courseFilter.value = currentCourseValue;
+    
+    // Refresh modern dropdown for course filter
+    if (typeof window.refreshModernDropdown === 'function') {
+        window.refreshModernDropdown(courseFilter);
+    }
 }
 
 /**
@@ -2751,30 +2878,15 @@ class TableEnhancementManager {
         if (!tableContainer) return;
 
         try {
+            // Only replace the table content, not the filters
             const filtersHtml = `
                 <div class="enhanced-table-container">
-                    <div class="table-filters">
-                        <div id="courseDepartmentFilter"></div>
-                    </div>
                     <div id="courseBulkToolbar"></div>
                     <div id="coursesTableWrapper"></div>
                 </div>
             `;
 
             tableContainer.innerHTML = filtersHtml;
-
-            // Initialize department filter
-            if (departments.length > 0) {
-                const deptFilter = new MultiSelectFilter();
-                const deptOptions = departments.map(d => ({ value: d, label: d }));
-                deptFilter.render(
-                    document.getElementById('courseDepartmentFilter'),
-                    'Department',
-                    deptOptions,
-                    (selected) => this.applyCoursesFilters()
-                );
-                this.filters.set('courses-department', deptFilter);
-            }
 
             // Initialize bulk actions toolbar
             const bulkToolbar = new BulkActionsToolbar();
@@ -2799,11 +2911,16 @@ class TableEnhancementManager {
         if (!wrapper) return;
 
         const filteredCourses = this.getFilteredCourses();
+        const searchInput = document.getElementById('courseSearch');
+        const searchTerm = searchInput ? searchInput.value.trim() : '';
+        const isSearching = searchTerm.length > 0;
 
         if (filteredCourses.length === 0) {
             wrapper.innerHTML = EmptyState.generate(
-                'No courses found',
-                'Try adjusting your filters or add a new course'
+                isSearching ? 'No Courses Found' : 'No Courses',
+                isSearching 
+                    ? 'No courses match your search criteria. Try adjusting your filters.'
+                    : 'Get started by adding courses that professors can teach.'
             );
             return;
         }
@@ -2997,18 +3114,24 @@ class TableEnhancementManager {
     }
 
     /**
-     * Get filtered courses based on active filters
+     * Get filtered courses based on active filters and search term
      */
     getFilteredCourses() {
         let filtered = [...courses];
 
-        const deptFilter = this.filters.get('courses-department');
-        if (deptFilter) {
-            const selectedDepts = deptFilter.getSelectedValues();
-            if (selectedDepts.length > 0) {
-                filtered = filtered.filter(c => selectedDepts.includes(c.department));
-            }
+        // Apply search filter from the search input
+        const searchInput = document.getElementById('courseSearch');
+        const searchTerm = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        if (searchTerm) {
+            filtered = filtered.filter(course =>
+                (course.courseCode && course.courseCode.toLowerCase().includes(searchTerm)) ||
+                (course.courseName && course.courseName.toLowerCase().includes(searchTerm)) ||
+                (course.department?.name && course.department.name.toLowerCase().includes(searchTerm))
+            );
         }
+
+        // Department filter is now handled server-side via loadCourses()
+        // No need to apply client-side department filtering here
 
         return filtered;
     }

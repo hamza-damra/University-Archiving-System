@@ -98,7 +98,6 @@ const emptyState = document.getElementById('emptyState');
 const coursesTabContent = document.getElementById('coursesTabContent');
 const fileExplorerTabContent = document.getElementById('fileExplorerTabContent');
 const fileExplorerContainer = document.getElementById('fileExplorerContainer');
-const breadcrumbs = document.getElementById('breadcrumbs');
 
 // Initialize Modern Dropdowns
 let academicYearDropdown = null;
@@ -109,6 +108,64 @@ function initializeModernDropdowns() {
         const instances = initModernDropdowns('#academicYearSelect, #semesterSelect');
         if (instances.length >= 1) academicYearDropdown = instances[0];
         if (instances.length >= 2) semesterDropdown = instances[1];
+    }
+}
+
+/**
+ * Get current date/time in Palestine timezone (Asia/Jerusalem)
+ * Palestine follows Israel Standard Time (IST) / Israel Daylight Time (IDT)
+ * @returns {Date} Current date in Palestine timezone
+ */
+function getPalestineDate() {
+    // Create a date string in Palestine timezone
+    const palestineTimeString = new Date().toLocaleString('en-US', { 
+        timeZone: 'Asia/Jerusalem' 
+    });
+    return new Date(palestineTimeString);
+}
+
+/**
+ * Calculate the current academic year code based on Palestine timezone
+ * Academic year starts in September and ends in August
+ * e.g., September 2024 - August 2025 = "2024-2025"
+ * @returns {string} Academic year code (e.g., "2024-2025")
+ */
+function getCurrentAcademicYearCode() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth(); // 0-11 (0 = January, 8 = September)
+    const year = palestineDate.getFullYear();
+    
+    // Academic year starts in September (month 8)
+    // If we're in September or later, we're in the year-nextYear academic year
+    // If we're before September, we're in the previousYear-year academic year
+    if (month >= 8) { // September (8) or later
+        return `${year}-${year + 1}`;
+    } else {
+        return `${year - 1}-${year}`;
+    }
+}
+
+/**
+ * Determine the current semester type based on Palestine timezone
+ * FIRST semester (Fall): September - January
+ * SECOND semester (Spring): February - June
+ * SUMMER semester: July - August
+ * @returns {string} Semester type: "FIRST", "SECOND", or "SUMMER"
+ */
+function getCurrentSemesterType() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth(); // 0-11
+    
+    // September (8) through January (0) = FIRST semester
+    // February (1) through June (5) = SECOND semester
+    // July (6) through August (7) = SUMMER semester
+    
+    if (month >= 8 || month === 0) { // Sep, Oct, Nov, Dec, Jan
+        return 'FIRST';
+    } else if (month >= 1 && month <= 5) { // Feb, Mar, Apr, May, Jun
+        return 'SECOND';
+    } else { // Jul, Aug
+        return 'SUMMER';
     }
 }
 
@@ -181,18 +238,6 @@ window.switchTab = function (tabName) {
         if (selectedAcademicYearId && selectedSemesterId) {
             if (!fileExplorerInstance) {
                 initializeFileExplorer();
-            }
-            // Update breadcrumbs to show current semester
-            const selectedYear = academicYears.find(y => y.id === selectedAcademicYearId);
-            const selectedSemester = semesters.find(s => s.id === selectedSemesterId);
-            if (selectedYear && selectedSemester && breadcrumbs) {
-                const semesterText = `${selectedYear.yearCode} - ${selectedSemester.type} Semester`;
-                breadcrumbs.innerHTML = `
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                    </svg>
-                    <span class="text-gray-700 font-medium">${semesterText}</span>
-                `;
             }
             loadFileExplorer();
         } else {
@@ -270,17 +315,6 @@ async function handleSemesterChange(semesterId) {
         if (fileExplorerTab && !fileExplorerTab.classList.contains('hidden')) {
             // Clear the file explorer state before loading new data
             fileExplorerState.resetData();
-            
-            // Update breadcrumbs
-            if (selectedYear && selectedSemester && breadcrumbs) {
-                const semesterText = `${selectedYear.yearCode} - ${selectedSemester.type} Semester`;
-                breadcrumbs.innerHTML = `
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-                    </svg>
-                    <span class="text-gray-700 font-medium">${semesterText}</span>
-                `;
-            }
             loadFileExplorer();
         }
     } else {
@@ -338,17 +372,35 @@ async function loadAcademicYears() {
             return;
         }
 
+        // Determine the current academic year based on Palestine timezone
+        const currentYearCode = getCurrentAcademicYearCode();
+        
         academicYearSelect.innerHTML = '<option value="">Select academic year</option>';
         academicYears.forEach(year => {
             const option = document.createElement('option');
             option.value = year.id;
             option.textContent = year.yearCode;
-            if (year.isActive) {
+            // Select the year that matches the current academic year in Palestine
+            // Fall back to active year if current year is not found
+            if (year.yearCode === currentYearCode) {
                 option.selected = true;
                 selectedAcademicYearId = year.id;
             }
             academicYearSelect.appendChild(option);
         });
+        
+        // If no year matched the current academic year, fall back to the active year
+        if (!selectedAcademicYearId) {
+            const activeYear = academicYears.find(year => year.isActive);
+            if (activeYear) {
+                academicYearSelect.value = activeYear.id;
+                selectedAcademicYearId = activeYear.id;
+            } else if (academicYears.length > 0) {
+                // If no active year, select the first one
+                academicYearSelect.value = academicYears[0].id;
+                selectedAcademicYearId = academicYears[0].id;
+            }
+        }
 
         // Refresh modern dropdown after populating options
         refreshDropdowns();
@@ -384,6 +436,9 @@ async function loadSemesters(academicYearId) {
             return;
         }
 
+        // Determine the current semester type based on Palestine timezone
+        const currentSemesterType = getCurrentSemesterType();
+        
         semesterSelect.innerHTML = '<option value="">Select semester</option>';
         semesters.forEach(semester => {
             const option = document.createElement('option');
@@ -395,11 +450,26 @@ async function loadSemesters(academicYearId) {
         // Refresh modern dropdown after populating options
         refreshDropdowns();
 
-        // Auto-select first semester if available
-        if (semesters.length > 0) {
-            semesterSelect.value = semesters[0].id;
+        // Auto-select semester: prioritize current semester type, then active, then first
+        let semesterToSelect = null;
+        
+        // First try to find a semester matching the current semester type
+        semesterToSelect = semesters.find(s => s.type === currentSemesterType);
+        
+        // If no match for current semester type, try to find an active semester
+        if (!semesterToSelect) {
+            semesterToSelect = semesters.find(s => s.isActive);
+        }
+        
+        // If still no match, fall back to the first semester
+        if (!semesterToSelect && semesters.length > 0) {
+            semesterToSelect = semesters[0];
+        }
+        
+        if (semesterToSelect) {
+            semesterSelect.value = semesterToSelect.id;
             refreshDropdowns();
-            await handleSemesterChange(semesters[0].id);
+            await handleSemesterChange(semesterToSelect.id);
         }
     } catch (error) {
         console.error('Error loading semesters:', error);
@@ -2012,80 +2082,6 @@ function renderFileExplorer(data) {
     }
 
     fileExplorerContainer.innerHTML = html;
-}
-
-/**
- * Render breadcrumbs
- * 
- * MASTER IMPLEMENTATION: Breadcrumb Navigation Pattern
- * 
- * This function defines the CANONICAL BREADCRUMB DESIGN for all dashboards.
- * 
- * Design Specifications:
- * 
- * Structure:
- * - Container: flex items-center with text-sm text-gray-600
- * - Home icon: w-4 h-4 mr-2 (house icon)
- * - Separator: w-4 h-4 mx-2 text-gray-400 (chevron right icon)
- * - Clickable segments: text-blue-600 hover:underline (button elements)
- * - Current segment: text-gray-700 font-medium (span element)
- * 
- * Behavior:
- * - Home icon always displayed as first element
- * - Each path segment is clickable except the last (current location)
- * - Clicking a segment navigates to that level in the hierarchy
- * - Chevron separators between all segments
- * - Path is split by '/' and filtered to remove empty strings
- * 
- * Empty State:
- * - Shows only home icon and "Home" button when at root level
- * - Same styling as regular breadcrumbs
- * 
- * Typography:
- * - Links: text-blue-600 hover:underline
- * - Current: text-gray-700 font-medium
- * - Icons: text-gray-400 for separators
- * 
- * This pattern ensures consistent navigation across all dashboards.
- */
-function renderBreadcrumbs(path) {
-    if (!path) {
-        breadcrumbs.innerHTML = `
-            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-            </svg>
-            <button onclick="loadFileExplorer('')" class="text-blue-600 hover:underline">Home</button>
-        `;
-        return;
-    }
-
-    const parts = path.split('/').filter(p => p);
-    let html = `
-        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
-        </svg>
-        <button onclick="loadFileExplorer('')" class="text-blue-600 hover:underline">Home</button>
-    `;
-
-    let currentPath = '';
-    parts.forEach((part, index) => {
-        currentPath += (currentPath ? '/' : '') + part;
-        const isLast = index === parts.length - 1;
-
-        html += `
-            <svg class="w-4 h-4 mx-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-        `;
-
-        if (isLast) {
-            html += `<span class="text-gray-700 font-medium">${part}</span>`;
-        } else {
-            html += `<button onclick="loadFileExplorer('${currentPath}')" class="text-blue-600 hover:underline">${part}</button>`;
-        }
-    });
-
-    breadcrumbs.innerHTML = html;
 }
 
 // Navigate to path - used by FileExplorer class

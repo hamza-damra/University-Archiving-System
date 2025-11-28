@@ -35,7 +35,7 @@
     max-width: 520px;
     width: 100%;
     max-height: calc(100vh - 32px);
-    overflow: hidden;
+    overflow: visible;
     transform: translateY(-20px) scale(0.95);
     transition: transform 0.25s ease;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35),
@@ -661,4 +661,22 @@
 .admin-form-textarea:focus-visible {
     outline: 2px solid #3b82f6;
     outline-offset: 2px;
+}
+
+/* ===== Modern Dropdown inside Modals ===== */
+.admin-modal .modern-dropdown-wrapper {
+    position: relative;
+    z-index: 100;
+}
+
+.admin-modal .modern-dropdown-wrapper.open {
+    z-index: 9999;
+}
+
+.admin-modal form > div {
+    overflow: visible;
+}
+
+.admin-modal .p-4 {
+    overflow: visible;
 }

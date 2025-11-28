@@ -4,6 +4,96 @@
  */
 
 // ============================================================================
+// LOADING UTILITIES
+// ============================================================================
+
+/**
+ * Minimum loading time in milliseconds to prevent flickering shimmer effect
+ * When data loads too quickly, the skeleton/shimmer effect appears as a flash
+ * This ensures a smooth visual experience
+ */
+export const MIN_LOADING_TIME = 800;
+
+/**
+ * Execute an async operation with a minimum loading time
+ * Prevents flickering when data loads too quickly
+ * 
+ * @param {Function|Promise} asyncOperation - Async function or promise to execute
+ * @param {number} minTime - Minimum time in milliseconds (default: MIN_LOADING_TIME)
+ * @returns {Promise} The result of the async operation
+ * 
+ * @example
+ * // With async function
+ * const data = await withMinLoadingTime(() => fetchData());
+ * 
+ * @example
+ * // With promise
+ * const data = await withMinLoadingTime(fetchData());
+ * 
+ * @example
+ * // With custom minimum time
+ * const data = await withMinLoadingTime(() => fetchData(), 1000);
+ */
+export async function withMinLoadingTime(asyncOperation, minTime = MIN_LOADING_TIME) {
+    const startTime = Date.now();
+    
+    // Handle both functions and promises
+    const promise = typeof asyncOperation === 'function' 
+        ? asyncOperation() 
+        : asyncOperation;
+    
+    const result = await promise;
+    
+    // Calculate remaining time to meet minimum loading duration
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = minTime - elapsedTime;
+    
+    // Wait for remaining time if data loaded too quickly
+    if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
+    
+    return result;
+}
+
+/**
+ * Execute multiple async operations with a minimum loading time
+ * All operations run in parallel and the minimum time applies to the total execution
+ * 
+ * @param {Array<Function|Promise>} operations - Array of async functions or promises
+ * @param {number} minTime - Minimum time in milliseconds (default: MIN_LOADING_TIME)
+ * @returns {Promise<Array>} Array of results from all operations
+ * 
+ * @example
+ * const [stats, charts, activity] = await withMinLoadingTimeAll([
+ *     () => fetchStats(),
+ *     () => fetchCharts(),
+ *     () => fetchActivity()
+ * ]);
+ */
+export async function withMinLoadingTimeAll(operations, minTime = MIN_LOADING_TIME) {
+    const startTime = Date.now();
+    
+    // Convert functions to promises and run in parallel
+    const promises = operations.map(op => 
+        typeof op === 'function' ? op() : op
+    );
+    
+    const results = await Promise.all(promises);
+    
+    // Calculate remaining time
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = minTime - elapsedTime;
+    
+    // Wait for remaining time if needed
+    if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
+    
+    return results;
+}
+
+// ============================================================================
 // DATA TRANSFORMATION
 // ============================================================================
 

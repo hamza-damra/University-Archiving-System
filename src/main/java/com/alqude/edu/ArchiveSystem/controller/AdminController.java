@@ -198,6 +198,48 @@ public class AdminController {
     }
 
     /**
+     * Update user password only (for admin self-password change).
+     * PUT /api/admin/users/{id}/password
+     * 
+     * @param id User ID
+     * @param request Password update request containing new password
+     * @return Success response
+     */
+    @PutMapping("/users/{id}/password")
+    public ResponseEntity<ApiResponse<String>> updateUserPassword(
+            @PathVariable Long id,
+            @RequestBody java.util.Map<String, String> request) {
+        
+        log.info("Admin updating password for user with id: {}", id);
+        
+        try {
+            // Verify the current admin is updating their own password
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            String currentUserEmail = auth.getName();
+            User currentUser = userRepository.findByEmail(currentUserEmail)
+                    .orElseThrow(() -> new RuntimeException("Current user not found"));
+            
+            if (!currentUser.getId().equals(id)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("You can only change your own password through this endpoint"));
+            }
+            
+            String newPassword = request.get("password");
+            if (newPassword == null || newPassword.length() < 8) {
+                return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Password must be at least 8 characters"));
+            }
+            
+            userService.updatePassword(id, newPassword);
+            return ResponseEntity.ok(ApiResponse.success("Password updated successfully", "Password has been changed"));
+        } catch (Exception e) {
+            log.error("Error updating password for user with id: {}", id, e);
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    /**
      * Delete a user.
      * DELETE /api/admin/users/{id}
      * 

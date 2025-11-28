@@ -12,6 +12,35 @@
 import { hod, apiRequest } from './api.js';
 import { showToast, formatDate } from './ui.js';
 
+// Minimum loading time in milliseconds to prevent flickering shimmer effect
+const MIN_LOADING_TIME = 800;
+
+/**
+ * Execute an async operation with a minimum loading time
+ * Prevents flickering when data loads too quickly
+ * @param {Function|Promise} asyncOperation - Async function or promise to execute
+ * @param {number} minTime - Minimum time in milliseconds
+ * @returns {Promise} The result of the async operation
+ */
+async function withMinLoadingTime(asyncOperation, minTime = MIN_LOADING_TIME) {
+    const startTime = Date.now();
+    
+    const promise = typeof asyncOperation === 'function' 
+        ? asyncOperation() 
+        : asyncOperation;
+    
+    const result = await promise;
+    
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = minTime - elapsedTime;
+    
+    if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
+    
+    return result;
+}
+
 /**
  * HOD Reports Manager Class
  */
@@ -146,6 +175,10 @@ export class HodReportsManager {
                 `<option value="${course.courseCode}">${course.courseCode} - ${course.courseName}</option>`
             ).join('');
             this.elements.filterCourse.innerHTML = '<option value="">All Courses</option>' + courseOptions;
+            // Refresh modern dropdown if available
+            if (this.elements.filterCourse._modernDropdown) {
+                this.elements.filterCourse._modernDropdown.refresh();
+            }
         }
 
         // Populate professors
@@ -154,6 +187,10 @@ export class HodReportsManager {
                 `<option value="${prof.id}">${prof.name}</option>`
             ).join('');
             this.elements.filterProfessor.innerHTML = '<option value="">All Professors</option>' + professorOptions;
+            // Refresh modern dropdown if available
+            if (this.elements.filterProfessor._modernDropdown) {
+                this.elements.filterProfessor._modernDropdown.refresh();
+            }
         }
     }
 
@@ -182,6 +219,10 @@ export class HodReportsManager {
                 `<option value="${code}">${code} - ${name}</option>`
             ).join('');
             this.elements.filterCourse.innerHTML = '<option value="">All Courses</option>' + courseOptions;
+            // Refresh modern dropdown if available
+            if (this.elements.filterCourse._modernDropdown) {
+                this.elements.filterCourse._modernDropdown.refresh();
+            }
         }
 
         // Populate professor filter
@@ -190,6 +231,10 @@ export class HodReportsManager {
                 `<option value="${id}">${name}</option>`
             ).join('');
             this.elements.filterProfessor.innerHTML = '<option value="">All Professors</option>' + professorOptions;
+            // Refresh modern dropdown if available
+            if (this.elements.filterProfessor._modernDropdown) {
+                this.elements.filterProfessor._modernDropdown.refresh();
+            }
         }
     }
 
@@ -215,8 +260,10 @@ export class HodReportsManager {
             // Build filter parameters
             const filters = this.getFilterValues();
 
-            // Fetch report data
-            this.reportData = await hod.getSubmissionStatus(semesterId, filters);
+            // Fetch report data with minimum loading time to prevent flickering
+            this.reportData = await withMinLoadingTime(() => 
+                hod.getSubmissionStatus(semesterId, filters)
+            );
 
             // Load filter options if not already loaded
             if (!this.filterOptions) {

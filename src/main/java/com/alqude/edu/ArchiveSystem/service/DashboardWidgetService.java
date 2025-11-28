@@ -9,7 +9,7 @@ import com.alqude.edu.ArchiveSystem.dto.dashboard.TimeGrouping;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
+
 
 /**
  * Service interface for dashboard widget operations.

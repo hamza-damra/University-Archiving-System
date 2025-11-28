@@ -3,6 +3,63 @@
  * Handles skeleton loaders, empty states, and loading indicators
  */
 
+// ============================================================================
+// LOADING UTILITIES
+// ============================================================================
+
+/**
+ * Minimum loading time in milliseconds to prevent flickering shimmer effect
+ * When data loads too quickly, the skeleton/shimmer effect appears as a flash
+ * This ensures a smooth visual experience
+ */
+export const MIN_LOADING_TIME = 800;
+
+/**
+ * Execute an async operation with a minimum loading time
+ * Prevents flickering when data loads too quickly
+ * 
+ * @param {Function|Promise} asyncOperation - Async function or promise to execute
+ * @param {number} minTime - Minimum time in milliseconds (default: MIN_LOADING_TIME)
+ * @returns {Promise} The result of the async operation
+ * 
+ * @example
+ * // With async function
+ * const data = await withMinLoadingTime(() => fetchData());
+ * 
+ * @example
+ * // With promise
+ * const data = await withMinLoadingTime(fetchData());
+ * 
+ * @example
+ * // With custom minimum time
+ * const data = await withMinLoadingTime(() => fetchData(), 1000);
+ */
+export async function withMinLoadingTime(asyncOperation, minTime = MIN_LOADING_TIME) {
+    const startTime = Date.now();
+    
+    // Handle both functions and promises
+    const promise = typeof asyncOperation === 'function' 
+        ? asyncOperation() 
+        : asyncOperation;
+    
+    const result = await promise;
+    
+    // Calculate remaining time to meet minimum loading duration
+    const elapsedTime = Date.now() - startTime;
+    const remainingTime = minTime - elapsedTime;
+    
+    // Wait for remaining time if data loaded too quickly
+    if (remainingTime > 0) {
+        await new Promise(resolve => setTimeout(resolve, remainingTime));
+    }
+    
+    return result;
+}
+
+// ============================================================================
+// SKELETON LOADERS
+// ============================================================================
+
 /**
  * Skeleton loader component with shimmer effect
  */
@@ -15,13 +72,13 @@ export class SkeletonLoader {
      */
     static table(rows = 5, columns = 6) {
         const skeletonRows = Array(rows).fill(0).map((_, rowIndex) => `
-            <tr>
+            <tr class="skeleton-table-row" style="display: table-row;">
                 ${Array(columns).fill(0).map((_, colIndex) => {
-                    // First column typically has more content (ID or name)
-                    const width = colIndex === 0 ? 'w-32' : colIndex === columns - 1 ? 'w-24' : 'w-full';
+                    // Vary widths for natural look
+                    const widthPercent = colIndex === 0 ? 80 : 50 + Math.random() * 30;
                     return `
                         <td class="px-6 py-4">
-                            <div class="skeleton-shimmer skeleton-text ${width}"></div>
+                            <div class="skeleton-shimmer skeleton-text" style="width: ${widthPercent}%"></div>
                         </td>
                     `;
                 }).join('')}
@@ -37,12 +94,10 @@ export class SkeletonLoader {
      */
     static card() {
         return `
-            <div class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <div class="skeleton-shimmer skeleton-text w-24 h-4"></div>
-                    <div class="skeleton-shimmer skeleton-circle w-10 h-10"></div>
-                </div>
-                <div class="skeleton-shimmer skeleton-text w-16 h-8"></div>
+            <div class="skeleton-stat-card">
+                <div class="skeleton-stat-icon"></div>
+                <div class="skeleton-stat-value"></div>
+                <div class="skeleton-stat-label"></div>
             </div>
         `;
     }
@@ -53,8 +108,18 @@ export class SkeletonLoader {
      * @returns {string} HTML string for skeleton chart
      */
     static chart(height = 256) {
+        const barWidths = [85, 72, 95, 60, 78, 88, 65, 92];
         return `
-            <div class="skeleton-shimmer skeleton-box" style="height: ${height}px;"></div>
+            <div class="skeleton-chart-container" style="height: ${height}px;">
+                ${barWidths.map(width => `
+                    <div class="skeleton-bar-row">
+                        <div class="skeleton-bar-label"></div>
+                        <div class="skeleton-bar-track">
+                            <div class="skeleton-bar-fill" style="width: ${width}%"></div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
         `;
     }
     
@@ -65,14 +130,78 @@ export class SkeletonLoader {
      */
     static list(items = 5) {
         return Array(items).fill(0).map(() => `
-            <div class="flex items-center space-x-3 py-3 border-b border-gray-100">
+            <div class="flex items-center space-x-3 py-3 border-b border-gray-100 dark:border-gray-700">
                 <div class="skeleton-shimmer skeleton-circle w-10 h-10 flex-shrink-0"></div>
                 <div class="flex-1 space-y-2">
-                    <div class="skeleton-shimmer skeleton-text w-3/4"></div>
-                    <div class="skeleton-shimmer skeleton-text-sm w-1/2"></div>
+                    <div class="skeleton-shimmer skeleton-text" style="width: 75%"></div>
+                    <div class="skeleton-shimmer skeleton-text-sm" style="width: 50%"></div>
                 </div>
             </div>
         `).join('');
+    }
+
+    /**
+     * Create professional reports skeleton with stats, chart, and table
+     * @param {number} rows - Number of table rows
+     * @returns {string} HTML string for reports skeleton
+     */
+    static reports(rows = 8) {
+        const barWidths = [85, 72, 95, 60, 78, 88, 65, 92, 70, 55];
+        const progressWidths = [75, 88, 62, 95, 70, 82, 58, 90];
+        
+        return `
+            <div class="reports-skeleton-container">
+                <!-- Stats Summary Cards -->
+                <div class="skeleton-stats-grid">
+                    ${[1,2,3,4].map(() => `
+                        <div class="skeleton-stat-card">
+                            <div class="skeleton-stat-icon"></div>
+                            <div class="skeleton-stat-value"></div>
+                            <div class="skeleton-stat-label"></div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Bar Chart Skeleton -->
+                <div class="skeleton-chart-container mb-8">
+                    ${barWidths.slice(0, 8).map(width => `
+                        <div class="skeleton-bar-row">
+                            <div class="skeleton-bar-label"></div>
+                            <div class="skeleton-bar-track">
+                                <div class="skeleton-bar-fill" style="width: ${width}%"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+
+                <!-- Table Skeleton -->
+                <div class="skeleton-table-container">
+                    <div class="skeleton-table-header">
+                        <div class="skeleton-table-header-cell" style="width: 70%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 60%"></div>
+                        <div class="skeleton-table-header-cell" style="width: 80%"></div>
+                    </div>
+                    ${Array(rows).fill(0).map((_, i) => `
+                        <div class="skeleton-table-row">
+                            <div class="skeleton-table-cell" style="width: ${70 + Math.random() * 20}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${50 + Math.random() * 30}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${40 + Math.random() * 40}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${45 + Math.random() * 35}%"></div>
+                            <div class="skeleton-table-cell" style="width: ${50 + Math.random() * 30}%"></div>
+                            <div class="skeleton-progress-cell">
+                                <div class="skeleton-progress-bar">
+                                    <div class="skeleton-progress-fill" style="width: ${progressWidths[i] || 70}%"></div>
+                                </div>
+                                <div class="skeleton-progress-text"></div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
     }
     
     /**
@@ -83,10 +212,10 @@ export class SkeletonLoader {
      */
     static fullTable(rows = 5, headers = []) {
         const headerRow = headers.length > 0 ? `
-            <thead class="bg-gray-50">
+            <thead class="bg-gray-50 dark:bg-gray-800">
                 <tr>
                     ${headers.map(header => `
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                             ${header}
                         </th>
                     `).join('')}
@@ -96,7 +225,7 @@ export class SkeletonLoader {
         
         return `
             ${headerRow}
-            <tbody class="bg-white divide-y divide-gray-200">
+            <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 ${this.table(rows, headers.length || 6)}
             </tbody>
         `;
@@ -105,7 +234,7 @@ export class SkeletonLoader {
     /**
      * Show skeleton loader in a container
      * @param {string} containerId - ID of the container element
-     * @param {string} type - Type of skeleton (table, card, chart, list)
+     * @param {string} type - Type of skeleton (table, card, chart, list, reports)
      * @param {Object} options - Additional options
      */
     static show(containerId, type = 'table', options = {}) {
@@ -120,6 +249,9 @@ export class SkeletonLoader {
                 break;
             case 'card':
                 skeletonHtml = this.card();
+                break;
+            case 'reports':
+                skeletonHtml = this.reports(options.rows || 8);
                 break;
             case 'chart':
                 skeletonHtml = this.chart(options.height || 256);

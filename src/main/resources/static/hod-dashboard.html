@@ -166,25 +166,25 @@
                     <div id="dashboardOverview" class="bg-white rounded-lg shadow-md p-6">
                         <h2 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Overview</h2>
                         <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
-                            <div class="text-center p-4 bg-blue-50 rounded-lg">
-                                <div class="text-3xl font-bold text-blue-600" id="totalProfessors">-</div>
-                                <div class="text-sm text-gray-600 mt-1">Professors</div>
+                            <div class="stat-card stat-card-blue text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="totalProfessors">-</div>
+                                <div class="text-sm stat-label mt-1">Professors</div>
                             </div>
-                            <div class="text-center p-4 bg-green-50 rounded-lg">
-                                <div class="text-3xl font-bold text-green-600" id="totalCourses">-</div>
-                                <div class="text-sm text-gray-600 mt-1">Courses</div>
+                            <div class="stat-card stat-card-green text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="totalCourses">-</div>
+                                <div class="text-sm stat-label mt-1">Courses</div>
                             </div>
-                            <div class="text-center p-4 bg-purple-50 rounded-lg">
-                                <div class="text-3xl font-bold text-purple-600" id="submittedCount">-</div>
-                                <div class="text-sm text-gray-600 mt-1">Submitted</div>
+                            <div class="stat-card stat-card-purple text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="submittedCount">-</div>
+                                <div class="text-sm stat-label mt-1">Submitted</div>
                             </div>
-                            <div class="text-center p-4 bg-yellow-50 rounded-lg">
-                                <div class="text-3xl font-bold text-yellow-600" id="missingCount">-</div>
-                                <div class="text-sm text-gray-600 mt-1">Missing</div>
+                            <div class="stat-card stat-card-yellow text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="missingCount">-</div>
+                                <div class="text-sm stat-label mt-1">Missing</div>
                             </div>
-                            <div class="text-center p-4 bg-red-50 rounded-lg">
-                                <div class="text-3xl font-bold text-red-600" id="overdueCount">-</div>
-                                <div class="text-sm text-gray-600 mt-1">Overdue</div>
+                            <div class="stat-card stat-card-red text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="overdueCount">-</div>
+                                <div class="text-sm stat-label mt-1">Overdue</div>
                             </div>
                         </div>
                     </div>
@@ -223,20 +223,18 @@
                         <!-- Filters -->
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                             <div>
-                                <label for="filterCourse" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Filter by Course
+                                <label for="filterCourse" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Course
                                 </label>
-                                <select id="filterCourse"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="filterCourse" class="modern-dropdown w-full">
                                     <option value="">All Courses</option>
                                 </select>
                             </div>
                             <div>
-                                <label for="filterDocType" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Filter by Document Type
+                                <label for="filterDocType" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Document Type
                                 </label>
-                                <select id="filterDocType"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="filterDocType" class="modern-dropdown w-full">
                                     <option value="">All Types</option>
                                     <option value="SYLLABUS">Syllabus</option>
                                     <option value="EXAM">Exam</option>
@@ -247,11 +245,10 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="filterStatus" class="block text-sm font-medium text-gray-700 mb-1">
-                                    Filter by Status
+                                <label for="filterStatus" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Status
                                 </label>
-                                <select id="filterStatus"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="filterStatus" class="modern-dropdown w-full">
                                     <option value="">All Status</option>
                                     <option value="UPLOADED">Uploaded</option>
                                     <option value="NOT_UPLOADED">Not Uploaded</option>
@@ -345,33 +342,30 @@
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             <!-- Course Filter -->
                             <div>
-                                <label for="reportFilterCourse" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterCourse" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     Course
                                 </label>
-                                <select id="reportFilterCourse"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="reportFilterCourse" class="modern-dropdown w-full">
                                     <option value="">All Courses</option>
                                 </select>
                             </div>
                             
                             <!-- Professor Filter -->
                             <div>
-                                <label for="reportFilterProfessor" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterProfessor" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     Professor
                                 </label>
-                                <select id="reportFilterProfessor"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="reportFilterProfessor" class="modern-dropdown w-full">
                                     <option value="">All Professors</option>
                                 </select>
                             </div>
                             
                             <!-- Document Type Filter -->
                             <div>
-                                <label for="reportFilterDocType" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterDocType" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     Document Type
                                 </label>
-                                <select id="reportFilterDocType"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="reportFilterDocType" class="modern-dropdown w-full">
                                     <option value="">All Types</option>
                                     <option value="SYLLABUS">Syllabus</option>
                                     <option value="EXAM">Exam</option>
@@ -384,11 +378,10 @@
                             
                             <!-- Status Filter -->
                             <div>
-                                <label for="reportFilterStatus" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterStatus" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     Status
                                 </label>
-                                <select id="reportFilterStatus"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <select id="reportFilterStatus" class="modern-dropdown w-full">
                                     <option value="">All Status</option>
                                     <option value="UPLOADED">Uploaded</option>
                                     <option value="NOT_UPLOADED">Not Uploaded</option>
@@ -398,20 +391,18 @@
                             
                             <!-- Start Date Filter -->
                             <div>
-                                <label for="reportFilterStartDate" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterStartDate" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     Start Date
                                 </label>
-                                <input type="date" id="reportFilterStartDate"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <input type="date" id="reportFilterStartDate" class="modern-date-input">
                             </div>
                             
                             <!-- End Date Filter -->
                             <div>
-                                <label for="reportFilterEndDate" class="block text-sm font-medium text-gray-700 mb-1">
+                                <label for="reportFilterEndDate" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
                                     End Date
                                 </label>
-                                <input type="date" id="reportFilterEndDate"
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+                                <input type="date" id="reportFilterEndDate" class="modern-date-input">
                             </div>
                         </div>
                     </div>
@@ -420,21 +411,21 @@
                     <div id="reportStatsSummary" class="bg-white rounded-lg shadow-md p-6 hidden">
                         <h3 class="text-lg font-semibold text-gray-800 mb-4">Report Summary</h3>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            <div class="text-center p-4 bg-blue-50 rounded-lg">
-                                <div class="text-2xl font-bold text-blue-600" id="reportTotalSubmissions">0</div>
-                                <div class="text-sm text-gray-600 mt-1">Total Expected</div>
+                            <div class="stat-card stat-card-blue text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportTotalSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Total Expected</div>
                             </div>
-                            <div class="text-center p-4 bg-green-50 rounded-lg">
-                                <div class="text-2xl font-bold text-green-600" id="reportCompletedSubmissions">0</div>
-                                <div class="text-sm text-gray-600 mt-1">Submitted</div>
+                            <div class="stat-card stat-card-green text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportCompletedSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Submitted</div>
                             </div>
-                            <div class="text-center p-4 bg-yellow-50 rounded-lg">
-                                <div class="text-2xl font-bold text-yellow-600" id="reportPendingSubmissions">0</div>
-                                <div class="text-sm text-gray-600 mt-1">Pending</div>
+                            <div class="stat-card stat-card-yellow text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportPendingSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Pending</div>
                             </div>
-                            <div class="text-center p-4 bg-purple-50 rounded-lg">
-                                <div class="text-2xl font-bold text-purple-600" id="reportCompletionRate">0%</div>
-                                <div class="text-sm text-gray-600 mt-1">Completion Rate</div>
+                            <div class="stat-card stat-card-purple text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportCompletionRate">0%</div>
+                                <div class="text-sm stat-label mt-1">Completion Rate</div>
                             </div>
                         </div>
                     </div>
@@ -490,10 +481,9 @@
                         
                         <!-- Pagination Controls -->
                         <div id="reportPagination" class="flex justify-between items-center mt-4 hidden">
-                            <div class="flex items-center space-x-2">
+                            <div class="flex items-center space-x-3">
                                 <label for="reportPageSize" class="text-sm text-gray-600">Rows per page:</label>
-                                <select id="reportPageSize"
-                                    class="px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                <select id="reportPageSize" class="modern-dropdown">
                                     <option value="10">10</option>
                                     <option value="25">25</option>
                                     <option value="50">50</option>

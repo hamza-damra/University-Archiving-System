@@ -45,7 +45,7 @@ const filterStatus = document.getElementById('filterStatus');
 // Modern Dropdown Functions
 function initializeModernDropdowns() {
     if (typeof initModernDropdowns === 'function') {
-        initModernDropdowns('#academicYearSelect, #semesterSelect');
+        initModernDropdowns('#academicYearSelect, #semesterSelect, #filterCourse, #filterDocType, #filterStatus, #reportFilterCourse, #reportFilterProfessor, #reportFilterDocType, #reportFilterStatus, #reportPageSize');
     }
 }
 
@@ -55,6 +55,61 @@ function refreshDropdowns() {
     }
     if (semesterSelect && semesterSelect._modernDropdown) {
         semesterSelect._modernDropdown.refresh();
+    }
+    // Refresh filter dropdowns
+    if (filterCourse && filterCourse._modernDropdown) {
+        filterCourse._modernDropdown.refresh();
+    }
+    if (filterDocType && filterDocType._modernDropdown) {
+        filterDocType._modernDropdown.refresh();
+    }
+    if (filterStatus && filterStatus._modernDropdown) {
+        filterStatus._modernDropdown.refresh();
+    }
+}
+
+/**
+ * Get current date/time in Palestine timezone (Asia/Jerusalem)
+ * @returns {Date} Current date in Palestine timezone
+ */
+function getPalestineDate() {
+    const palestineTimeString = new Date().toLocaleString('en-US', { 
+        timeZone: 'Asia/Jerusalem' 
+    });
+    return new Date(palestineTimeString);
+}
+
+/**
+ * Calculate the current academic year code based on Palestine timezone
+ * Academic year starts in September and ends in August
+ * @returns {string} Academic year code (e.g., "2024-2025")
+ */
+function getCurrentAcademicYearCode() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth();
+    const year = palestineDate.getFullYear();
+    
+    if (month >= 8) { // September or later
+        return `${year}-${year + 1}`;
+    } else {
+        return `${year - 1}-${year}`;
+    }
+}
+
+/**
+ * Determine the current semester type based on Palestine timezone
+ * @returns {string} Semester type: "FIRST", "SECOND", or "SUMMER"
+ */
+function getCurrentSemesterType() {
+    const palestineDate = getPalestineDate();
+    const month = palestineDate.getMonth();
+    
+    if (month >= 8 || month === 0) { // Sep-Jan = FIRST
+        return 'FIRST';
+    } else if (month >= 1 && month <= 5) { // Feb-Jun = SECOND
+        return 'SECOND';
+    } else { // Jul-Aug = SUMMER
+        return 'SUMMER';
     }
 }
 
@@ -170,13 +225,21 @@ async function downloadReport() {
     
     try {
         showToast('Generating PDF report...', 'info');
-        const blob = await hod.downloadProfessorSubmissionReportPdf(selectedSemester);
+        const response = await hod.exportReportToPdf(selectedSemester);
         
-        // Create download link
+        if (!response.ok) {
+            throw new Error('Failed to generate PDF');
+        }
+        
+        const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `professor-submission-report-${selectedSemester}.pdf`;
+        
+        const semester = semesters.find(s => s.id === selectedSemester);
+        const semesterName = semester ? formatSemesterName(semester.type).replace(/\s+/g, '-') : 'semester';
+        a.download = `professor-submission-report-${semesterName}-${new Date().getTime()}.pdf`;
+        
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -274,11 +337,17 @@ async function loadAcademicYears() {
             return;
         }
         
-        // Find active academic year or use the first one
-        const activeYear = academicYears.find(year => year.isActive) || academicYears[0];
+        // Determine current academic year based on Palestine timezone
+        const currentYearCode = getCurrentAcademicYearCode();
+        
+        // Find academic year matching current Palestine date, or fall back to active year, then first year
+        let yearToSelect = academicYears.find(year => year.yearCode === currentYearCode);
+        if (!yearToSelect) {
+            yearToSelect = academicYears.find(year => year.isActive) || academicYears[0];
+        }
         
         academicYearSelect.innerHTML = academicYears.map(year => 
-            `<option value="${year.id}" ${year.id === activeYear.id ? 'selected' : ''}>
+            `<option value="${year.id}" ${year.id === yearToSelect.id ? 'selected' : ''}>
                 ${year.yearCode}
             </option>`
         ).join('');
@@ -286,8 +355,8 @@ async function loadAcademicYears() {
         // Refresh modern dropdown
         refreshDropdowns();
         
-        selectedAcademicYear = activeYear.id;
-        await loadSemesters(activeYear.id);
+        selectedAcademicYear = yearToSelect.id;
+        await loadSemesters(yearToSelect.id);
     } catch (error) {
         console.error('Error loading academic years:', error);
         showToast('Failed to load academic years', 'error');
@@ -322,8 +391,20 @@ async function loadSemesters(academicYearId) {
         const semesterOrder = { 'FIRST': 1, 'SECOND': 2, 'SUMMER': 3 };
         semesters.sort((a, b) => semesterOrder[a.type] - semesterOrder[b.type]);
         
+        // Determine current semester based on Palestine timezone
+        const currentSemesterType = getCurrentSemesterType();
+        
+        // Find semester matching current type, or fall back to active, then first
+        let semesterToSelect = semesters.find(s => s.type === currentSemesterType);
+        if (!semesterToSelect) {
+            semesterToSelect = semesters.find(s => s.isActive);
+        }
+        if (!semesterToSelect && semesters.length > 0) {
+            semesterToSelect = semesters[0];
+        }
+        
         semesterSelect.innerHTML = semesters.map(semester => 
-            `<option value="${semester.id}">
+            `<option value="${semester.id}" ${semesterToSelect && semester.id === semesterToSelect.id ? 'selected' : ''}>
                 ${formatSemesterName(semester.type)}
             </option>`
         ).join('');
@@ -331,9 +412,9 @@ async function loadSemesters(academicYearId) {
         semesterSelect.disabled = false;
         refreshDropdowns();
         
-        // Auto-select first semester and load data
-        if (semesters.length > 0) {
-            selectedSemester = semesters[0].id;
+        // Auto-select semester and load data
+        if (semesterToSelect) {
+            selectedSemester = semesterToSelect.id;
             // Expose selectedSemester globally for reports manager
             window.selectedSemester = selectedSemester;
             await loadDashboardData();
@@ -547,6 +628,11 @@ function populateCourseFilter(report) {
     }).join('');
     
     filterCourse.innerHTML = '<option value="">All Courses</option>' + options;
+    
+    // Refresh modern dropdown if available
+    if (filterCourse._modernDropdown) {
+        filterCourse._modernDropdown.refresh();
+    }
 }
 
 // Filter change handlers
@@ -720,60 +806,6 @@ window.viewLegacyReport = async (requestId) => {
         showToast(getErrorMessage(error), 'error');
     }
 };
-
-// View Semester-based Submission Report
-viewReportBtn.addEventListener('click', async () => {
-    if (!selectedSemester) {
-        showToast('Please select a semester first', 'warning');
-        return;
-    }
-    
-    try {
-        showToast('Loading report...', 'info');
-        const report = await hod.getProfessorSubmissionReport(selectedSemester);
-        
-        displaySubmissionReport(report);
-    } catch (error) {
-        console.error('Error loading submission report:', error);
-        showToast(getErrorMessage(error), 'error');
-    }
-});
-
-// Download Semester-based Report as PDF
-downloadReportBtn.addEventListener('click', async () => {
-    if (!selectedSemester) {
-        showToast('Please select a semester first', 'warning');
-        return;
-    }
-    
-    try {
-        showToast('Generating PDF...', 'info');
-        const response = await hod.exportReportToPdf(selectedSemester);
-        
-        if (!response.ok) {
-            throw new Error('Failed to download PDF');
-        }
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        
-        const semester = semesters.find(s => s.id === selectedSemester);
-        const semesterName = semester ? formatSemesterName(semester.type).replace(/\s+/g, '-') : 'semester';
-        a.download = `professor-submission-report-${semesterName}-${new Date().getTime()}.pdf`;
-        
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
-        
-        showToast('PDF downloaded successfully', 'success');
-    } catch (error) {
-        console.error('Error downloading PDF:', error);
-        showToast(getErrorMessage(error), 'error');
-    }
-});
 
 // Display submission report in modal
 function displaySubmissionReport(report) {

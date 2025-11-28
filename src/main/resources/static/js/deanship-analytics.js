@@ -6,6 +6,7 @@
 import { dashboardState } from './deanship-state.js';
 import { apiRequest } from './api.js';
 import { showToast } from './ui.js';
+import { withMinLoadingTime, withMinLoadingTimeAll } from './deanship-utils.js';
 
 // Chart.js configuration and theme
 const CHART_THEME = {
@@ -93,6 +94,7 @@ export class DashboardAnalytics {
     /**
      * Initialize analytics components (Task 12.1: Lazy Loading)
      * Only initializes when dashboard tab is activated
+     * Uses minimum loading time to prevent flickering shimmer effect
      */
     async initialize() {
         try {
@@ -107,9 +109,12 @@ export class DashboardAnalytics {
             
             console.log('Initializing dashboard analytics...');
             
-            // Initialize all analytics components
-            await this.loadDashboardStats();
-            await this.initializeCharts();
+            // Initialize all analytics components with minimum loading time
+            // This prevents the shimmer/skeleton effect from appearing as a flash
+            await withMinLoadingTimeAll([
+                () => this.loadDashboardStats(),
+                () => this.initializeCharts()
+            ]);
             
             // Set up auto-refresh for activity feed (only once)
             if (!this.initialized) {
@@ -136,11 +141,11 @@ export class DashboardAnalytics {
             // Clear cache to ensure fresh data
             this.clearCache();
             
-            // Reload stats
-            await this.loadDashboardStats();
-            
-            // Reload charts
-            await this.initializeCharts();
+            // Reload stats and charts with minimum loading time
+            await withMinLoadingTimeAll([
+                () => this.loadDashboardStats(),
+                () => this.initializeCharts()
+            ]);
             
         } catch (error) {
             console.error('Error refreshing analytics:', error);

@@ -183,6 +183,34 @@ public class UserService implements UserDetailsService {
         log.info("User deleted successfully with id: {}", userId);
     }
     
+    /**
+     * Update user password.
+     * 
+     * @param userId User ID
+     * @param newPassword New password (plain text)
+     */
+    public void updatePassword(Long userId, String newPassword) {
+        log.info("Updating password for user with id: {}", userId);
+        
+        // Validate input
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        if (newPassword == null || newPassword.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters");
+        }
+        
+        // Find user
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.userNotFound(userId));
+        
+        // Update password
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        log.info("Password updated successfully for user with id: {}", userId);
+    }
+    
     public UserResponse getUserById(Long userId) {
         log.debug("Retrieving user with id: {}", userId);
         

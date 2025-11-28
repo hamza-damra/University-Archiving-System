@@ -146,7 +146,15 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      * Build a professor node
      */
     private FileExplorerNode buildProfessorNode(String parentPath, User professor, User currentUser) {
-        String professorPath = parentPath + "/" + professor.getProfessorId();
+        // Use professorId if available, otherwise fall back to "prof_" + database ID
+        String professorIdentifier = professor.getProfessorId();
+        if (professorIdentifier == null || professorIdentifier.trim().isEmpty()) {
+            professorIdentifier = "prof_" + professor.getId();
+            log.warn("Professor {} {} has no professorId, using fallback: {}", 
+                    professor.getFirstName(), professor.getLastName(), professorIdentifier);
+        }
+        
+        String professorPath = parentPath + "/" + professorIdentifier;
 
         boolean isOwnProfile = professor.getId().equals(currentUser.getId());
 
@@ -161,7 +169,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 .build();
 
         // Add metadata
-        node.getMetadata().put("professorId", professor.getProfessorId());
+        node.getMetadata().put("professorId", professorIdentifier);
         node.getMetadata().put("email", professor.getEmail());
         node.getMetadata().put("departmentId",
                 professor.getDepartment() != null ? professor.getDepartment().getId() : null);
@@ -186,6 +194,37 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             default:
                 return type.name();
         }
+    }
+
+    /**
+     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * @param professorIdentifier The professor identifier from path
+     * @return The professor User entity
+     * @throws EntityNotFoundException if professor not found
+     */
+    private User findProfessorByIdentifier(String professorIdentifier) {
+        return findProfessorByIdentifierOptional(professorIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + professorIdentifier));
+    }
+    
+    /**
+     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * @param professorIdentifier The professor identifier from path
+     * @return Optional containing the professor User entity, or empty if not found
+     */
+    private Optional<User> findProfessorByIdentifierOptional(String professorIdentifier) {
+        // Check if this is a fallback identifier (prof_<id>)
+        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+            try {
+                Long userId = Long.parseLong(professorIdentifier.substring(5));
+                return userRepository.findById(userId);
+            } catch (NumberFormatException e) {
+                return Optional.empty();
+            }
+        }
+        
+        // Otherwise, look up by professorId
+        return userRepository.findByProfessorId(professorIdentifier);
     }
 
     @Override
@@ -335,8 +374,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      * Build professor node from path info
      */
     private FileExplorerNode buildProfessorNodeFromPath(PathInfo pathInfo, User currentUser) {
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         String nodePath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() + "/"
                 + pathInfo.getProfessorId();
@@ -349,8 +387,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      */
     private FileExplorerNode buildCourseNode(PathInfo pathInfo, User currentUser) {
         // Find professor
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         // Find semester
         AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
@@ -394,8 +431,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      */
     private FileExplorerNode buildDocumentTypeNode(PathInfo pathInfo, User currentUser) {
         // Find professor
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         // Find semester
         AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
@@ -505,8 +541,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         log.debug("=== Getting course children for professor path: {} ===", pathInfo.getPath());
 
         // Find professor
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         log.debug("Found professor: ID={}, Name={} {}, ProfessorId={}",
                 professor.getId(), professor.getFirstName(), professor.getLastName(), professor.getProfessorId());
@@ -573,8 +608,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      */
     private List<FileExplorerNode> getDocumentTypeChildren(PathInfo pathInfo, User currentUser) {
         // Find professor
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         // Find semester
         AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
@@ -684,8 +718,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      */
     private List<FileExplorerNode> getFileChildren(PathInfo pathInfo, User currentUser) {
         // Find professor
-        User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
         // Find semester
         AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
@@ -822,7 +855,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
                 // Try to get professor name
                 String professorName = pathInfo.getProfessorId();
-                Optional<User> professorOpt = userRepository.findByProfessorId(pathInfo.getProfessorId());
+                Optional<User> professorOpt = findProfessorByIdentifierOptional(pathInfo.getProfessorId());
                 if (professorOpt.isPresent()) {
                     User professor = professorOpt.get();
                     professorName = professor.getFirstName() + " " + professor.getLastName();
@@ -884,7 +917,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             // For HOD and Professor, check department access
             if (pathInfo.getProfessorId() != null) {
                 // Find the professor whose folder this is
-                Optional<User> professorOpt = userRepository.findByProfessorId(pathInfo.getProfessorId());
+                Optional<User> professorOpt = findProfessorByIdentifierOptional(pathInfo.getProfessorId());
                 if (!professorOpt.isPresent()) {
                     fileAccessService.logAccessDenial(user, null, 
                         "Professor not found for path: " + nodePath);
@@ -934,7 +967,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
             // Check if this is the professor's own course
             if (pathInfo.getProfessorId() != null) {
-                Optional<User> professorOpt = userRepository.findByProfessorId(pathInfo.getProfessorId());
+                Optional<User> professorOpt = findProfessorByIdentifierOptional(pathInfo.getProfessorId());
                 if (!professorOpt.isPresent()) {
                     return false;
                 }
@@ -970,7 +1003,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
             // Check if this is the professor's own file
             if (pathInfo.getProfessorId() != null) {
-                Optional<User> professorOpt = userRepository.findByProfessorId(pathInfo.getProfessorId());
+                Optional<User> professorOpt = findProfessorByIdentifierOptional(pathInfo.getProfessorId());
                 if (!professorOpt.isPresent()) {
                     return false;
                 }
@@ -1063,9 +1096,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     private List<UploadedFileDTO> getFilesForDocumentType(PathInfo pathInfo, User currentUser) {
         try {
             // Find professor
-            User professor = userRepository.findByProfessorId(pathInfo.getProfessorId())
-                    .orElseThrow(
-                            () -> new EntityNotFoundException("Professor not found: " + pathInfo.getProfessorId()));
+            User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
 
             // Find semester
             AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())

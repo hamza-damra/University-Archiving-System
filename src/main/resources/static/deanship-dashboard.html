@@ -172,7 +172,7 @@
         <main class="flex-1 overflow-y-auto p-6 md:p-8">
 
             <!-- Context Bar (Academic Year & Semester Selector) -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+            <div id="contextBar" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
                 <div class="flex flex-wrap items-center gap-6">
                     <div class="flex-1 min-w-[200px]">
                         <label for="academicYearSelect"
@@ -204,8 +204,8 @@
                     <div class="card p-6">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-gray-500 text-sm font-medium">Total Professors</h3>
-                            <div class="p-2 bg-blue-50 rounded-lg text-blue-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="p-2 stat-card-blue rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
                                     </path>
@@ -220,8 +220,8 @@
                     <div class="card p-6">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-gray-500 text-sm font-medium">Active Courses</h3>
-                            <div class="p-2 bg-green-50 rounded-lg text-green-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="p-2 stat-card-green rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
                                     </path>
@@ -236,8 +236,8 @@
                     <div class="card p-6">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-gray-500 text-sm font-medium">Pending Reports</h3>
-                            <div class="p-2 bg-purple-50 rounded-lg text-purple-600">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="p-2 stat-card-purple rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
                                     </path>
@@ -347,11 +347,13 @@
                     </div>
 
                     <!-- Search and Filter -->
-                    <div class="mb-4 flex gap-2">
-                        <input type="text" id="professorSearch" placeholder="Search professors..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                        <select id="professorDepartmentFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                            <option value="">All Departments</option>
-                        </select>
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <input type="text" id="professorSearch" placeholder="Search professors..." class="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-gray-900 placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="professorDepartmentFilter" class="modern-dropdown w-full">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
                     </div>
                     <div id="professorsTableContainer">
                         <div id="professorsTable" class="overflow-x-auto">
@@ -394,11 +396,13 @@
                     </div>
 
                     <!-- Search and Filter -->
-                    <div class="mb-4 flex gap-2">
-                        <input type="text" id="courseSearch" placeholder="Search courses..." class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                        <select id="courseDepartmentFilter" class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                            <option value="">All Departments</option>
-                        </select>
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <input type="text" id="courseSearch" placeholder="Search courses..." class="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-gray-900 placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="courseDepartmentFilter" class="modern-dropdown w-full">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
                     </div>
                     <div id="coursesTableContainer">
                         <div id="coursesTable" class="overflow-x-auto">
@@ -441,15 +445,17 @@
                     </div>
 
                     <!-- Filter -->
-                    <div class="mb-4 flex space-x-2">
-                        <select id="assignmentProfessorFilter"
-                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                            <option value="">All Professors</option>
-                        </select>
-                        <select id="assignmentCourseFilter"
-                            class="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-                            <option value="">All Courses</option>
-                        </select>
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="assignmentProfessorFilter" class="modern-dropdown w-full">
+                                <option value="">All Professors</option>
+                            </select>
+                        </div>
+                        <div class="w-[280px] flex-shrink-0">
+                            <select id="assignmentCourseFilter" class="modern-dropdown w-full">
+                                <option value="">All Courses</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div id="assignmentsTableContainer">
@@ -488,8 +494,8 @@
 
             <!-- Reports Tab -->
             <div id="reports-tab" class="tab-content hidden">
-                <div class="bg-white rounded-lg shadow-md p-6">
-                    <h2 class="text-xl font-semibold text-gray-800 mb-6">Interactive Reports Dashboard</h2>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">Interactive Reports Dashboard</h2>
 
                     <!-- Reports Dashboard Container -->
                     <div id="reports-dashboard-container">
@@ -518,25 +524,25 @@
             <div id="file-explorer-tab" class="tab-content hidden">
                 <div class="space-y-4">
                     <!-- Instruction Card -->
-                    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-lg shadow-sm border border-blue-200 dark:border-gray-700 p-5 transition-colors duration-200">
+                    <div id="fileExplorerInstructionCard" class="rounded-xl shadow-sm p-5 transition-colors duration-200">
                         <div class="flex items-start gap-3">
                             <div class="flex-shrink-0">
-                                <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <svg class="w-6 h-6 instruction-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">How to Use the File Explorer</h3>
-                                <p class="text-sm text-gray-700 dark:text-gray-300">Select an <strong>Academic Year</strong> and <strong>Semester</strong> from the filters above to browse files from all departments. You have read-only access to view and download files.</p>
+                                <h3 class="text-sm font-semibold instruction-title mb-1">How to Use the File Explorer</h3>
+                                <p class="text-sm instruction-text">Select an <strong class="instruction-highlight">Academic Year</strong> and <strong class="instruction-highlight">Semester</strong> from the filters above to browse files from all departments. You have read-only access to view and download files.</p>
                             </div>
                         </div>
                     </div>
 
                     <!-- File Explorer Card -->
-                    <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
                         <div class="flex items-center justify-between mb-6">
-                            <h2 class="text-xl font-semibold text-gray-800">File Explorer</h2>
-                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">File Explorer</h2>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
                                 <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
                                 </svg>
@@ -547,18 +553,18 @@
                         <!-- File Explorer Container -->
                         <!-- The FileExplorer class will render breadcrumbs, tree view, and file list here -->
                         <div id="fileExplorerContainer">
-                            <!-- Enhanced Loading Skeleton -->
+                            <!-- Enhanced Loading Skeleton with Dark Mode Support -->
                             <div class="animate-pulse space-y-4">
-                                <div class="h-12 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg"></div>
+                                <div class="h-12 bg-gradient-to-r from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div class="space-y-3">
-                                        <div class="h-32 bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg"></div>
-                                        <div class="h-24 bg-gradient-to-br from-gray-100 to-gray-50 rounded-lg"></div>
+                                        <div class="h-32 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-lg"></div>
+                                        <div class="h-24 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
                                     </div>
                                     <div class="md:col-span-2 space-y-3">
-                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg"></div>
-                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg"></div>
-                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg"></div>
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
                                     </div>
                                 </div>
                             </div>

@@ -1,0 +1,59 @@
+# ============================================
+# Render.com Infrastructure as Code (Blueprint)
+# University Archive System - Al-Quds University
+# ============================================
+# This file defines the deployment configuration for Render.com
+# Documentation: https://render.com/docs/blueprint-spec
+
+services:
+  # Main Spring Boot Application
+  - type: web
+    name: archive-system
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    
+    # Health check configuration
+    healthCheckPath: /actuator/health
+    
+    # Environment settings
+    envVars:
+      # Spring profile
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      
+      # Database configuration (set these in Render Dashboard)
+      - key: DATABASE_URL
+        sync: false  # Must be set manually in dashboard
+      - key: DATABASE_USERNAME
+        sync: false
+      - key: DATABASE_PASSWORD
+        sync: false
+      
+      # JWT Secret (set in Render Dashboard)
+      - key: JWT_SECRET
+        sync: false
+      
+      # Hibernate DDL mode
+      - key: HIBERNATE_DDL_AUTO
+        value: update
+      
+      # Upload path for persistent storage
+      - key: UPLOAD_PATH
+        value: /var/data/uploads/
+      
+      # JVM options for memory optimization (free tier)
+      - key: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    
+    # Persistent disk for file uploads (optional - requires paid plan)
+    # disk:
+    #   name: uploads
+    #   mountPath: /var/data/uploads
+    #   sizeGB: 1
+
+    # Auto-deploy on push to main branch
+    autoDeploy: true
+    
+    # Branch to deploy from
+    branch: main

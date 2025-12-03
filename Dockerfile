@@ -1,10 +1,11 @@
 # ============================================
 # MULTI-STAGE BUILD FOR SPRING BOOT APPLICATION
 # University Archive System - Al-Quds University
+# Optimized for Render.com deployment
 # ============================================
 
 # Stage 1: Build Stage
-FROM maven:3.9-eclipse-temurin-17-alpine AS build
+FROM maven:3.9-eclipse-temurin-21-alpine AS build
 
 # Set working directory
 WORKDIR /app
@@ -21,13 +22,13 @@ RUN mvn dependency:go-offline -B
 # Copy source code
 COPY src ./src
 
-# Build the application (skip tests for faster builds in CI/CD)
+# Build the application (skip tests for faster builds)
 RUN mvn clean package -DskipTests -Dspring.profiles.active=prod
 
 # ============================================
 # Stage 2: Runtime Stage
 # ============================================
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:21-jre-alpine
 
 # Install useful utilities
 RUN apk add --no-cache curl tzdata
@@ -42,10 +43,9 @@ RUN addgroup -g 1001 -S appgroup && \
 # Set working directory
 WORKDIR /app
 
-# Create directory structure for hierarchical file storage
-# Format: uploads/{year}/{semester}/{professorId}/{courseCode}/{documentType}/
-RUN mkdir -p /app/uploads /app/logs && \
-    chown -R appuser:appgroup /app
+# Create directory structure for file storage (Render compatible)
+RUN mkdir -p /var/data/uploads /app/logs && \
+    chown -R appuser:appgroup /var/data /app
 
 # Copy the built jar from build stage
 COPY --from=build /app/target/*.jar app.jar
@@ -56,16 +56,16 @@ RUN chown appuser:appgroup app.jar
 # Switch to non-root user
 USER appuser
 
-# Expose port
+# Expose port (Render uses PORT env variable)
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8080/actuator/health || exit 1
+# Health check for Render
+HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 \
+    CMD curl -f http://localhost:${PORT:-8080}/actuator/health || exit 1
 
-# Set environment variables (can be overridden at runtime)
+# Set environment variables (can be overridden by Render)
 ENV SPRING_PROFILES_ACTIVE=prod
 ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
 
-# Run the application with optimized JVM settings
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
+# Run the application - Render provides PORT env variable
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Dserver.port=${PORT:-8080} -jar app.jar"]

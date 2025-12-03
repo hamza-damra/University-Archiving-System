@@ -3,7 +3,7 @@
  * Manages academic years, professors, courses, assignments, reports, and file explorer
  */
 
-import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
+import { apiRequest, getUserInfo, redirectToLogin, clearAuthData, getErrorMessage, initializeAuth } from './api.js';
 import { showToast, showModal, showConfirm, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
@@ -118,10 +118,14 @@ function refreshDropdowns() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('=== Deanship Dashboard Initializing ===');
     console.log('Current tab on load:', currentTab);
-    checkAuth();
+    
+    // Validate authentication before proceeding
+    const isValid = await checkAuth();
+    if (!isValid) return; // checkAuth handles redirect
+    
     // Restore tab BEFORE any other initialization to prevent flicker
     restoreActiveTab();
     console.log('Current tab after restore:', currentTab);
@@ -136,27 +140,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Check authentication and role
- * Verifies user is authenticated and has DEANSHIP role
+ * Verifies user is authenticated with valid token and has DEANSHIP role
  * Redirects to login if not authenticated or unauthorized
- * @returns {void}
+ * @returns {Promise<boolean>} True if authenticated, false otherwise
  */
-function checkAuth() {
+async function checkAuth() {
     const userInfo = getUserInfo();
     if (!userInfo) {
         redirectToLogin();
-        return;
+        return false;
+    }
+
+    // Validate token with server (will auto-refresh if expired)
+    const isAuthenticated = await initializeAuth();
+    if (!isAuthenticated) {
+        redirectToLogin('session_expired');
+        return false;
     }
 
     if (userInfo.role !== 'ROLE_DEANSHIP') {
         showToast('Access denied - Deanship role required', 'error');
-        setTimeout(() => redirectToLogin(), 2000);
-        return;
+        setTimeout(() => redirectToLogin('access_denied'), 2000);
+        return false;
     }
 
     // Display user name
     const userName = userInfo.fullName || userInfo.email;
     document.getElementById('deanshipName').textContent = userName;
     localStorage.setItem('deanship_user_name', userName);
+    return true;
 }
 
 /**

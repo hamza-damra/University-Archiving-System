@@ -1,16 +1,27 @@
 /**
  * API Service
- * Centralized API calls with token management and error handling
+ * Centralized API calls with token management, auto-refresh, and error handling
  */
 
 // Dynamic base URL - uses current host to support external access
 const API_BASE_URL = `${window.location.origin}/api`;
+
+// Token refresh state to prevent multiple simultaneous refresh attempts
+let isRefreshing = false;
+let refreshSubscribers = [];
 
 /**
  * Get authentication token from localStorage
  */
 function getToken() {
     return localStorage.getItem('token');
+}
+
+/**
+ * Get refresh token from localStorage
+ */
+function getRefreshToken() {
+    return localStorage.getItem('refreshToken');
 }
 
 /**
@@ -24,9 +35,19 @@ export function getUserInfo() {
 /**
  * Save authentication data to localStorage
  */
-export function saveAuthData(token, userInfo) {
+export function saveAuthData(token, userInfo, refreshToken = null) {
     localStorage.setItem('token', token);
     localStorage.setItem('userInfo', JSON.stringify(userInfo));
+    if (refreshToken) {
+        localStorage.setItem('refreshToken', refreshToken);
+    }
+}
+
+/**
+ * Update only the access token (used after refresh)
+ */
+function updateAccessToken(newToken) {
+    localStorage.setItem('token', newToken);
 }
 
 /**
@@ -34,31 +55,188 @@ export function saveAuthData(token, userInfo) {
  */
 export function clearAuthData() {
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('userInfo');
 }
 
 /**
- * Check if user is authenticated
+ * Check if user is authenticated (has token)
  */
 export function isAuthenticated() {
     return !!getToken();
 }
 
 /**
- * Redirect to login page
+ * Redirect to login page with optional error message
  */
-export function redirectToLogin() {
+export function redirectToLogin(error = null) {
     clearAuthData();
-    window.location.href = '/index.html';
+    const params = new URLSearchParams();
+    if (error) {
+        params.set('error', error);
+    }
+    const queryString = params.toString();
+    window.location.href = '/index.html' + (queryString ? '?' + queryString : '');
 }
 
 /**
- * Make an API request with authentication
+ * Subscribe to token refresh completion
+ */
+function subscribeTokenRefresh(callback) {
+    refreshSubscribers.push(callback);
+}
+
+/**
+ * Notify all subscribers that token has been refreshed
+ */
+function onTokenRefreshed(newToken) {
+    refreshSubscribers.forEach(callback => callback(newToken));
+    refreshSubscribers = [];
+}
+
+/**
+ * Attempt to refresh the access token using the refresh token
+ * @returns {Promise<string|null>} New access token or null if refresh failed
+ */
+async function attemptTokenRefresh() {
+    const refreshToken = getRefreshToken();
+    
+    if (!refreshToken) {
+        console.log('No refresh token available');
+        return null;
+    }
+    
+    // If already refreshing, wait for it to complete
+    if (isRefreshing) {
+        return new Promise((resolve) => {
+            subscribeTokenRefresh((newToken) => {
+                resolve(newToken);
+            });
+        });
+    }
+    
+    isRefreshing = true;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ refreshToken }),
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.data) {
+                const newAccessToken = data.data.accessToken;
+                updateAccessToken(newAccessToken);
+                onTokenRefreshed(newAccessToken);
+                console.log('Token refreshed successfully');
+                return newAccessToken;
+            }
+        }
+        
+        // Refresh failed
+        console.log('Token refresh failed');
+        return null;
+        
+    } catch (error) {
+        console.error('Token refresh error:', error);
+        return null;
+    } finally {
+        isRefreshing = false;
+    }
+}
+
+/**
+ * Validate the current token with the server
+ * @returns {Promise<object>} Validation result with status and details
+ */
+export async function validateToken() {
+    const token = getToken();
+    
+    if (!token) {
+        return { valid: false, status: 'NO_TOKEN', message: 'No token found' };
+    }
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/auth/validate`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+            },
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            return data.data || { valid: false, status: 'INVALID_RESPONSE' };
+        }
+        
+        return { valid: false, status: 'VALIDATION_FAILED', message: 'Server validation failed' };
+        
+    } catch (error) {
+        console.error('Token validation error:', error);
+        return { valid: false, status: 'NETWORK_ERROR', message: error.message };
+    }
+}
+
+/**
+ * Initialize authentication - validate token and refresh if needed
+ * Call this on page load to ensure valid authentication
+ * @returns {Promise<boolean>} True if authenticated, false otherwise
+ */
+export async function initializeAuth() {
+    const token = getToken();
+    const refreshToken = getRefreshToken();
+    const userInfo = getUserInfo();
+    
+    // No credentials at all
+    if (!token && !refreshToken) {
+        console.log('No authentication credentials found');
+        return false;
+    }
+    
+    // No user info stored
+    if (!userInfo) {
+        console.log('No user info found, clearing auth');
+        clearAuthData();
+        return false;
+    }
+    
+    // Validate current token
+    const validation = await validateToken();
+    
+    if (validation.valid) {
+        console.log('Token is valid');
+        return true;
+    }
+    
+    // Token is invalid or expired, try to refresh
+    if (validation.status === 'TOKEN_EXPIRED' || validation.status === 'NO_TOKEN') {
+        console.log('Token expired or missing, attempting refresh...');
+        const newToken = await attemptTokenRefresh();
+        
+        if (newToken) {
+            console.log('Authentication restored with new token');
+            return true;
+        }
+    }
+    
+    // All refresh attempts failed
+    console.log('Authentication failed, clearing credentials');
+    clearAuthData();
+    return false;
+}
+
+/**
+ * Make an API request with authentication and auto token refresh
  * @param {string} endpoint - API endpoint (relative to base URL)
  * @param {object} options - Fetch options
+ * @param {boolean} retryOnExpire - Whether to retry with refreshed token on 401
  * @returns {Promise} Response data
  */
-export async function apiRequest(endpoint, options = {}) {
+export async function apiRequest(endpoint, options = {}, retryOnExpire = true) {
     const url = `${API_BASE_URL}${endpoint}`;
 
     const headers = {
@@ -85,9 +263,47 @@ export async function apiRequest(endpoint, options = {}) {
     try {
         const response = await fetch(url, config);
 
-        // Handle 401 Unauthorized
+        // Handle 401 Unauthorized - try to refresh token
         if (response.status === 401) {
-            redirectToLogin();
+            // Check if the error is specifically about token expiration
+            let errorData;
+            try {
+                errorData = await response.clone().json();
+            } catch (e) {
+                errorData = null;
+            }
+            
+            const errorCode = errorData?.error?.code;
+            
+            // If token expired and we should retry, attempt refresh
+            if (retryOnExpire && (errorCode === 'TOKEN_EXPIRED' || !errorCode)) {
+                console.log('Token expired, attempting refresh...');
+                const newToken = await attemptTokenRefresh();
+                
+                if (newToken) {
+                    // Retry the request with new token
+                    headers['Authorization'] = `Bearer ${newToken}`;
+                    const retryConfig = { ...config, headers };
+                    const retryResponse = await fetch(url, retryConfig);
+                    
+                    if (retryResponse.ok) {
+                        const retryData = await retryResponse.json();
+                        if (retryData && typeof retryData === 'object' && 'data' in retryData) {
+                            return retryData.data;
+                        }
+                        return retryData;
+                    }
+                    
+                    // Retry also failed
+                    if (retryResponse.status === 401) {
+                        redirectToLogin('session_expired');
+                        throw new Error('Session expired - Please log in again');
+                    }
+                }
+            }
+            
+            // Refresh failed or not applicable, redirect to login
+            redirectToLogin('session_expired');
             throw new Error('Unauthorized - Please log in again');
         }
 
@@ -194,7 +410,7 @@ export function getErrorMessage(error) {
 }
 
 /**
- * Upload file with progress tracking
+ * Upload file with progress tracking and auto token refresh
  * @param {string} endpoint - API endpoint
  * @param {FormData} formData - Form data with file
  * @param {function} onProgress - Progress callback (optional)
@@ -203,77 +419,114 @@ export function getErrorMessage(error) {
 export async function uploadFile(endpoint, formData, onProgress = null, method = 'POST') {
     const url = `${API_BASE_URL}${endpoint}`;
 
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
+    const executeUpload = (token) => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
 
-        // Track upload progress
-        if (onProgress) {
-            xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percentComplete = (e.loaded / e.total) * 100;
-                    onProgress(percentComplete);
+            // Track upload progress
+            if (onProgress) {
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable) {
+                        const percentComplete = (e.loaded / e.total) * 100;
+                        onProgress(percentComplete);
+                    }
+                });
+            }
+
+            // Handle completion
+            xhr.addEventListener('load', async () => {
+                // Handle 401 - try to refresh token
+                if (xhr.status === 401) {
+                    try {
+                        // Parse error to check if it's token expiration
+                        let errorData;
+                        try {
+                            errorData = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            errorData = null;
+                        }
+                        
+                        const errorCode = errorData?.error?.code;
+                        if (errorCode === 'TOKEN_EXPIRED' || !errorCode) {
+                            // Try to refresh token
+                            const newToken = await attemptTokenRefresh();
+                            if (newToken) {
+                                // Resolve with retry signal
+                                resolve({ _retry: true, newToken });
+                                return;
+                            }
+                        }
+                    } catch (e) {
+                        // Refresh failed
+                    }
+                    
+                    redirectToLogin('session_expired');
+                    reject(new Error('Unauthorized - Please log in again'));
+                    return;
+                }
+
+                try {
+                    let data = null;
+                    const raw = xhr.responseText ?? '';
+                    if (raw && raw.trim().length > 0) {
+                        try {
+                            data = JSON.parse(raw);
+                        } catch (e) {
+                            // Fallback: non-JSON body (e.g., HTML error page)
+                            data = { message: raw };
+                        }
+                    } else {
+                        data = {};
+                    }
+
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        // Extract data from ApiResponse wrapper
+                        if (data && typeof data === 'object' && 'data' in data) {
+                            resolve(data.data);
+                        } else {
+                            resolve(data);
+                        }
+                    } else {
+                        const errorMessage = (data && (data.message || data.error)) || `Upload failed with status ${xhr.status}`;
+                        reject(new Error(errorMessage));
+                    }
+                } catch (error) {
+                    reject(new Error('Failed to parse server response'));
                 }
             });
-        }
 
-        // Handle completion
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 401) {
-                redirectToLogin();
-                reject(new Error('Unauthorized - Please log in again'));
-                return;
+            // Handle errors
+            xhr.addEventListener('error', () => {
+                reject(new Error('Network error - Please check your connection'));
+            });
+
+            xhr.addEventListener('abort', () => {
+                reject(new Error('Upload cancelled'));
+            });
+
+            // Open connection and set headers
+            xhr.open(method, url);
+
+            if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             }
 
-            try {
-                let data = null;
-                const raw = xhr.responseText ?? '';
-                if (raw && raw.trim().length > 0) {
-                    try {
-                        data = JSON.parse(raw);
-                    } catch (e) {
-                        // Fallback: non-JSON body (e.g., HTML error page)
-                        data = { message: raw };
-                    }
-                } else {
-                    data = {};
-                }
-
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    // Extract data from ApiResponse wrapper
-                    if (data && typeof data === 'object' && 'data' in data) {
-                        resolve(data.data);
-                    } else {
-                        resolve(data);
-                    }
-                } else {
-                    const errorMessage = (data && (data.message || data.error)) || `Upload failed with status ${xhr.status}`;
-                    reject(new Error(errorMessage));
-                }
-            } catch (error) {
-                reject(new Error('Failed to parse server response'));
-            }
+            // Send the form data
+            xhr.send(formData);
         });
+    };
 
-        // Handle errors
-        xhr.addEventListener('error', () => {
-            reject(new Error('Network error - Please check your connection'));
-        });
-
-        xhr.addEventListener('abort', () => {
-            reject(new Error('Upload cancelled'));
-        });
-
-        // Open connection and set headers
-        xhr.open(method, url);
-
-        const token = getToken();
-        if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
-
-        // Send the form data
-        xhr.send(formData);
-    });
+    // First attempt
+    let result = await executeUpload(getToken());
+    
+    // If we need to retry with new token
+    if (result && result._retry && result.newToken) {
+        // Need to recreate FormData as it can only be used once
+        // The caller should handle retry if FormData can't be reused
+        result = await executeUpload(result.newToken);
+    }
+    
+    return result;
 }
 
 // API endpoint methods
@@ -285,13 +538,23 @@ export const auth = {
         body: JSON.stringify(credentials),
     }),
 
-    logout: () => apiRequest('/auth/logout', {
+    logout: (refreshToken = null) => apiRequest('/auth/logout', {
         method: 'POST',
+        body: refreshToken ? JSON.stringify({ refreshToken }) : '{}',
     }),
 
     getCurrentUser: () => apiRequest('/auth/me', {
         method: 'GET',
     }),
+
+    refreshToken: (refreshToken) => apiRequest('/auth/refresh-token', {
+        method: 'POST',
+        body: JSON.stringify({ refreshToken }),
+    }, false), // Don't retry on expire for refresh endpoint
+
+    validate: () => apiRequest('/auth/validate', {
+        method: 'GET',
+    }, false), // Don't retry on expire for validate endpoint
 };
 
 // HOD endpoints

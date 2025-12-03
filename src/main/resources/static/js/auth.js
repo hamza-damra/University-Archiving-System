@@ -2,7 +2,7 @@
  * Authentication Page (Login)
  */
 
-import { auth, saveAuthData, isAuthenticated } from './api.js';
+import { auth, saveAuthData, isAuthenticated, initializeAuth } from './api.js';
 import { showToast, isValidEmail } from './ui.js';
 
 // Helper function to redirect based on role - defined early to avoid reference errors
@@ -27,11 +27,19 @@ function redirectToDashboard(role) {
     }
 }
 
-// Check if already logged in
-if (isAuthenticated()) {
-    const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-    redirectToDashboard(userInfo.role);
-}
+// Check if already logged in with valid token
+(async function checkExistingAuth() {
+    if (isAuthenticated()) {
+        // Validate the existing token
+        const isValid = await initializeAuth();
+        if (isValid) {
+            const userInfo = JSON.parse(localStorage.getItem('userInfo'));
+            redirectToDashboard(userInfo.role);
+            return;
+        }
+        // Token was invalid, user will see login form
+    }
+})();
 
 // Check for error parameters in URL
 const urlParams = new URLSearchParams(window.location.search);
@@ -99,9 +107,9 @@ loginForm.addEventListener('submit', async (e) => {
         // Check if response has required fields
         // Note: apiRequest now extracts data from ApiResponse wrapper automatically
         if (response && response.token) {
-            const { token, role, firstName, lastName, email: userEmail, id, departmentId, departmentName } = response;
+            const { token, refreshToken, role, firstName, lastName, email: userEmail, id, departmentId, departmentName } = response;
             
-            // Save auth data
+            // Save auth data including refresh token
             saveAuthData(token, {
                 id,
                 email: userEmail,
@@ -111,7 +119,7 @@ loginForm.addEventListener('submit', async (e) => {
                 departmentId,
                 departmentName,
                 fullName: `${firstName} ${lastName}`,
-            });
+            }, refreshToken);
             
             // Show success message
             showToast('Login successful! Redirecting...', 'success');

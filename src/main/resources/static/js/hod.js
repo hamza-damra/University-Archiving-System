@@ -2,22 +2,38 @@
  * HOD Dashboard
  */
 
-import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage } from './api.js';
+import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage, initializeAuth } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
 import { hodReportsManager } from './hod-reports.js';
 
-// Check authentication
-if (!isAuthenticated()) {
-    redirectToLogin();
-}
+// Check authentication with token validation
+(async function initAuth() {
+    if (!isAuthenticated()) {
+        redirectToLogin();
+        return;
+    }
+    
+    // Validate token with server
+    const isValid = await initializeAuth();
+    if (!isValid) {
+        redirectToLogin('session_expired');
+        return;
+    }
+    
+    const userInfo = getUserInfo();
+    if (userInfo.role !== 'ROLE_HOD') {
+        showToast('Access denied - HOD privileges required', 'error');
+        setTimeout(() => redirectToLogin('access_denied'), 2000);
+        return;
+    }
+    
+    // Continue initialization after auth is confirmed
+    initializeDashboard();
+})();
 
 const userInfo = getUserInfo();
-if (userInfo.role !== 'ROLE_HOD') {
-    showToast('Access denied - HOD privileges required', 'error');
-    setTimeout(() => redirectToLogin(), 2000);
-}
 
 // State
 let requests = [];
@@ -113,18 +129,20 @@ function getCurrentSemesterType() {
     }
 }
 
-// Initialize
-hodName.textContent = userInfo.fullName;
-loadAcademicYears();
-loadLegacyRequests();
-initializeFileExplorer();
-initializeTabSwitching();
-initializeReportButtons();
-initializeSidebar();
-initializeReportsManager();
+// Initialize dashboard after auth is confirmed
+function initializeDashboard() {
+    hodName.textContent = userInfo.fullName;
+    loadAcademicYears();
+    loadLegacyRequests();
+    initializeFileExplorer();
+    initializeTabSwitching();
+    initializeReportButtons();
+    initializeSidebar();
+    initializeReportsManager();
 
-// Initialize modern dropdowns after a short delay
-setTimeout(initializeModernDropdowns, 100);
+    // Initialize modern dropdowns after a short delay
+    setTimeout(initializeModernDropdowns, 100);
+}
 
 // Sidebar Toggle
 function initializeSidebar() {

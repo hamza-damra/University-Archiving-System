@@ -316,6 +316,22 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorResponse).withRequestId(requestId));
     }
     
+    @ExceptionHandler(TokenRefreshException.class)
+    public ResponseEntity<ApiResponse<Object>> handleTokenRefreshException(
+            TokenRefreshException ex, WebRequest request) {
+        
+        String requestId = generateRequestId();
+        log.warn("Token refresh failed [{}]: {}", requestId, ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.of("TOKEN_REFRESH_FAILED", ex.getMessage())
+                .withPath(getRequestPath(request))
+                .withStatus(HttpStatus.FORBIDDEN.value())
+                .withSuggestions(List.of("Please log in again", "Your session may have expired"));
+        
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(errorResponse).withRequestId(requestId));
+    }
+    
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ApiResponse<Object>> handleAccessDeniedException(
             AccessDeniedException ex, WebRequest request) {

@@ -13,7 +13,7 @@
  * @module admin-common
  */
 
-import { apiRequest, getUserInfo, clearAuthData, isAuthenticated, redirectToLogin } from './api.js';
+import { apiRequest, getUserInfo, clearAuthData, isAuthenticated, redirectToLogin, initializeAuth } from './api.js';
 import { showToast } from './ui.js';
 
 /**
@@ -41,6 +41,13 @@ export class AdminLayout {
                 return;
             }
 
+            // Validate token with server (will auto-refresh if expired)
+            const isValid = await initializeAuth();
+            if (!isValid) {
+                redirectToLogin('session_expired');
+                return;
+            }
+
             // Get user info
             this.userInfo = getUserInfo();
             if (!this.userInfo) {
@@ -51,7 +58,7 @@ export class AdminLayout {
             // Verify user has ADMIN role
             if (!this.userInfo.role || this.userInfo.role !== 'ROLE_ADMIN') {
                 showToast('Access denied - Admin role required', 'error');
-                setTimeout(() => redirectToLogin(), 2000);
+                setTimeout(() => redirectToLogin('access_denied'), 2000);
                 return;
             }
 

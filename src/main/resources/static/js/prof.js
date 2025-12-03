@@ -46,35 +46,13 @@
  * role-specific configurations while maintaining visual consistency.
  */
 
-import { professor, fileExplorer, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData } from './api.js';
+import { professor, fileExplorer, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, initializeAuth } from './api.js';
 // FIX 1: Removed 'isOverdue' from imports to avoid conflict with local definition
 import { showToast, showModal, formatDate, getTimeUntil, formatFileSize } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
 
-// Check authentication
-if (!isAuthenticated()) {
-    // Update UI to show authentication required message
-    const academicYearSelect = document.getElementById('academicYearSelect');
-    const semesterSelect = document.getElementById('semesterSelect');
-    if (academicYearSelect) {
-        academicYearSelect.innerHTML = '<option value="">Authentication required</option>';
-    }
-    if (semesterSelect) {
-        semesterSelect.innerHTML = '<option value="">Authentication required</option>';
-    }
-    redirectToLogin();
-    throw new Error('Not authenticated'); // Stop execution
-}
-
-const userInfo = getUserInfo();
-if (userInfo.role !== 'ROLE_PROFESSOR') {
-    showToast('Access denied - Professor privileges required', 'error');
-    setTimeout(() => redirectToLogin(), 2000);
-    throw new Error('Access denied'); // Stop execution
-}
-
-// State
+// State variables - defined before auth check
 let academicYears = [];
 let semesters = [];
 let courses = [];
@@ -82,6 +60,42 @@ let notifications = [];
 let selectedAcademicYearId = null;
 let selectedSemesterId = null;
 let fileExplorerInstance = null;
+
+// Check authentication with token validation
+(async function initAuth() {
+    if (!isAuthenticated()) {
+        // Update UI to show authentication required message
+        const academicYearSelect = document.getElementById('academicYearSelect');
+        const semesterSelect = document.getElementById('semesterSelect');
+        if (academicYearSelect) {
+            academicYearSelect.innerHTML = '<option value="">Authentication required</option>';
+        }
+        if (semesterSelect) {
+            semesterSelect.innerHTML = '<option value="">Authentication required</option>';
+        }
+        redirectToLogin();
+        return;
+    }
+    
+    // Validate token with server
+    const isValid = await initializeAuth();
+    if (!isValid) {
+        redirectToLogin('session_expired');
+        return;
+    }
+    
+    const userInfo = getUserInfo();
+    if (userInfo.role !== 'ROLE_PROFESSOR') {
+        showToast('Access denied - Professor privileges required', 'error');
+        setTimeout(() => redirectToLogin('access_denied'), 2000);
+        return;
+    }
+    
+    // Continue with dashboard initialization
+    initializeDashboard();
+})();
+
+const userInfo = getUserInfo();
 
 // DOM Elements
 const professorName = document.getElementById('professorName');
@@ -198,16 +212,18 @@ function hideNotificationsDropdown() {
 }
 
 
-// Initialize
-professorName.textContent = userInfo.fullName;
-loadAcademicYears();
-loadNotifications();
+// Initialize dashboard after auth validation
+function initializeDashboard() {
+    professorName.textContent = userInfo.fullName;
+    loadAcademicYears();
+    loadNotifications();
 
-// Initialize modern dropdowns after a short delay to ensure DOM is ready
-setTimeout(initializeModernDropdowns, 100);
+    // Initialize modern dropdowns after a short delay to ensure DOM is ready
+    setTimeout(initializeModernDropdowns, 100);
 
-// Poll notifications every 30 seconds
-setInterval(loadNotifications, 30000);
+    // Poll notifications every 30 seconds
+    setInterval(loadNotifications, 30000);
+}
 
 // Tab Switching
 window.switchTab = function (tabName) {

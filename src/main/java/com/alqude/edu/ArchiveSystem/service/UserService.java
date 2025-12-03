@@ -193,9 +193,6 @@ public class UserService implements UserDetailsService {
         
         // Update user entity
         userMapper.updateEntity(request, user);
-        if (user == null) {
-            throw new IllegalStateException("User entity cannot be null after update");
-        }
         User updatedUser = userRepository.save(user);
         
         log.info("User updated successfully with id: {}", updatedUser.getId());

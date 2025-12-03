@@ -11,6 +11,18 @@
       "description": "JWT token expiration time in milliseconds. Default is 86400000 (24 hours)."
     },
     {
+      "name": "jwt.refresh-expiration",
+      "type": "java.lang.Long",
+      "description": "JWT refresh token expiration time in milliseconds. Default is 7 days (604800000ms).",
+      "defaultValue": 604800000
+    },
+    {
+      "name": "jwt.max-refresh-tokens-per-user",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of active refresh tokens allowed per user. Older tokens are revoked when limit is exceeded.",
+      "defaultValue": 5
+    },
+    {
       "name": "file.upload.directory",
       "type": "java.lang.String",
       "description": "Directory path where uploaded files will be stored."

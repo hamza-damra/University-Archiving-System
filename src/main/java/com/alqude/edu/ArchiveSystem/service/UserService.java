@@ -135,23 +135,6 @@ public class UserService implements UserDetailsService {
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setDepartment(department);
         
-        // Auto-generate names for HOD and Dean if not provided
-        if (request.getRole() == Role.ROLE_HOD && department != null) {
-            if (!StringUtils.hasText(request.getFirstName())) {
-                user.setFirstName("HOD");
-            }
-            if (!StringUtils.hasText(request.getLastName())) {
-                user.setLastName(department.getName());
-            }
-        } else if (request.getRole() == Role.ROLE_DEANSHIP) {
-            if (!StringUtils.hasText(request.getFirstName())) {
-                user.setFirstName("Dean");
-            }
-            if (!StringUtils.hasText(request.getLastName())) {
-                user.setLastName("Faculty");
-            }
-        }
-        
         User savedUser = userRepository.save(user);
         log.info("User created successfully with id: {} and role: {}", savedUser.getId(), savedUser.getRole());
         
@@ -339,19 +322,16 @@ public class UserService implements UserDetailsService {
             errors.put("password", "Password is required");
         }
         
-        // For HOD and Dean, names can be auto-generated from department/role
-        // so we don't require them in the request
-        boolean nameRequired = request.getRole() != Role.ROLE_HOD && request.getRole() != Role.ROLE_DEANSHIP;
-        
-        if (nameRequired && !StringUtils.hasText(request.getFirstName())) {
+        // First name and last name are required for all roles
+        if (!StringUtils.hasText(request.getFirstName())) {
             errors.put("firstName", "First name is required");
-        } else if (request.getFirstName() != null && request.getFirstName().length() > 50) {
+        } else if (request.getFirstName().length() > 50) {
             errors.put("firstName", "First name must not exceed 50 characters");
         }
         
-        if (nameRequired && !StringUtils.hasText(request.getLastName())) {
+        if (!StringUtils.hasText(request.getLastName())) {
             errors.put("lastName", "Last name is required");
-        } else if (request.getLastName() != null && request.getLastName().length() > 50) {
+        } else if (request.getLastName().length() > 50) {
             errors.put("lastName", "Last name must not exceed 50 characters");
         }
         

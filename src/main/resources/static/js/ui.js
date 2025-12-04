@@ -57,6 +57,99 @@ export async function withMinLoadingTime(asyncOperation, minTime = MIN_LOADING_T
 }
 
 // ============================================================================
+// BUTTON LOADING STATE UTILITIES
+// ============================================================================
+
+/**
+ * Set a button to loading state with spinner animation
+ * @param {HTMLButtonElement} button - The button element
+ * @param {string} loadingText - Optional text to show while loading (default: keeps original text)
+ * @returns {Object} Object with restore() method to restore original state
+ */
+export function setButtonLoading(button, loadingText = null) {
+    if (!button) return { restore: () => {} };
+    
+    // Store original state
+    const originalHTML = button.innerHTML;
+    const originalDisabled = button.disabled;
+    const originalWidth = button.offsetWidth;
+    
+    // Set minimum width to prevent button from shrinking
+    button.style.minWidth = `${originalWidth}px`;
+    
+    // Create spinner HTML
+    const spinnerHTML = `
+        <svg class="btn-spinner animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+    `;
+    
+    // Get text to display
+    const displayText = loadingText || button.textContent?.trim() || 'Loading...';
+    
+    // Set loading state
+    button.disabled = true;
+    button.classList.add('btn-loading');
+    button.innerHTML = `
+        <span class="flex items-center justify-center">
+            ${spinnerHTML}
+            <span>${displayText}</span>
+        </span>
+    `;
+    
+    // Return restore function
+    return {
+        restore: () => {
+            button.innerHTML = originalHTML;
+            button.disabled = originalDisabled;
+            button.style.minWidth = '';
+            button.classList.remove('btn-loading');
+        }
+    };
+}
+
+/**
+ * Execute an async function with button loading state
+ * Automatically shows loading spinner on button and restores after completion
+ * @param {HTMLButtonElement} button - The button element
+ * @param {Function} asyncFn - Async function to execute
+ * @param {string} loadingText - Optional text to show while loading
+ * @returns {Promise} Result of the async function
+ */
+export async function withButtonLoading(button, asyncFn, loadingText = null) {
+    const { restore } = setButtonLoading(button, loadingText);
+    
+    try {
+        return await asyncFn();
+    } finally {
+        restore();
+    }
+}
+
+/**
+ * Create a submit handler with loading state for forms
+ * @param {HTMLFormElement} form - The form element
+ * @param {HTMLButtonElement} submitButton - The submit button
+ * @param {Function} onSubmit - Async function to handle form submission
+ * @param {Object} options - Options (loadingText, validateFn)
+ */
+export function createFormSubmitHandler(form, submitButton, onSubmit, options = {}) {
+    const { loadingText = 'Submitting...', validateFn = null } = options;
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Run validation if provided
+        if (validateFn && !validateFn()) {
+            return;
+        }
+        
+        await withButtonLoading(submitButton, onSubmit, loadingText);
+    });
+}
+
+// ============================================================================
 // TOAST NOTIFICATIONS
 // ============================================================================
 
@@ -410,4 +503,7 @@ export default {
     isValidFileExtension,
     formatFileSize,
     debounce,
+    setButtonLoading,
+    withButtonLoading,
+    createFormSubmitHandler,
 };

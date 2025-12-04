@@ -5,7 +5,7 @@
 
 import { DeanshipLayout } from './deanship-common.js';
 import { apiRequest } from './api.js';
-import { showToast, showModal } from './ui.js';
+import { showToast, showModal, setButtonLoading } from './ui.js';
 
 /**
  * Professors Page Class
@@ -354,6 +354,10 @@ class ProfessorsPage {
         const password = document.getElementById('professorPassword').value;
         const departmentId = parseInt(document.getElementById('professorDepartment').value);
 
+        // Get the create button and show loading state
+        const createBtn = document.querySelector('[data-action="create"]');
+        const { restore: restoreButton } = setButtonLoading(createBtn, 'Creating...');
+
         try {
             await apiRequest('/deanship/professors', {
                 method: 'POST',
@@ -369,6 +373,7 @@ class ProfessorsPage {
         } catch (error) {
             console.error('[Professors] Error creating professor:', error);
             this.handleApiError(error, 'create professor');
+            restoreButton();
         }
     }
 
@@ -478,6 +483,10 @@ class ProfessorsPage {
             updateData.password = password;
         }
 
+        // Get the update button and show loading state
+        const updateBtn = document.querySelector('[data-action="update"]');
+        const { restore: restoreButton } = setButtonLoading(updateBtn, 'Updating...');
+
         try {
             await apiRequest(`/deanship/professors/${profId}`, {
                 method: 'PUT',
@@ -493,6 +502,7 @@ class ProfessorsPage {
         } catch (error) {
             console.error('[Professors] Error updating professor:', error);
             this.handleApiError(error, 'update professor');
+            restoreButton();
         }
     }
 

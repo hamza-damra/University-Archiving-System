@@ -542,6 +542,80 @@ body {
     animation: spin 1s linear infinite;
 }
 
+/* ===================================
+   BUTTON LOADING STATES
+   =================================== */
+
+/* Button loading state */
+.btn-loading {
+    position: relative;
+    cursor: not-allowed !important;
+    opacity: 0.85;
+}
+
+.btn-loading:hover {
+    transform: none !important;
+}
+
+/* Spinner inside button */
+.btn-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    flex-shrink: 0;
+}
+
+/* Loading button pulse effect */
+@keyframes btn-pulse {
+    0%, 100% {
+        opacity: 0.85;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.btn-loading {
+    animation: btn-pulse 1.5s ease-in-out infinite;
+}
+
+/* Disabled button styles during loading */
+button:disabled.btn-loading,
+.btn:disabled.btn-loading {
+    background-color: inherit;
+    color: inherit;
+}
+
+/* Primary button loading (purple/blue) */
+.bg-purple-600.btn-loading,
+.bg-blue-600.btn-loading {
+    background-color: rgba(147, 51, 234, 0.9) !important;
+}
+
+.bg-blue-600.btn-loading {
+    background-color: rgba(59, 130, 246, 0.9) !important;
+}
+
+/* Danger button loading (red) */
+.bg-red-600.btn-loading {
+    background-color: rgba(220, 38, 38, 0.9) !important;
+}
+
+/* Success button loading (green) */
+.bg-green-600.btn-loading {
+    background-color: rgba(22, 163, 74, 0.9) !important;
+}
+
+/* Login button specific loading */
+.login-btn.btn-loading {
+    background-color: rgba(59, 130, 246, 0.9) !important;
+}
+
+/* Dark mode adjustments for loading buttons */
+.dark .btn-loading {
+    opacity: 0.8;
+}
+
 /* Fade in animation for modals */
 @keyframes fadeIn {
     from {

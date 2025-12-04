@@ -3,7 +3,7 @@
  */
 
 import { auth, saveAuthData, isAuthenticated, initializeAuth } from './api.js';
-import { showToast, isValidEmail } from './ui.js';
+import { showToast, isValidEmail, setButtonLoading } from './ui.js';
 
 // Helper function to redirect based on role - defined early to avoid reference errors
 function redirectToDashboard(role) {
@@ -95,9 +95,8 @@ loginForm.addEventListener('submit', async (e) => {
     
     if (!isValid) return;
     
-    // Show loading
-    submitBtn.disabled = true;
-    submitBtn.textContent = 'Signing in...';
+    // Show loading state on button
+    const { restore: restoreButton } = setButtonLoading(submitBtn, 'Signing in...');
     loadingOverlay.classList.remove('hidden');
     
     try {
@@ -135,8 +134,7 @@ loginForm.addEventListener('submit', async (e) => {
         console.error('Login error:', error);
         showGeneralError(error.message || 'Invalid email or password. Please try again.');
     } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Sign In';
+        restoreButton();
         loadingOverlay.classList.add('hidden');
     }
 });

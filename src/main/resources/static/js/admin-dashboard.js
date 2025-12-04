@@ -5,7 +5,7 @@
 
 import { AdminLayout } from './admin-common.js';
 import { apiRequest, getUserInfo } from './api.js';
-import { showToast } from './ui.js';
+import { showToast, setButtonLoading } from './ui.js';
 
 // Minimum loading time for smooth UX
 const MIN_LOADING_TIME = 800;
@@ -1595,6 +1595,10 @@ class AdminDashboardPage {
             formData.password = password;
         }
         
+        // Get submit button and show loading state
+        const submitBtn = document.getElementById('userSubmitBtn');
+        const { restore: restoreButton } = setButtonLoading(submitBtn, this.editingUserId ? 'Updating...' : 'Creating...');
+        
         try {
             if (this.editingUserId) {
                 await apiRequest(`/admin/users/${this.editingUserId}`, {
@@ -1604,6 +1608,7 @@ class AdminDashboardPage {
                 showToast('User updated successfully', 'success');
             } else {
                 if (!password) {
+                    restoreButton();
                     showToast('Password is required for new users', 'error');
                     return;
                 }
@@ -1620,6 +1625,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] User form error:', error);
             showToast(error.message || 'Failed to save user', 'error');
+        } finally {
+            restoreButton();
         }
     }
 
@@ -1628,6 +1635,10 @@ class AdminDashboardPage {
      */
     async deleteUser() {
         if (!this.deletingUserId) return;
+        
+        // Get delete button and show loading state
+        const deleteBtn = document.getElementById('deleteModalConfirm');
+        const { restore: restoreButton } = setButtonLoading(deleteBtn, 'Deleting...');
         
         try {
             await apiRequest(`/admin/users/${this.deletingUserId}`, {
@@ -1641,6 +1652,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] Delete user error:', error);
             showToast('Failed to delete user', 'error');
+        } finally {
+            restoreButton();
         }
     }
 
@@ -1881,6 +1894,10 @@ class AdminDashboardPage {
             description: document.getElementById('departmentDescription').value || null,
         };
         
+        // Get submit button and show loading state
+        const submitBtn = document.getElementById('departmentSubmitBtn');
+        const { restore: restoreButton } = setButtonLoading(submitBtn, this.editingDepartmentId ? 'Updating...' : 'Creating...');
+        
         try {
             if (this.editingDepartmentId) {
                 await apiRequest(`/admin/departments/${this.editingDepartmentId}`, {
@@ -1905,6 +1922,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] Department form error:', error);
             showToast(error.message || 'Failed to save department', 'error');
+        } finally {
+            restoreButton();
         }
     }
 
@@ -1913,6 +1932,10 @@ class AdminDashboardPage {
      */
     async deleteDepartment() {
         if (!this.deletingDepartmentId) return;
+        
+        // Get delete button and show loading state
+        const deleteBtn = document.getElementById('deleteDepartmentModalConfirm');
+        const { restore: restoreButton } = setButtonLoading(deleteBtn, 'Deleting...');
         
         try {
             await apiRequest(`/admin/departments/${this.deletingDepartmentId}`, {
@@ -1926,6 +1949,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] Delete department error:', error);
             showToast(error.message || 'Failed to delete department', 'error');
+        } finally {
+            restoreButton();
         }
     }
 
@@ -2282,6 +2307,10 @@ class AdminDashboardPage {
             formData.level = creditHoursInput.value + ' Credit Hours';
         }
         
+        // Get submit button and show loading state
+        const submitBtn = document.getElementById('courseSubmitBtn');
+        const { restore: restoreButton } = setButtonLoading(submitBtn, this.editingCourseId ? 'Updating...' : 'Creating...');
+        
         try {
             if (this.editingCourseId) {
                 await apiRequest(`/admin/courses/${this.editingCourseId}`, {
@@ -2303,6 +2332,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] Course form error:', error);
             showToast(error.message || 'Failed to save course', 'error');
+        } finally {
+            restoreButton();
         }
     }
 
@@ -2311,6 +2342,10 @@ class AdminDashboardPage {
      */
     async deactivateCourse() {
         if (!this.deletingCourseId) return;
+        
+        // Get deactivate button and show loading state
+        const deactivateBtn = document.getElementById('deleteCourseModalConfirm');
+        const { restore: restoreButton } = setButtonLoading(deactivateBtn, 'Deactivating...');
         
         try {
             await apiRequest(`/admin/courses/${this.deletingCourseId}/deactivate`, {
@@ -2324,6 +2359,8 @@ class AdminDashboardPage {
         } catch (error) {
             console.error('[AdminDashboard] Deactivate course error:', error);
             showToast(error.message || 'Failed to deactivate course', 'error');
+        } finally {
+            restoreButton();
         }
     }
 

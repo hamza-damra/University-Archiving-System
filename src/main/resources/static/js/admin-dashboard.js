@@ -1038,13 +1038,13 @@ class AdminDashboardPage {
                 departmentEnabled: false, 
                 departmentRequired: false, 
                 hint: 'Dean has faculty-wide access - no department needed',
-                nameFieldsEnabled: false  // Dean name fields disabled
+                nameFieldsEnabled: true  // Dean name fields enabled
             },
             'ROLE_HOD': { 
                 departmentEnabled: true, 
                 departmentRequired: true, 
                 hint: 'Select the department this HOD will manage',
-                nameFieldsEnabled: false  // HOD name fields disabled
+                nameFieldsEnabled: true  // HOD name fields enabled
             },
             'ROLE_PROFESSOR': { 
                 departmentEnabled: true, 

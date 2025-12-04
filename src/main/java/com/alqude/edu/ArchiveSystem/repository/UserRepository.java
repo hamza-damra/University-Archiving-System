@@ -27,6 +27,55 @@ public interface UserRepository extends JpaRepository<User, Long> {
            countQuery = "SELECT COUNT(u) FROM User u")
     Page<User> findAllWithDepartment(Pageable pageable);
     
+    /**
+     * Find users by role with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.role = :role",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.role = :role")
+    Page<User> findByRoleWithDepartment(@Param("role") Role role, Pageable pageable);
+    
+    /**
+     * Find users by role and active status with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.role = :role AND u.isActive = :isActive",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.isActive = :isActive")
+    Page<User> findByRoleAndIsActiveWithDepartment(@Param("role") Role role, @Param("isActive") Boolean isActive, Pageable pageable);
+    
+    /**
+     * Find users by active status with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.isActive = :isActive",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.isActive = :isActive")
+    Page<User> findByIsActiveWithDepartment(@Param("isActive") Boolean isActive, Pageable pageable);
+    
+    /**
+     * Find users by department with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.department.id = :departmentId",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.department.id = :departmentId")
+    Page<User> findByDepartmentIdWithDepartment(@Param("departmentId") Long departmentId, Pageable pageable);
+    
+    /**
+     * Find users by role and department with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.role = :role AND u.department.id = :departmentId",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.department.id = :departmentId")
+    Page<User> findByRoleAndDepartmentIdWithDepartment(@Param("role") Role role, @Param("departmentId") Long departmentId, Pageable pageable);
+    
+    /**
+     * Find users by role, department, and active status with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.role = :role AND u.department.id = :departmentId AND u.isActive = :isActive",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.department.id = :departmentId AND u.isActive = :isActive")
+    Page<User> findByRoleAndDepartmentIdAndIsActiveWithDepartment(@Param("role") Role role, @Param("departmentId") Long departmentId, @Param("isActive") Boolean isActive, Pageable pageable);
+    
+    /**
+     * Find users by department and active status with department eagerly loaded.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.department.id = :departmentId AND u.isActive = :isActive",
+           countQuery = "SELECT COUNT(u) FROM User u WHERE u.department.id = :departmentId AND u.isActive = :isActive")
+    Page<User> findByDepartmentIdAndIsActiveWithDepartment(@Param("departmentId") Long departmentId, @Param("isActive") Boolean isActive, Pageable pageable);
+    
     boolean existsByEmail(String email);
     
     List<User> findByDepartmentIdAndRole(Long departmentId, Role role);

@@ -20,6 +20,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.email = :email")
     Optional<User> findByEmailWithDepartment(@Param("email") String email);
     
+    /**
+     * Find all users with department eagerly loaded to avoid LazyInitializationException.
+     */
+    @Query(value = "SELECT u FROM User u LEFT JOIN FETCH u.department",
+           countQuery = "SELECT COUNT(u) FROM User u")
+    Page<User> findAllWithDepartment(Pageable pageable);
+    
     boolean existsByEmail(String email);
     
     List<User> findByDepartmentIdAndRole(Long departmentId, Role role);

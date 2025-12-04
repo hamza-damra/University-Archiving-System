@@ -123,8 +123,8 @@ public class AdminController {
                 // Filter by role only
                 users = userService.getAllProfessors(pageable);
             } else {
-                // Get all users - we need to add this method or use repository directly
-                users = userRepository.findAll(pageable)
+                // Get all users with department eagerly loaded to avoid LazyInitializationException
+                users = userRepository.findAllWithDepartment(pageable)
                         .map(user -> {
                             UserResponse response = new UserResponse();
                             response.setId(user.getId());

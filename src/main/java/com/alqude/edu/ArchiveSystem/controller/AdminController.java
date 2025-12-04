@@ -114,34 +114,52 @@ public class AdminController {
         
         try {
             Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-            Page<UserResponse> users;
+            Page<User> usersPage;
             
-            if (role != null && departmentId != null) {
-                // Filter by both role and department
-                users = userService.getProfessorsByDepartment(departmentId, pageable);
+            // Apply filters based on what's provided
+            if (role != null && departmentId != null && isActive != null) {
+                // All three filters
+                usersPage = userRepository.findByRoleAndDepartmentIdAndIsActiveWithDepartment(role, departmentId, isActive, pageable);
+            } else if (role != null && departmentId != null) {
+                // Role + Department
+                usersPage = userRepository.findByRoleAndDepartmentIdWithDepartment(role, departmentId, pageable);
+            } else if (role != null && isActive != null) {
+                // Role + Active status
+                usersPage = userRepository.findByRoleAndIsActiveWithDepartment(role, isActive, pageable);
+            } else if (departmentId != null && isActive != null) {
+                // Department + Active status
+                usersPage = userRepository.findByDepartmentIdAndIsActiveWithDepartment(departmentId, isActive, pageable);
             } else if (role != null) {
-                // Filter by role only
-                users = userService.getAllProfessors(pageable);
+                // Role only
+                usersPage = userRepository.findByRoleWithDepartment(role, pageable);
+            } else if (departmentId != null) {
+                // Department only
+                usersPage = userRepository.findByDepartmentIdWithDepartment(departmentId, pageable);
+            } else if (isActive != null) {
+                // Active status only
+                usersPage = userRepository.findByIsActiveWithDepartment(isActive, pageable);
             } else {
-                // Get all users with department eagerly loaded to avoid LazyInitializationException
-                users = userRepository.findAllWithDepartment(pageable)
-                        .map(user -> {
-                            UserResponse response = new UserResponse();
-                            response.setId(user.getId());
-                            response.setEmail(user.getEmail());
-                            response.setFirstName(user.getFirstName());
-                            response.setLastName(user.getLastName());
-                            response.setRole(user.getRole());
-                            response.setIsActive(user.getIsActive());
-                            response.setCreatedAt(user.getCreatedAt());
-                            response.setUpdatedAt(user.getUpdatedAt());
-                            if (user.getDepartment() != null) {
-                                response.setDepartmentId(user.getDepartment().getId());
-                                response.setDepartmentName(user.getDepartment().getName());
-                            }
-                            return response;
-                        });
+                // No filters - get all users
+                usersPage = userRepository.findAllWithDepartment(pageable);
             }
+            
+            // Map to UserResponse
+            Page<UserResponse> users = usersPage.map(user -> {
+                UserResponse response = new UserResponse();
+                response.setId(user.getId());
+                response.setEmail(user.getEmail());
+                response.setFirstName(user.getFirstName());
+                response.setLastName(user.getLastName());
+                response.setRole(user.getRole());
+                response.setIsActive(user.getIsActive());
+                response.setCreatedAt(user.getCreatedAt());
+                response.setUpdatedAt(user.getUpdatedAt());
+                if (user.getDepartment() != null) {
+                    response.setDepartmentId(user.getDepartment().getId());
+                    response.setDepartmentName(user.getDepartment().getName());
+                }
+                return response;
+            });
             
             return ResponseEntity.ok(ApiResponse.success("Users retrieved successfully", users));
         } catch (Exception e) {

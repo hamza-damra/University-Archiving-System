@@ -680,3 +680,21 @@
 .admin-modal .p-4 {
     overflow: visible;
 }
+
+/* Ensure modal content doesn't clip dropdown menus */
+.admin-modal form,
+.admin-modal .space-y-4,
+.admin-modal .grid {
+    overflow: visible;
+}
+
+/* Force dropdown menu to have proper z-index in modals */
+.admin-modal .modern-dropdown-menu {
+    z-index: 10000;
+}
+
+/* Ensure dropdown-above works properly in modals */
+.admin-modal .modern-dropdown-wrapper.dropdown-above .modern-dropdown-menu {
+    bottom: calc(100% + 8px);
+    top: auto;
+}

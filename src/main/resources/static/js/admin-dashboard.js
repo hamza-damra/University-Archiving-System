@@ -769,22 +769,26 @@ class AdminDashboardPage {
                 console.log('[AdminDashboard] Department input event fired. New value:', e.target.value);
                 this.updateEmailForHod();
             });
-            
-            // Observe for any attribute/value changes via MutationObserver as fallback
-            const observer = new MutationObserver((mutations) => {
-                console.log('[AdminDashboard] MutationObserver detected change on department select');
-                const role = document.getElementById('userRole')?.value;
-                if (role === 'ROLE_HOD') {
-                    this.updateEmailForHod();
-                }
-            });
-            observer.observe(userDepartmentSelect, { 
-                attributes: true, 
-                attributeFilter: ['value'],
-                childList: true,
-                subtree: true
-            });
         }
+        
+        // Listen for clicks on modern dropdown options for department (event delegation)
+        document.addEventListener('click', (e) => {
+            const option = e.target.closest('.modern-dropdown-option');
+            if (option) {
+                const wrapper = option.closest('.modern-dropdown-wrapper');
+                if (wrapper) {
+                    const select = wrapper.previousElementSibling;
+                    // Check if this is the userDepartment select
+                    if (select && select.id === 'userDepartment') {
+                        // Wait a tick for the value to update
+                        setTimeout(() => {
+                            console.log('[AdminDashboard] Department dropdown option clicked, value:', select.value);
+                            this.updateEmailForHod();
+                        }, 50);
+                    }
+                }
+            }
+        });
         
         // Form submission
         const userForm = document.getElementById('userForm');
@@ -869,8 +873,15 @@ class AdminDashboardPage {
      * Update email for HOD based on department selection
      */
     updateEmailForHod() {
-        const role = document.getElementById('userRole')?.value;
-        if (role !== 'ROLE_HOD') return;
+        const roleSelect = document.getElementById('userRole');
+        const role = roleSelect?.value;
+        
+        console.log('[AdminDashboard] updateEmailForHod called - Role:', role, 'selectedIndex:', roleSelect?.selectedIndex);
+        
+        if (role !== 'ROLE_HOD') {
+            console.log('[AdminDashboard] updateEmailForHod - Not HOD role, skipping');
+            return;
+        }
         
         const departmentSelect = document.getElementById('userDepartment');
         const emailDomainSpan = document.getElementById('userEmailDomain');
@@ -1074,7 +1085,10 @@ class AdminDashboardPage {
             
             // Also set the native select properties
             departmentSelect.disabled = !config.departmentEnabled;
-            departmentSelect.required = config.departmentRequired;
+            // Don't set required on hidden select - we validate manually in form submit
+            // departmentSelect.required = config.departmentRequired;
+            // Store the required state as a data attribute for manual validation
+            departmentSelect.dataset.required = config.departmentRequired ? 'true' : 'false';
             
             if (!config.departmentEnabled) {
                 departmentSelect.value = ''; // Clear selection
@@ -1179,7 +1193,8 @@ class AdminDashboardPage {
         }
         if (departmentSelect) {
             departmentSelect.value = '';
-            departmentSelect.required = false;
+            departmentSelect.removeAttribute('required'); // Remove required from hidden select
+            departmentSelect.dataset.required = 'false';
             departmentSelect.disabled = false;
             
             // Use modern dropdown API if available
@@ -1298,6 +1313,20 @@ class AdminDashboardPage {
         if (departmentField) { departmentField.disabled = false; departmentField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         if (isActiveField) { isActiveField.disabled = false; isActiveField.classList.remove('opacity-50', 'cursor-not-allowed'); }
         
+        // Reset the role dropdown to empty value and refresh modern dropdown UI
+        if (roleField) {
+            roleField.value = '';
+            roleField.selectedIndex = 0;
+            this.refreshDropdown(roleField);
+        }
+        
+        // Reset department dropdown
+        if (departmentField) {
+            departmentField.value = '';
+            departmentField.selectedIndex = 0;
+            this.refreshDropdown(departmentField);
+        }
+        
         // Set default active state
         const isActiveCheckbox = document.getElementById('userIsActive');
         if (isActiveCheckbox) isActiveCheckbox.checked = true;
@@ -1306,11 +1335,14 @@ class AdminDashboardPage {
             modal.classList.remove('hidden');
             modal.classList.add('active');
             
-            // Initialize modern dropdowns in modal after it's visible
+            // Initialize modern dropdowns in modal after it's visible (if not already initialized)
             setTimeout(() => {
                 if (typeof window.initModernDropdowns === 'function') {
                     window.initModernDropdowns('#userRole, #userDepartment');
                 }
+                // Refresh dropdowns to show correct display text
+                this.refreshDropdown(roleField);
+                this.refreshDropdown(departmentField);
                 // Re-apply reset after dropdowns are initialized to ensure proper state
                 this.resetDepartmentField();
             }, 50);
@@ -1463,10 +1495,46 @@ class AdminDashboardPage {
      */
     closeUserModal() {
         const modal = document.getElementById('userModal');
+        const form = document.getElementById('userForm');
+        
         if (modal) {
             modal.classList.remove('active');
             modal.classList.add('hidden');
         }
+        
+        // Reset the form completely
+        if (form) {
+            form.reset();
+        }
+        
+        // Reset all fields and dropdowns
+        this.resetEmailFields();
+        this.resetDepartmentField();
+        
+        // Reset role dropdown to initial state
+        const roleField = document.getElementById('userRole');
+        if (roleField) {
+            roleField.value = '';
+            roleField.selectedIndex = 0;
+            this.refreshDropdown(roleField);
+        }
+        
+        // Reset department dropdown
+        const departmentField = document.getElementById('userDepartment');
+        if (departmentField) {
+            departmentField.value = '';
+            departmentField.selectedIndex = 0;
+            departmentField.disabled = false;
+            if (typeof window.setModernDropdownDisabled === 'function') {
+                window.setModernDropdownDisabled(departmentField, false);
+            }
+            this.refreshDropdown(departmentField);
+        }
+        
+        // Clear hidden email field
+        const emailHidden = document.getElementById('userEmail');
+        if (emailHidden) emailHidden.value = '';
+        
         this.editingUserId = null;
     }
 
@@ -1555,7 +1623,14 @@ class AdminDashboardPage {
         }
         
         // Validate role is selected
-        const role = document.getElementById('userRole').value;
+        const roleSelect = document.getElementById('userRole');
+        const role = roleSelect.value;
+        console.log('[AdminDashboard] Form submit - Role validation:', {
+            roleSelectElement: roleSelect,
+            roleValue: role,
+            selectedIndex: roleSelect.selectedIndex,
+            options: Array.from(roleSelect.options).map(o => ({ value: o.value, text: o.text, selected: o.selected }))
+        });
         if (!role) {
             showToast('Please select a role', 'error');
             return;

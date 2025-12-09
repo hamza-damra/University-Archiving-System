@@ -2342,6 +2342,19 @@ tbody tr:hover .file-metadata-badge {
     transform: translateY(0);
 }
 
+/* Dropdown opening above (when no space below) */
+.modern-dropdown-wrapper.dropdown-above .modern-dropdown-menu {
+    top: auto;
+    bottom: calc(100% + 8px);
+    transform: translateY(10px); /* Animate from below when opening above */
+}
+
+.modern-dropdown-wrapper.dropdown-above.open .modern-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
 /* Menu Arrow/Pointer */
 .modern-dropdown-menu::before {
     content: '';
@@ -2355,6 +2368,11 @@ tbody tr:hover .file-metadata-badge {
     border-top: 1.5px solid var(--border-primary);
     transform: rotate(45deg);
     z-index: 1;
+}
+
+/* Arrow for dropdown opening above */
+.modern-dropdown-wrapper.dropdown-above .modern-dropdown-menu::before {
+    display: none; /* Hide the arrow when dropdown opens above */
 }
 
 /* Dropdown Option */
@@ -2473,6 +2491,12 @@ tbody tr:hover .file-metadata-badge {
 }
 
 .dark .modern-dropdown-menu::before {
+    background-color: var(--bg-tertiary);
+    border-color: var(--border-primary);
+}
+
+/* Dark mode for dropdown opening above */
+.dark .modern-dropdown-wrapper.dropdown-above .modern-dropdown-menu::before {
     background-color: var(--bg-tertiary);
     border-color: var(--border-primary);
 }

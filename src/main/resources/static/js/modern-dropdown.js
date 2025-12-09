@@ -257,6 +257,12 @@ class ModernDropdown {
         this.wrapper.setAttribute('aria-expanded', 'true');
         this.toggle.classList.add('active');
         
+        // Check if there's enough space below, if not, open above
+        // Use requestAnimationFrame to ensure DOM is updated before measuring
+        requestAnimationFrame(() => {
+            this.positionDropdown();
+        });
+        
         // Focus selected option
         const selectedOption = this.optionElements[this.selectedIndex];
         if (selectedOption) {
@@ -264,11 +270,78 @@ class ModernDropdown {
         }
     }
 
+    /**
+     * Position dropdown above or below based on available viewport space
+     */
+    positionDropdown() {
+        // Remove any existing position classes first
+        this.wrapper.classList.remove('dropdown-above', 'dropdown-below');
+        this.menu.style.top = '';
+        this.menu.style.bottom = '';
+        
+        // Temporarily make menu visible to get accurate height measurement
+        const originalVisibility = this.menu.style.visibility;
+        const originalOpacity = this.menu.style.opacity;
+        const originalDisplay = this.menu.style.display;
+        
+        this.menu.style.visibility = 'hidden';
+        this.menu.style.opacity = '0';
+        this.menu.style.display = 'block';
+        
+        // Get the menu height
+        const menuHeight = Math.min(this.menu.offsetHeight || this.menu.scrollHeight || 280, 280);
+        
+        // Restore original styles
+        this.menu.style.visibility = originalVisibility;
+        this.menu.style.opacity = originalOpacity;
+        this.menu.style.display = originalDisplay;
+        
+        // Get viewport and element dimensions
+        const toggleRect = this.toggle.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        
+        // Calculate space below and above the toggle button
+        const spaceBelow = viewportHeight - toggleRect.bottom;
+        const spaceAbove = toggleRect.top;
+        
+        // Add padding for visual comfort
+        const padding = 16;
+        
+        console.log('[ModernDropdown] Positioning:', {
+            menuHeight,
+            spaceBelow,
+            spaceAbove,
+            toggleBottom: toggleRect.bottom,
+            viewportHeight,
+            needsAbove: spaceBelow < menuHeight + padding
+        });
+        
+        // Check if there's NOT enough space below - if so, try to open above
+        if (spaceBelow < menuHeight + padding && spaceAbove > spaceBelow) {
+            // Open above - there's more space above than below
+            this.wrapper.classList.add('dropdown-above');
+            this.menu.style.bottom = 'calc(100% + 8px)';
+            this.menu.style.top = 'auto';
+            console.log('[ModernDropdown] Opening ABOVE');
+        } else {
+            // Open below (default)
+            this.wrapper.classList.add('dropdown-below');
+            this.menu.style.top = 'calc(100% + 8px)';
+            this.menu.style.bottom = 'auto';
+            console.log('[ModernDropdown] Opening BELOW');
+        }
+    }
+
     closeDropdown() {
         this.isOpen = false;
         this.wrapper.classList.remove('open');
+        this.wrapper.classList.remove('dropdown-above', 'dropdown-below');
         this.wrapper.setAttribute('aria-expanded', 'false');
         this.toggle.classList.remove('active');
+        
+        // Reset menu position styles
+        this.menu.style.top = '';
+        this.menu.style.bottom = '';
     }
 
     selectOption(index) {
@@ -280,9 +353,25 @@ class ModernDropdown {
         this.selectedIndex = index;
         this.select.selectedIndex = index;
         
-        // Trigger change event on original select
-        const event = new Event('change', { bubbles: true });
-        this.select.dispatchEvent(event);
+        // Also explicitly set the value property
+        const selectedOption = this.select.options[index];
+        if (selectedOption) {
+            this.select.value = selectedOption.value;
+        }
+        
+        console.log('[ModernDropdown] Option selected:', {
+            index,
+            value: this.select.value,
+            selectedIndex: this.select.selectedIndex,
+            selectId: this.select.id
+        });
+        
+        // Trigger both change and input events on original select
+        const changeEvent = new Event('change', { bubbles: true });
+        this.select.dispatchEvent(changeEvent);
+        
+        const inputEvent = new Event('input', { bubbles: true });
+        this.select.dispatchEvent(inputEvent);
         
         this.updateDisplay();
         this.updateSelectedOption();

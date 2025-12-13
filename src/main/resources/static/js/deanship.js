@@ -1693,12 +1693,17 @@ window.deanship.deleteProfessor = function (profId, btnElement) {
 async function loadCourses() {
     console.log('loadCourses: Starting...');
     const tbody = document.getElementById('coursesTableBody');
+    const tableWrapper = document.getElementById('coursesTableWrapper');
+    const tableContainer = document.getElementById('coursesTableContainer');
 
-    // Show skeleton loader
+    // Show skeleton loader - check both original tbody and enhanced table wrapper
     if (tbody) {
         tbody.innerHTML = SkeletonLoader.table(5, 6);
-    } else {
-        console.error('loadCourses: coursesTableBody not found!');
+    } else if (tableWrapper) {
+        // Enhanced table is active, show skeleton in wrapper
+        tableWrapper.innerHTML = `<div class="p-4">${SkeletonLoader.table(5, 6)}</div>`;
+    } else if (!tableContainer) {
+        console.error('loadCourses: No table container found!');
         return;
     }
 
@@ -1739,13 +1744,21 @@ async function loadCourses() {
     } catch (error) {
         console.error('Error loading courses:', error);
         showToast('Failed to load courses', 'error');
-        if (tbody) {
-            tbody.innerHTML = `
+        const currentTbody = document.getElementById('coursesTableBody');
+        const currentWrapper = document.getElementById('coursesTableWrapper');
+        if (currentTbody) {
+            currentTbody.innerHTML = `
                 <tr>
                     <td colspan="6" class="px-6 py-8 text-center text-red-500">
                         Failed to load courses. Please try again.
                     </td>
                 </tr>
+            `;
+        } else if (currentWrapper) {
+            currentWrapper.innerHTML = `
+                <div class="px-6 py-8 text-center text-red-500">
+                    Failed to load courses. Please try again.
+                </div>
             `;
         }
     }

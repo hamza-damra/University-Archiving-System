@@ -1272,8 +1272,12 @@ class AdminDashboardPage {
     /**
      * Open create user modal
      */
-    openCreateUserModal() {
+    async openCreateUserModal() {
         this.editingUserId = null;
+        
+        // Reload departments to ensure we have the latest list
+        await this.loadDepartmentsForFilters();
+        
         const modal = document.getElementById('userModal');
         const modalTitle = document.getElementById('userModalTitle');
         const submitBtn = document.getElementById('userSubmitBtn');
@@ -1507,11 +1511,7 @@ class AdminDashboardPage {
             form.reset();
         }
         
-        // Reset all fields and dropdowns
-        this.resetEmailFields();
-        this.resetDepartmentField();
-        
-        // Reset role dropdown to initial state
+        // Reset role dropdown FIRST (before resetting department)
         const roleField = document.getElementById('userRole');
         if (roleField) {
             roleField.value = '';
@@ -1519,21 +1519,84 @@ class AdminDashboardPage {
             this.refreshDropdown(roleField);
         }
         
-        // Reset department dropdown
+        // Reset all fields and dropdowns
+        this.resetEmailFields();
+        this.resetDepartmentField();
+        
+        // Reset department dropdown and ensure it's enabled
         const departmentField = document.getElementById('userDepartment');
         if (departmentField) {
             departmentField.value = '';
             departmentField.selectedIndex = 0;
             departmentField.disabled = false;
+            
+            // Ensure modern dropdown is enabled
             if (typeof window.setModernDropdownDisabled === 'function') {
                 window.setModernDropdownDisabled(departmentField, false);
             }
+            
+            // Also reset the visual state of the wrapper directly
+            const wrapper = departmentField.nextElementSibling;
+            if (wrapper && wrapper.classList.contains('modern-dropdown-wrapper')) {
+                wrapper.classList.remove('disabled');
+                wrapper.style.pointerEvents = '';
+                wrapper.style.opacity = '';
+                const toggle = wrapper.querySelector('.modern-dropdown-toggle');
+                if (toggle) {
+                    toggle.disabled = false;
+                    toggle.style.cursor = '';
+                    toggle.style.backgroundColor = '';
+                }
+            }
+            
             this.refreshDropdown(departmentField);
+        }
+        
+        // Reset first/last name fields to enabled state
+        const firstNameField = document.getElementById('userFirstName');
+        const lastNameField = document.getElementById('userLastName');
+        if (firstNameField) {
+            firstNameField.value = '';
+            firstNameField.disabled = false;
+            firstNameField.readOnly = false;
+            firstNameField.style.removeProperty('pointer-events');
+            firstNameField.style.removeProperty('opacity');
+            firstNameField.style.removeProperty('background-color');
+            firstNameField.style.removeProperty('color');
+            firstNameField.style.removeProperty('cursor');
+        }
+        if (lastNameField) {
+            lastNameField.value = '';
+            lastNameField.disabled = false;
+            lastNameField.readOnly = false;
+            lastNameField.style.removeProperty('pointer-events');
+            lastNameField.style.removeProperty('opacity');
+            lastNameField.style.removeProperty('background-color');
+            lastNameField.style.removeProperty('color');
+            lastNameField.style.removeProperty('cursor');
+        }
+        
+        // Clear password field
+        const passwordField = document.getElementById('userPassword');
+        if (passwordField) {
+            passwordField.value = '';
+        }
+        
+        // Reset active checkbox
+        const isActiveCheckbox = document.getElementById('userIsActive');
+        if (isActiveCheckbox) {
+            isActiveCheckbox.checked = true;
         }
         
         // Clear hidden email field
         const emailHidden = document.getElementById('userEmail');
         if (emailHidden) emailHidden.value = '';
+        
+        // Clear email prefix field
+        const emailPrefixField = document.getElementById('userEmailPrefix');
+        if (emailPrefixField) {
+            emailPrefixField.value = '';
+        }
         
         this.editingUserId = null;
     }
@@ -1699,7 +1762,14 @@ class AdminDashboardPage {
             
         } catch (error) {
             console.error('[AdminDashboard] User form error:', error);
-            showToast(error.message || 'Failed to save user', 'error');
+            // Use formatted validation errors for better user feedback
+            const errorMessage = error.formattedMessage || error.message || 'Failed to save user';
+            // Check for password-related validation errors and show professional message
+            if (errorMessage.toLowerCase().includes('password')) {
+                showToast('⚠️ Password Requirements\n\n• Minimum 8 characters\n• Include uppercase & lowercase letters\n• Include at least one number\n• Include a special character (!@#$%^&*)', 'warning', 10000);
+            } else {
+                showToast(errorMessage, 'error');
+            }
         } finally {
             restoreButton();
         }

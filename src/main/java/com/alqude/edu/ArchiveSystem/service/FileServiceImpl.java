@@ -137,7 +137,7 @@ public class FileServiceImpl implements FileService {
         List<UploadedFile> uploadedFiles = new ArrayList<>();
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
-            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i);
+            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i, currentUser);
             uploadedFiles.add(uploadedFile);
         }
 
@@ -211,7 +211,7 @@ public class FileServiceImpl implements FileService {
 
         for (int i = 0; i < files.size(); i++) {
             MultipartFile file = files.get(i);
-            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i);
+            UploadedFile uploadedFile = saveFile(file, submission, courseAssignment, i, currentUser);
             newFiles.add(uploadedFile);
         }
 
@@ -458,7 +458,7 @@ public class FileServiceImpl implements FileService {
     }
 
     private UploadedFile saveFile(MultipartFile file, DocumentSubmission submission,
-            CourseAssignment courseAssignment, int order) {
+            CourseAssignment courseAssignment, int order, User uploader) {
         try {
             // Get metadata for path generation
             Semester semester = courseAssignment.getSemester();
@@ -486,6 +486,7 @@ public class FileServiceImpl implements FileService {
             uploadedFile.setFileSize(file.getSize());
             uploadedFile.setFileType(file.getContentType());
             uploadedFile.setFileOrder(order);
+            uploadedFile.setUploader(uploader); // Set the uploader for permission checking
 
             uploadedFile = uploadedFileRepository.save(uploadedFile);
             log.debug("Saved file: {} with ID: {}", file.getOriginalFilename(), uploadedFile.getId());

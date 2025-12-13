@@ -1,6 +1,7 @@
 package com.alqude.edu.ArchiveSystem.service;
 
 import com.alqude.edu.ArchiveSystem.dto.fileexplorer.FileMetadataDTO;
+import com.alqude.edu.ArchiveSystem.entity.DocumentSubmission;
 import com.alqude.edu.ArchiveSystem.entity.Role;
 import com.alqude.edu.ArchiveSystem.entity.UploadedFile;
 import com.alqude.edu.ArchiveSystem.entity.User;
@@ -306,10 +307,30 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         // Fallback: Check if the file's physical path contains the professor's ID
         // This handles legacy files that may not have proper folder/uploader associations
-        if (user.getRole() == Role.ROLE_PROFESSOR && user.getProfessorId() != null) {
+        if (user.getRole() == Role.ROLE_PROFESSOR) {
             String fileUrl = file.getFileUrl();
-            if (fileUrl != null && fileUrl.contains(user.getProfessorId())) {
-                log.info("File path contains professor ID {} - granting access", user.getProfessorId());
+            if (fileUrl != null) {
+                // Check for professorId if set
+                if (user.getProfessorId() != null && fileUrl.contains(user.getProfessorId())) {
+                    log.info("File path contains professor ID {} - granting access", user.getProfessorId());
+                    return true;
+                }
+                // Check for fallback format "prof_<userId>"
+                String fallbackId = "prof_" + user.getId();
+                if (fileUrl.contains(fallbackId)) {
+                    log.info("File path contains fallback ID {} - granting access", fallbackId);
+                    return true;
+                }
+            }
+        }
+        
+        // Also check via document submission if the file is linked to a course assignment
+        // where the current professor is assigned
+        if (file.getDocumentSubmission() != null && user.getRole() == Role.ROLE_PROFESSOR) {
+            DocumentSubmission submission = file.getDocumentSubmission();
+            if (submission.getProfessor() != null && 
+                submission.getProfessor().getId().equals(user.getId())) {
+                log.info("User is the professor on the document submission - granting access");
                 return true;
             }
         }

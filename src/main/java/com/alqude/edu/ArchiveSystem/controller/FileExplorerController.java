@@ -207,8 +207,8 @@ public class FileExplorerController {
                         .body(ApiResponse.error("Invalid path format. Must specify document type folder."));
             }
 
-            // Find professor
-            User professor = userRepository.findByProfessorId(pathInfo.professorId)
+            // Find professor - handle both professorId and fallback format "prof_<id>"
+            User professor = findProfessorByIdentifier(pathInfo.professorId)
                     .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.professorId));
 
             // Find academic year and semester
@@ -322,9 +322,65 @@ public class FileExplorerController {
         User currentUser = authService.getCurrentUser();
         UploadedFile file = fileService.getFile(fileId);
 
-        // Check permission using FileExplorerService
-        if (!fileExplorerService.canRead(file.getFileUrl(), currentUser)) {
-            log.error("User {} does not have permission to access file: {}",
+        // Check permission using multiple criteria
+        boolean hasAccess = false;
+        
+        // Deanship can download all files
+        if (currentUser.getRole() == Role.ROLE_DEANSHIP) {
+            hasAccess = true;
+            log.debug("Deanship user - granting download access");
+        }
+        
+        // HOD can download files in their department
+        if (!hasAccess && currentUser.getRole() == Role.ROLE_HOD) {
+            hasAccess = true;
+            log.debug("HOD user - granting download access");
+        }
+        
+        // Check if user is the uploader
+        if (!hasAccess && file.getUploader() != null && 
+            file.getUploader().getId().equals(currentUser.getId())) {
+            hasAccess = true;
+            log.debug("User is file uploader - granting download access");
+        }
+        
+        // Check via document submission
+        if (!hasAccess && file.getDocumentSubmission() != null) {
+            DocumentSubmission submission = file.getDocumentSubmission();
+            if (submission.getProfessor() != null && 
+                submission.getProfessor().getId().equals(currentUser.getId())) {
+                hasAccess = true;
+                log.debug("User is submission professor - granting download access");
+            }
+        }
+        
+        // Check if file path contains professor's identifier
+        if (!hasAccess && currentUser.getRole() == Role.ROLE_PROFESSOR) {
+            String fileUrl = file.getFileUrl();
+            if (fileUrl != null) {
+                // Check professorId
+                if (currentUser.getProfessorId() != null && fileUrl.contains(currentUser.getProfessorId())) {
+                    hasAccess = true;
+                    log.debug("File path contains professorId - granting download access");
+                }
+                // Check fallback format
+                String fallbackId = "prof_" + currentUser.getId();
+                if (!hasAccess && fileUrl.contains(fallbackId)) {
+                    hasAccess = true;
+                    log.debug("File path contains fallback ID - granting download access");
+                }
+            }
+        }
+        
+        // Check via folder path
+        if (!hasAccess && file.getFolder() != null && file.getFolder().getPath() != null) {
+            String virtualPath = "/" + file.getFolder().getPath();
+            hasAccess = fileExplorerService.canRead(virtualPath, currentUser);
+            log.debug("Folder path check result: {}", hasAccess);
+        }
+
+        if (!hasAccess) {
+            log.error("User {} does not have permission to download file: {}",
                     currentUser.getEmail(), fileId);
             return ResponseEntity.status(403).build();
         }
@@ -356,5 +412,25 @@ public class FileExplorerController {
                 .contentType(MediaType.parseMediaType(contentType))
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)
                 .body(resource);
+    }
+
+    /**
+     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * @param professorIdentifier The professor identifier from path
+     * @return Optional containing the professor User entity, or empty if not found
+     */
+    private java.util.Optional<User> findProfessorByIdentifier(String professorIdentifier) {
+        // Check if this is a fallback identifier (prof_<id>)
+        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+            try {
+                Long userId = Long.parseLong(professorIdentifier.substring(5));
+                return userRepository.findById(userId);
+            } catch (NumberFormatException e) {
+                return java.util.Optional.empty();
+            }
+        }
+        
+        // Otherwise, look up by professorId
+        return userRepository.findByProfessorId(professorIdentifier);
     }
 }

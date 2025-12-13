@@ -489,8 +489,8 @@
     <!-- Mobile Sidebar Overlay -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden md:hidden"></div>
 
-    <!-- Toast Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+    <!-- Toast Container - z-index higher than modals (1000) -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2" style="z-index: 100000;"></div>
 
     <!-- Modals Container -->
     <div id="modalsContainer">

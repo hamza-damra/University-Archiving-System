@@ -466,11 +466,18 @@ public class FileServiceImpl implements FileService {
             Course course = courseAssignment.getCourse();
             User professor = courseAssignment.getProfessor();
 
+            // Use professorId if available, otherwise fallback to "prof_<userId>"
+            String professorIdStr = professor.getProfessorId();
+            if (professorIdStr == null || professorIdStr.trim().isEmpty()) {
+                professorIdStr = "prof_" + professor.getId();
+                log.info("Professor {} has no professorId, using fallback: {}", professor.getName(), professorIdStr);
+            }
+
             // Generate file path
             String filePath = generateFilePath(
                     academicYear.getYearCode(),
                     semester.getType().name(),
-                    professor.getProfessorId(),
+                    professorIdStr,
                     course.getCourseCode(),
                     submission.getDocumentType(),
                     file.getOriginalFilename());

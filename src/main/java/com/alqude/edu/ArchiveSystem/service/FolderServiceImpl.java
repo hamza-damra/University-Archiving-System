@@ -48,6 +48,31 @@ public class FolderServiceImpl implements FolderService {
             "Assignments"
     };
 
+    /**
+     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * @param professorIdentifier The professor identifier from path
+     * @return The professor User entity
+     * @throws EntityNotFoundException if professor not found
+     */
+    private User findProfessorByIdentifier(String professorIdentifier) {
+        // Check if this is a fallback identifier (prof_<id>)
+        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+            try {
+                Long userId = Long.parseLong(professorIdentifier.substring(5));
+                return userRepository.findById(userId)
+                        .orElseThrow(() -> new EntityNotFoundException(
+                                "Professor not found with id: " + userId));
+            } catch (NumberFormatException e) {
+                throw new EntityNotFoundException("Invalid professor identifier format: " + professorIdentifier);
+            }
+        }
+        
+        // Otherwise, look up by professorId
+        return userRepository.findByProfessorId(professorIdentifier)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Professor not found: " + professorIdentifier));
+    }
+
     @Override
     @Transactional
     public Folder createProfessorFolder(Long professorId, Long academicYearId, Long semesterId) {
@@ -85,7 +110,12 @@ public class FolderServiceImpl implements FolderService {
         // Generate folder path: {yearCode}/{semesterType}/{professorId}
         String yearCode = academicYear.getYearCode();
         String semesterType = semester.getType().name().toLowerCase();
+        // Use professorId if available, otherwise fallback to "prof_<userId>"
         String professorIdStr = professor.getProfessorId();
+        if (professorIdStr == null || professorIdStr.trim().isEmpty()) {
+            professorIdStr = "prof_" + professor.getId();
+            log.info("Professor {} has no professorId, using fallback: {}", professor.getName(), professorIdStr);
+        }
 
         String folderPath = yearCode + "/" + semesterType + "/" + professorIdStr;
         String folderName = professor.getFirstName() + " " + professor.getLastName();
@@ -320,9 +350,8 @@ public class FolderServiceImpl implements FolderService {
                         "Semester not found: " + components.getSemesterType() + " for year "
                                 + components.getAcademicYearCode()));
 
-        User professor = userRepository.findByProfessorId(components.getProfessorId())
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Professor not found: " + components.getProfessorId()));
+        // Find professor by professorId or fallback format "prof_<id>"
+        User professor = findProfessorByIdentifier(components.getProfessorId());
 
         // Verify user has permission (user must be the professor)
         if (!professor.getId().equals(userId)) {

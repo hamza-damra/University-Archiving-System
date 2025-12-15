@@ -93,6 +93,11 @@ public class User implements UserDetails {
     @JsonIgnore
     private List<Notification> notifications;
     
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    @JsonIgnore
+    private List<RefreshToken> refreshTokens;
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

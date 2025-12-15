@@ -46,7 +46,7 @@
  * role-specific configurations while maintaining visual consistency.
  */
 
-import { professor, fileExplorer, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, initializeAuth } from './api.js';
+import { professor, fileExplorer, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, initializeAuth, apiRequest } from './api.js';
 // FIX 1: Removed 'isOverdue' from imports to avoid conflict with local definition
 import { showToast, showModal, formatDate, getTimeUntil, formatFileSize } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
@@ -84,11 +84,40 @@ let fileExplorerInstance = null;
         return;
     }
     
-    const userInfo = getUserInfo();
-    if (userInfo.role !== 'ROLE_PROFESSOR') {
-        showToast('Access denied - Professor privileges required', 'error');
-        setTimeout(() => redirectToLogin('access_denied'), 2000);
-        return;
+    // Fetch fresh user info from server to validate actual role
+    try {
+        const freshUserInfo = await apiRequest('/auth/me');
+        if (freshUserInfo) {
+            // Update localStorage with fresh user info
+            const updatedUserInfo = {
+                id: freshUserInfo.userId,
+                email: freshUserInfo.email,
+                fullName: `${freshUserInfo.firstName || ''} ${freshUserInfo.lastName || ''}`.trim() || freshUserInfo.email,
+                firstName: freshUserInfo.firstName,
+                lastName: freshUserInfo.lastName,
+                role: freshUserInfo.role,
+                departmentId: freshUserInfo.departmentId,
+                departmentName: freshUserInfo.departmentName
+            };
+            localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+            
+            // Check actual role from server
+            if (freshUserInfo.role !== 'ROLE_PROFESSOR') {
+                console.error('Role mismatch: localStorage had ROLE_PROFESSOR but server says', freshUserInfo.role);
+                showToast('Access denied - Professor privileges required. Your role: ' + freshUserInfo.role, 'error');
+                setTimeout(() => redirectToLogin('access_denied'), 2000);
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch user info from server:', error);
+        // Fall back to localStorage check
+        const userInfo = getUserInfo();
+        if (userInfo.role !== 'ROLE_PROFESSOR') {
+            showToast('Access denied - Professor privileges required', 'error');
+            setTimeout(() => redirectToLogin('access_denied'), 2000);
+            return;
+        }
     }
     
     // Continue with dashboard initialization

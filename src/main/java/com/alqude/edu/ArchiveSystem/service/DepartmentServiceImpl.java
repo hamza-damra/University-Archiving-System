@@ -1,16 +1,25 @@
 package com.alqude.edu.ArchiveSystem.service;
 
+import com.alqude.edu.ArchiveSystem.entity.Course;
 import com.alqude.edu.ArchiveSystem.entity.Department;
-import com.alqude.edu.ArchiveSystem.repository.DepartmentRepository;
+import com.alqude.edu.ArchiveSystem.entity.Folder;
+import com.alqude.edu.ArchiveSystem.entity.User;
+import com.alqude.edu.ArchiveSystem.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 /**
  * Implementation of DepartmentService.
@@ -30,9 +39,31 @@ public class DepartmentServiceImpl implements DepartmentService {
     private static final Pattern VALID_SHORTCUT_PATTERN = Pattern.compile("^[a-z0-9]+$");
     
     private final DepartmentRepository departmentRepository;
+    private final UserRepository userRepository;
+    private final CourseRepository courseRepository;
+    private final FolderRepository folderRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
+    private final CourseAssignmentRepository courseAssignmentRepository;
+    private final DocumentSubmissionRepository documentSubmissionRepository;
     
-    public DepartmentServiceImpl(DepartmentRepository departmentRepository) {
+    public DepartmentServiceImpl(
+            DepartmentRepository departmentRepository, 
+            UserRepository userRepository,
+            CourseRepository courseRepository,
+            FolderRepository folderRepository,
+            UploadedFileRepository uploadedFileRepository,
+            RefreshTokenRepository refreshTokenRepository,
+            CourseAssignmentRepository courseAssignmentRepository,
+            DocumentSubmissionRepository documentSubmissionRepository) {
         this.departmentRepository = departmentRepository;
+        this.userRepository = userRepository;
+        this.courseRepository = courseRepository;
+        this.folderRepository = folderRepository;
+        this.uploadedFileRepository = uploadedFileRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
+        this.courseAssignmentRepository = courseAssignmentRepository;
+        this.documentSubmissionRepository = documentSubmissionRepository;
     }
     
     @Override
@@ -90,17 +121,157 @@ public class DepartmentServiceImpl implements DepartmentService {
     
     @Override
     public void deleteDepartment(Long id) {
-        logger.info("Deleting department ID: {}", id);
+        logger.info("Deleting department ID: {} with all related data", id);
         
         Department department = departmentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Department not found with ID: " + id));
         
-        // Note: HOD email reference check will be implemented in task 14.1
-        // For now, just delete the department
+        // Get all users in this department
+        List<User> usersInDepartment = userRepository.findByDepartmentId(id);
+        logger.info("Found {} users in department ID: {}", usersInDepartment.size(), id);
         
+        // Delete all data related to each user
+        for (User user : usersInDepartment) {
+            deleteUserData(user);
+        }
+        
+        // Delete all courses in this department
+        List<Course> coursesInDepartment = courseRepository.findByDepartmentId(id);
+        logger.info("Deleting {} courses in department ID: {}", coursesInDepartment.size(), id);
+        for (Course course : coursesInDepartment) {
+            // Get all course assignments for this course
+            var assignments = courseAssignmentRepository.findByCourseId(course.getId());
+            for (var assignment : assignments) {
+                // Delete submissions and their files for this assignment
+                var submissions = documentSubmissionRepository.findByCourseAssignmentId(assignment.getId());
+                for (var submission : submissions) {
+                    var files = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
+                    for (var file : files) {
+                        if (file.getFileUrl() != null) {
+                            try {
+                                Path filePath = Path.of(file.getFileUrl());
+                                Files.deleteIfExists(filePath);
+                            } catch (IOException e) {
+                                logger.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                            }
+                        }
+                    }
+                    uploadedFileRepository.deleteAll(files);
+                }
+                documentSubmissionRepository.deleteAll(submissions);
+            }
+            // Delete course assignments for this course
+            courseAssignmentRepository.deleteAll(assignments);
+        }
+        courseRepository.deleteAll(coursesInDepartment);
+        
+        // Finally delete the department
         departmentRepository.delete(department);
-        logger.info("Deleted department ID: {}", id);
+        logger.info("Successfully deleted department ID: {} with all related data", id);
+    }
+    
+    /**
+     * Delete all data related to a user including files, folders, tokens, etc.
+     */
+    private void deleteUserData(User user) {
+        Long userId = user.getId();
+        logger.info("Deleting all data for user ID: {} ({})", userId, user.getEmail());
+        
+        try {
+            // 1. First, get all document submissions for this user
+            var submissions = documentSubmissionRepository.findByProfessorId(userId);
+            logger.debug("Found {} document submissions for user ID: {}", submissions.size(), userId);
+            
+            // 2. Delete uploaded files for each submission (and from filesystem)
+            for (var submission : submissions) {
+                var filesInSubmission = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
+                for (var file : filesInSubmission) {
+                    // Delete physical file
+                    if (file.getFileUrl() != null) {
+                        try {
+                            Path filePath = Path.of(file.getFileUrl());
+                            Files.deleteIfExists(filePath);
+                            logger.debug("Deleted physical file: {}", file.getFileUrl());
+                        } catch (IOException e) {
+                            logger.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                        }
+                    }
+                }
+                uploadedFileRepository.deleteAll(filesInSubmission);
+            }
+            
+            // 3. Also delete any uploaded files by this user (not in submissions)
+            var uploadedFiles = uploadedFileRepository.findByUploaderId(userId);
+            for (var file : uploadedFiles) {
+                if (file.getFileUrl() != null) {
+                    try {
+                        Path filePath = Path.of(file.getFileUrl());
+                        Files.deleteIfExists(filePath);
+                        logger.debug("Deleted physical file: {}", file.getFileUrl());
+                    } catch (IOException e) {
+                        logger.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                    }
+                }
+            }
+            uploadedFileRepository.deleteAll(uploadedFiles);
+            logger.debug("Deleted uploaded files for user ID: {}", userId);
+            
+            // 4. Now delete document submissions for this user
+            documentSubmissionRepository.deleteAll(submissions);
+            logger.debug("Deleted document submissions for user ID: {}", userId);
+            
+            // 5. Get all course assignments for this user
+            var courseAssignments = courseAssignmentRepository.findByProfessorId(userId);
+            logger.debug("Found {} course assignments for user ID: {}", courseAssignments.size(), userId);
+            
+            // 6. For each course assignment, delete related document submissions (from other users too)
+            for (var assignment : courseAssignments) {
+                var assignmentSubmissions = documentSubmissionRepository.findByCourseAssignmentId(assignment.getId());
+                // Delete uploaded files for these submissions
+                for (var sub : assignmentSubmissions) {
+                    var filesInSub = uploadedFileRepository.findByDocumentSubmissionId(sub.getId());
+                    for (var file : filesInSub) {
+                        if (file.getFileUrl() != null) {
+                            try {
+                                Path filePath = Path.of(file.getFileUrl());
+                                Files.deleteIfExists(filePath);
+                            } catch (IOException e) {
+                                logger.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                            }
+                        }
+                    }
+                    uploadedFileRepository.deleteAll(filesInSub);
+                }
+                documentSubmissionRepository.deleteAll(assignmentSubmissions);
+            }
+            
+            // 7. Now delete course assignments
+            courseAssignmentRepository.deleteAll(courseAssignments);
+            logger.debug("Deleted course assignments for user ID: {}", userId);
+            
+            // 8. Delete folders owned by user
+            var folders = folderRepository.findByOwnerId(userId);
+            // Delete folders in reverse order (children first)
+            folders.sort((f1, f2) -> {
+                // Sort by path length descending so children are deleted first
+                return Integer.compare(f2.getPath().length(), f1.getPath().length());
+            });
+            folderRepository.deleteAll(folders);
+            logger.debug("Deleted {} folders for user ID: {}", folders.size(), userId);
+            
+            // 9. Delete refresh tokens
+            refreshTokenRepository.deleteAllByUserId(userId);
+            logger.debug("Deleted refresh tokens for user ID: {}", userId);
+            
+            // 10. Finally delete the user
+            userRepository.delete(user);
+            logger.info("Successfully deleted user ID: {} ({})", userId, user.getEmail());
+            
+        } catch (Exception e) {
+            logger.error("Error deleting data for user ID: {}", userId, e);
+            throw new RuntimeException("Failed to delete user data for user ID: " + userId, e);
+        }
     }
     
     @Override

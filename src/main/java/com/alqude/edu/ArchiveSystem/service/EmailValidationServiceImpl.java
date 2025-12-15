@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * Email format by role:
  * - ADMIN: username@admin.alquds.edu
  * - DEANSHIP: username@dean.alquds.edu
- * - HOD: hod.department_shortcut@dean.alquds.edu
+ * - HOD: hod.department_shortcut@hod.alquds.edu
  * - PROFESSOR: username@staff.alquds.edu
  */
 @Service
@@ -38,10 +38,10 @@ public class EmailValidationServiceImpl implements EmailValidationService {
     private static final String DEANSHIP_EMAIL_SUFFIX = "@dean.alquds.edu";
     private static final String PROFESSOR_EMAIL_SUFFIX = "@staff.alquds.edu";
     
-    // HOD email pattern: hod.<shortcut>@dean.alquds.edu
+    // HOD email pattern: hod.<shortcut>@hod.alquds.edu
     // Shortcut must be lowercase alphanumeric
     private static final Pattern HOD_EMAIL_PATTERN = Pattern.compile(
-        "^hod\\.([a-z0-9]+)@dean\\.alquds\\.edu$",
+        "^hod\\.([a-z0-9]+)@hod\\.alquds\\.edu$",
         Pattern.CASE_INSENSITIVE
     );
     
@@ -141,7 +141,7 @@ public class EmailValidationServiceImpl implements EmailValidationService {
         if (email == null || email.trim().isEmpty()) {
             throw new ValidationException(
                 INVALID_HOD_EMAIL_FORMAT,
-                "HOD email must be in the format hod.<department_shortcut>@dean.alquds.edu",
+                "HOD email must be in the format hod.<department_shortcut>@hod.alquds.edu",
                 Map.of("email", "Email is required")
             );
         }
@@ -154,8 +154,8 @@ public class EmailValidationServiceImpl implements EmailValidationService {
             log.warn("Invalid HOD email format: {}", email);
             throw new ValidationException(
                 INVALID_HOD_EMAIL_FORMAT,
-                "HOD email must be in the format hod.<department_shortcut>@dean.alquds.edu",
-                Map.of("email", "HOD email must be in the format hod.<department_shortcut>@dean.alquds.edu")
+                "HOD email must be in the format hod.<department_shortcut>@hod.alquds.edu",
+                Map.of("email", "HOD email must be in the format hod.<department_shortcut>@hod.alquds.edu")
             );
         }
         

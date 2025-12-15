@@ -2,9 +2,11 @@ package com.alqude.edu.ArchiveSystem.repository;
 
 import com.alqude.edu.ArchiveSystem.entity.CourseAssignment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -61,4 +63,32 @@ public interface CourseAssignmentRepository extends JpaRepository<CourseAssignme
                         @Param("semesterId") Long semesterId,
                         @Param("courseId") Long courseId,
                         @Param("professorId") Long professorId);
+        
+        /**
+         * Find all course assignments for a professor
+         */
+        @Query("SELECT ca FROM CourseAssignment ca WHERE ca.professor.id = :professorId")
+        List<CourseAssignment> findByProfessorId(@Param("professorId") Long professorId);
+        
+        /**
+         * Find all course assignments for a course
+         */
+        @Query("SELECT ca FROM CourseAssignment ca WHERE ca.course.id = :courseId")
+        List<CourseAssignment> findByCourseId(@Param("courseId") Long courseId);
+        
+        /**
+         * Delete all course assignments for a professor
+         */
+        @Modifying
+        @Transactional
+        @Query("DELETE FROM CourseAssignment ca WHERE ca.professor.id = :professorId")
+        void deleteByProfessorId(@Param("professorId") Long professorId);
+        
+        /**
+         * Delete all course assignments for a course
+         */
+        @Modifying
+        @Transactional
+        @Query("DELETE FROM CourseAssignment ca WHERE ca.course.id = :courseId")
+        void deleteByCourseId(@Param("courseId") Long courseId);
 }

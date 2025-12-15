@@ -375,7 +375,7 @@ class AdminUsersPage {
             emailError.classList.add('visible');
             emailError.style.color = 'var(--color-info)';
         } else if (role === 'ROLE_HOD') {
-            emailError.textContent = 'HOD email must be in format: hod.<department_shortcut>@dean.alquds.edu';
+            emailError.textContent = 'HOD email must be in format: hod.<department_shortcut>@hod.alquds.edu';
             emailError.classList.add('visible');
             emailError.style.color = 'var(--color-info)';
         } else {
@@ -402,10 +402,10 @@ class AdminUsersPage {
                 errorMessage = 'Professor email must end with @stuff.alquds.edu';
             }
         } else if (role === 'ROLE_HOD') {
-            const hodPattern = /^hod\.[a-z0-9]+@dean\.alquds\.edu$/;
+            const hodPattern = /^hod\.[a-z0-9]+@hod\.alquds\.edu$/;
             if (!hodPattern.test(email)) {
                 isValid = false;
-                errorMessage = 'HOD email must be in format: hod.<department_shortcut>@dean.alquds.edu';
+                errorMessage = 'HOD email must be in format: hod.<department_shortcut>@hod.alquds.edu';
             }
         }
         

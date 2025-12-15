@@ -7,7 +7,7 @@ package com.alqude.edu.ArchiveSystem.service;
  * Email format by role:
  * - ADMIN: username@admin.alquds.edu
  * - DEANSHIP: username@dean.alquds.edu
- * - HOD: hod.department_shortcut@dean.alquds.edu
+ * - HOD: hod.department_shortcut@hod.alquds.edu
  * - PROFESSOR: username@staff.alquds.edu
  */
 public interface EmailValidationService {
@@ -41,7 +41,7 @@ public interface EmailValidationService {
     
     /**
      * Validates HOD email format and department shortcut.
-     * HOD emails must follow the pattern hod.<department_shortcut>@dean.alquds.edu
+     * HOD emails must follow the pattern hod.<department_shortcut>@hod.alquds.edu
      * 
      * @param email The email to validate
      * @throws com.alqude.edu.ArchiveSystem.exception.ValidationException if email doesn't match pattern or shortcut doesn't exist
@@ -84,7 +84,7 @@ public interface EmailValidationService {
      * Checks if an email is a valid HOD email format.
      * 
      * @param email The email to check
-     * @return true if email matches pattern hod.<shortcut>@dean.alquds.edu
+     * @return true if email matches pattern hod.<shortcut>@hod.alquds.edu
      */
     boolean isValidHodEmailFormat(String email);
 }

@@ -99,4 +99,12 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
      * @return list of child folders
      */
     List<Folder> findByParentId(Long parentId);
+    
+    /**
+     * Find all folders owned by a specific user.
+     *
+     * @param ownerId the owner user ID
+     * @return list of folders owned by the user
+     */
+    List<Folder> findByOwnerId(Long ownerId);
 }

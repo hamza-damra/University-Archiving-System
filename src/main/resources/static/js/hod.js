@@ -2,7 +2,7 @@
  * HOD Dashboard
  */
 
-import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage, initializeAuth } from './api.js';
+import { hod, deanship, getUserInfo, isAuthenticated, redirectToLogin, clearAuthData, getErrorMessage, initializeAuth, apiRequest } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
 import { FileExplorer } from './file-explorer.js';
 import { fileExplorerState } from './file-explorer-state.js';
@@ -22,11 +22,40 @@ import { hodReportsManager } from './hod-reports.js';
         return;
     }
     
-    const userInfo = getUserInfo();
-    if (userInfo.role !== 'ROLE_HOD') {
-        showToast('Access denied - HOD privileges required', 'error');
-        setTimeout(() => redirectToLogin('access_denied'), 2000);
-        return;
+    // Fetch fresh user info from server to validate actual role
+    try {
+        const freshUserInfo = await apiRequest('/auth/me');
+        if (freshUserInfo) {
+            // Update localStorage with fresh user info
+            const updatedUserInfo = {
+                id: freshUserInfo.userId,
+                email: freshUserInfo.email,
+                fullName: `${freshUserInfo.firstName || ''} ${freshUserInfo.lastName || ''}`.trim() || freshUserInfo.email,
+                firstName: freshUserInfo.firstName,
+                lastName: freshUserInfo.lastName,
+                role: freshUserInfo.role,
+                departmentId: freshUserInfo.departmentId,
+                departmentName: freshUserInfo.departmentName
+            };
+            localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+            
+            // Check actual role from server
+            if (freshUserInfo.role !== 'ROLE_HOD') {
+                console.error('Role mismatch: localStorage had ROLE_HOD but server says', freshUserInfo.role);
+                showToast('Access denied - HOD privileges required. Your role: ' + freshUserInfo.role, 'error');
+                setTimeout(() => redirectToLogin('access_denied'), 2000);
+                return;
+            }
+        }
+    } catch (error) {
+        console.error('Failed to fetch user info from server:', error);
+        // Fall back to localStorage check
+        const userInfo = getUserInfo();
+        if (userInfo.role !== 'ROLE_HOD') {
+            showToast('Access denied - HOD privileges required', 'error');
+            setTimeout(() => redirectToLogin('access_denied'), 2000);
+            return;
+        }
     }
     
     // Continue initialization after auth is confirmed

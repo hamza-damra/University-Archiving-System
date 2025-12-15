@@ -141,6 +141,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 /**
  * Check authentication and role
  * Verifies user is authenticated with valid token and has DEANSHIP role
+ * Fetches fresh user info from server to ensure role is up-to-date
  * Redirects to login if not authenticated or unauthorized
  * @returns {Promise<boolean>} True if authenticated, false otherwise
  */
@@ -158,13 +159,48 @@ async function checkAuth() {
         return false;
     }
 
-    if (userInfo.role !== 'ROLE_DEANSHIP') {
-        showToast('Access denied - Deanship role required', 'error');
-        setTimeout(() => redirectToLogin('access_denied'), 2000);
-        return false;
+    // Fetch fresh user info from server to validate actual role
+    try {
+        const freshUserInfo = await apiRequest('/auth/me');
+        if (freshUserInfo) {
+            // Update localStorage with fresh user info
+            const updatedUserInfo = {
+                id: freshUserInfo.userId,
+                email: freshUserInfo.email,
+                fullName: `${freshUserInfo.firstName || ''} ${freshUserInfo.lastName || ''}`.trim() || freshUserInfo.email,
+                firstName: freshUserInfo.firstName,
+                lastName: freshUserInfo.lastName,
+                role: freshUserInfo.role,
+                departmentId: freshUserInfo.departmentId,
+                departmentName: freshUserInfo.departmentName
+            };
+            localStorage.setItem('userInfo', JSON.stringify(updatedUserInfo));
+            
+            // Check actual role from server
+            if (freshUserInfo.role !== 'ROLE_DEANSHIP') {
+                console.error('Role mismatch: localStorage had', userInfo.role, 'but server says', freshUserInfo.role);
+                showToast('Access denied - Deanship role required. Your role: ' + freshUserInfo.role, 'error');
+                setTimeout(() => redirectToLogin('access_denied'), 2000);
+                return false;
+            }
+            
+            // Display user name
+            const userName = updatedUserInfo.fullName || updatedUserInfo.email;
+            document.getElementById('deanshipName').textContent = userName;
+            localStorage.setItem('deanship_user_name', userName);
+            return true;
+        }
+    } catch (error) {
+        console.error('Failed to fetch user info from server:', error);
+        // If we can't fetch fresh info, fall back to localStorage but warn
+        if (userInfo.role !== 'ROLE_DEANSHIP') {
+            showToast('Access denied - Deanship role required', 'error');
+            setTimeout(() => redirectToLogin('access_denied'), 2000);
+            return false;
+        }
     }
 
-    // Display user name
+    // Display user name (fallback if server fetch succeeded but didn't return)
     const userName = userInfo.fullName || userInfo.email;
     document.getElementById('deanshipName').textContent = userName;
     localStorage.setItem('deanship_user_name', userName);

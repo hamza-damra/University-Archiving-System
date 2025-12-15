@@ -36,7 +36,7 @@ public class Department implements Serializable {
     @Column(length = 500)
     private String description;
     
-    @OneToMany(mappedBy = "department", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "department", fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
     @JsonIgnore
     private List<User> users;

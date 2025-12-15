@@ -84,4 +84,12 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
      */
     @Query("SELECT CASE WHEN COUNT(rt) > 0 THEN true ELSE false END FROM RefreshToken rt WHERE rt.token = :token AND rt.revoked = false AND rt.expiryDate > :now")
     boolean isTokenValid(@Param("token") String token, @Param("now") Instant now);
+    
+    /**
+     * Delete all tokens for a user (used before deleting user)
+     */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM RefreshToken rt WHERE rt.user.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

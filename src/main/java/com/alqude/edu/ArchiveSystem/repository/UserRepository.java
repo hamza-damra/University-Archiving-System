@@ -78,6 +78,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     boolean existsByEmail(String email);
     
+    List<User> findByDepartmentId(Long departmentId);
+    
     List<User> findByDepartmentIdAndRole(Long departmentId, Role role);
     
     Page<User> findByDepartmentIdAndRole(Long departmentId, Role role, Pageable pageable);

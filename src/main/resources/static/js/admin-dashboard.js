@@ -826,7 +826,7 @@ class AdminDashboardPage {
         const emailConfig = {
             'ROLE_ADMIN': { domain: '@admin.alquds.edu', hint: 'Format: username@admin.alquds.edu', placeholder: 'username', prefix: '' },
             'ROLE_DEANSHIP': { domain: '@dean.alquds.edu', hint: 'Format: username@dean.alquds.edu', placeholder: 'username', prefix: '' },
-            'ROLE_HOD': { domain: '@dean.alquds.edu', hint: 'Email auto-generated based on department', placeholder: 'department_shortcut', prefix: 'hod.' },
+            'ROLE_HOD': { domain: '@hod.alquds.edu', hint: 'Email auto-generated based on department', placeholder: 'department_shortcut', prefix: 'hod.' },
             'ROLE_PROFESSOR': { domain: '@staff.alquds.edu', hint: 'Format: username@staff.alquds.edu', placeholder: 'username', prefix: '' }
         };
         
@@ -846,7 +846,7 @@ class AdminDashboardPage {
                 if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
                 if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
                 emailPrefixInput.style.display = 'none';
-                emailDomainSpan.textContent = 'hod.<shortcut>@dean.alquds.edu';
+                emailDomainSpan.textContent = 'hod.<shortcut>@hod.alquds.edu';
                 if (emailHintText) emailHintText.textContent = '⚠️ No departments available. Please create a department first.';
                 if (emailFormatHint) {
                     emailFormatHint.classList.remove('text-gray-500', 'dark:text-gray-400');
@@ -934,7 +934,7 @@ class AdminDashboardPage {
             if (emailAutoDisplay) emailAutoDisplay.classList.add('hidden');
             if (emailPendingDisplay) emailPendingDisplay.classList.add('hidden');
             if (emailInputWrapper) emailInputWrapper.classList.remove('hidden');
-            emailDomainSpan.textContent = 'hod.<shortcut>@dean.alquds.edu';
+            emailDomainSpan.textContent = 'hod.<shortcut>@hod.alquds.edu';
             emailPrefixInput.style.display = 'none';
             emailPrefixInput.value = '';
             if (emailHidden) emailHidden.value = '';
@@ -948,7 +948,7 @@ class AdminDashboardPage {
         
         if (departmentShortcut && selectedDepartmentId) {
             // We have a department selected, show the auto-generated email in the nice display
-            const fullEmail = `hod.${departmentShortcut}@dean.alquds.edu`;
+            const fullEmail = `hod.${departmentShortcut}@hod.alquds.edu`;
             
             // Show the auto display with the email, hide others
             if (emailInputWrapper) emailInputWrapper.classList.add('hidden');
@@ -1007,7 +1007,7 @@ class AdminDashboardPage {
         const emailConfig = {
             'ROLE_ADMIN': '@admin.alquds.edu',
             'ROLE_DEANSHIP': '@dean.alquds.edu',
-            'ROLE_HOD': '@dean.alquds.edu',
+            'ROLE_HOD': '@hod.alquds.edu',
             'ROLE_PROFESSOR': '@staff.alquds.edu'
         };
         
@@ -1469,7 +1469,7 @@ class AdminDashboardPage {
         const domainPatterns = {
             'ROLE_ADMIN': '@admin.alquds.edu',
             'ROLE_DEANSHIP': '@dean.alquds.edu',
-            'ROLE_HOD': '@dean.alquds.edu',
+            'ROLE_HOD': '@hod.alquds.edu',
             'ROLE_PROFESSOR': '@staff.alquds.edu'
         };
         
@@ -2088,7 +2088,7 @@ class AdminDashboardPage {
             });
             
             showToast('Department deleted successfully', 'success');
-            this.closeDeleteDepartmentModal();
+            this.closeDeleteModal();
             this.loadDepartments();
             
         } catch (error) {

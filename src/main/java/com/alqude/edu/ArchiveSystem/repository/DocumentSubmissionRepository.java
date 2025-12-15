@@ -4,9 +4,11 @@ import com.alqude.edu.ArchiveSystem.entity.DocumentSubmission;
 import com.alqude.edu.ArchiveSystem.entity.DocumentTypeEnum;
 import com.alqude.edu.ArchiveSystem.entity.SubmissionStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -119,4 +121,17 @@ public interface DocumentSubmissionRepository extends JpaRepository<DocumentSubm
            "WHERE ds.submittedAt >= :since " +
            "ORDER BY ds.submittedAt DESC")
     List<DocumentSubmission> findRecentSubmissions(@Param("since") LocalDateTime since);
+    
+    /**
+     * Delete all document submissions for a professor
+     */
+    @Modifying
+    @Transactional
+    @Query("DELETE FROM DocumentSubmission ds WHERE ds.professor.id = :professorId")
+    void deleteByProfessorId(@Param("professorId") Long professorId);
+    
+    /**
+     * Find all document submissions for a professor
+     */
+    List<DocumentSubmission> findByProfessorId(Long professorId);
 }

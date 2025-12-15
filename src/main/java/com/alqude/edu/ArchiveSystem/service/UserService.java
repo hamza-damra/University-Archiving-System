@@ -11,6 +11,7 @@ import com.alqude.edu.ArchiveSystem.exception.ValidationException;
 import com.alqude.edu.ArchiveSystem.mapper.UserMapper;
 import com.alqude.edu.ArchiveSystem.repository.DepartmentRepository;
 import com.alqude.edu.ArchiveSystem.repository.DocumentRequestRepository;
+import com.alqude.edu.ArchiveSystem.repository.RefreshTokenRepository;
 import com.alqude.edu.ArchiveSystem.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,7 @@ public class UserService implements UserDetailsService {
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
     private final DocumentRequestRepository documentRequestRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailValidationService emailValidationService;
@@ -219,6 +221,10 @@ public class UserService implements UserDetailsService {
         
         // Check for dependencies
         checkUserDependencies(userId);
+        
+        // Delete all refresh tokens for this user first
+        refreshTokenRepository.deleteAllByUserId(userId);
+        log.debug("Deleted all refresh tokens for user id: {}", userId);
         
         // Soft delete or hard delete based on business rules
         // For now, we'll do a hard delete after checking dependencies
@@ -404,7 +410,7 @@ public class UserService implements UserDetailsService {
      * Email format by role:
      * - ADMIN: username@admin.alquds.edu
      * - DEANSHIP: username@dean.alquds.edu
-     * - HOD: hod.department_shortcut@dean.alquds.edu
+     * - HOD: hod.department_shortcut@hod.alquds.edu
      * - PROFESSOR: username@staff.alquds.edu
      * 
      * @param email The email to validate

@@ -28036,3 +28036,18 @@ WHERE S.SESSION_ID = ?
 WHERE EXPIRY_TIME < ?
 ]
 2025-12-15 19:01:00 [spring-session-1] DEBUG o.s.s.j.JdbcIndexedSessionRepository - Cleaned up 0 expired sessions
+2025-12-15 19:02:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL update
+2025-12-15 19:02:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL statement [DELETE FROM SPRING_SESSION
+WHERE EXPIRY_TIME < ?
+]
+2025-12-15 19:02:00 [spring-session-1] DEBUG o.s.s.j.JdbcIndexedSessionRepository - Cleaned up 0 expired sessions
+2025-12-15 19:03:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL update
+2025-12-15 19:03:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL statement [DELETE FROM SPRING_SESSION
+WHERE EXPIRY_TIME < ?
+]
+2025-12-15 19:03:00 [spring-session-1] DEBUG o.s.s.j.JdbcIndexedSessionRepository - Cleaned up 0 expired sessions
+2025-12-15 19:04:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL update
+2025-12-15 19:04:00 [spring-session-1] DEBUG o.s.jdbc.core.JdbcTemplate - Executing prepared SQL statement [DELETE FROM SPRING_SESSION
+WHERE EXPIRY_TIME < ?
+]
+2025-12-15 19:04:00 [spring-session-1] DEBUG o.s.s.j.JdbcIndexedSessionRepository - Cleaned up 0 expired sessions

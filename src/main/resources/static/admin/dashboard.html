@@ -37,6 +37,26 @@
     <link rel="stylesheet" href="/css/file-preview-modal.css">
     <script src="/js/theme.js"></script>
     <script src="/js/modern-dropdown.js"></script>
+    <script>
+        // Immediately apply saved tab state before page renders to prevent flash
+        (function() {
+            const savedTab = localStorage.getItem('adminCurrentTab');
+            if (savedTab && ['dashboard', 'users', 'departments', 'courses', 'reports'].includes(savedTab)) {
+                // Add CSS to hide default tab and show saved tab immediately
+                const style = document.createElement('style');
+                style.id = 'tab-preload-style';
+                style.textContent = `
+                    #dashboard-tab { display: none !important; }
+                    #${savedTab}-tab { display: block !important; }
+                    .nav-tab[data-tab="dashboard"] { background: transparent !important; color: inherit !important; }
+                    .nav-tab[data-tab="${savedTab}"] { background: var(--nav-active-bg, #f3e8ff) !important; color: var(--nav-active-color, #7c3aed) !important; }
+                `;
+                document.head.appendChild(style);
+                // Store for later removal
+                window._savedTabPreload = savedTab;
+            }
+        })();
+    </script>
 </head>
 
 <body class="bg-gray-50 dark:bg-gray-900 h-screen flex overflow-hidden">

@@ -114,6 +114,12 @@ class AdminDashboardPage {
                 this.switchTab(savedTab);
             }
             
+            // Remove preload style that was added to prevent flash
+            const preloadStyle = document.getElementById('tab-preload-style');
+            if (preloadStyle) {
+                preloadStyle.remove();
+            }
+            
             console.log('[AdminDashboard] Initialized successfully');
         } catch (error) {
             console.error('[AdminDashboard] Initialization error:', error);

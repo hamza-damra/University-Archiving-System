@@ -100,19 +100,27 @@ class AdminDashboardPage {
             // Initialize modern dropdowns for professional styling
             this.initializeModernDropdowns();
             
-            // Load dashboard statistics first
-            await this.loadDashboardStats();
+            // Check for saved tab from localStorage
+            const savedTab = localStorage.getItem('adminCurrentTab');
+            const targetTab = (savedTab && ['dashboard', 'users', 'departments', 'courses', 'reports'].includes(savedTab)) 
+                ? savedTab 
+                : 'dashboard';
+            
+            // If target tab is dashboard, load stats first then switch
+            // Otherwise, switch to saved tab first (stats will load in background)
+            if (targetTab === 'dashboard') {
+                await this.loadDashboardStats();
+            } else {
+                // Switch to saved tab immediately without loading dashboard stats first
+                this.switchTab(targetTab);
+                // Load dashboard stats in background for when user switches to dashboard
+                this.loadDashboardStats();
+            }
             
             // Register context change listener to reload stats
             this.layout.onContextChange(async () => {
                 await this.loadDashboardStats();
             });
-            
-            // Restore saved tab from localStorage (if any)
-            const savedTab = localStorage.getItem('adminCurrentTab');
-            if (savedTab && ['dashboard', 'users', 'departments', 'courses', 'reports'].includes(savedTab)) {
-                this.switchTab(savedTab);
-            }
             
             // Remove preload style that was added to prevent flash
             const preloadStyle = document.getElementById('tab-preload-style');

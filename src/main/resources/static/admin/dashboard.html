@@ -41,6 +41,14 @@
         // Immediately apply saved tab state before page renders to prevent flash
         (function() {
             const savedTab = localStorage.getItem('adminCurrentTab');
+            const tabTitles = {
+                'dashboard': 'Dashboard',
+                'users': 'User Management',
+                'departments': 'Departments',
+                'courses': 'Courses',
+                'reports': 'Reports'
+            };
+            
             if (savedTab && savedTab !== 'dashboard' && ['users', 'departments', 'courses', 'reports'].includes(savedTab)) {
                 // Add CSS to hide default tab and show saved tab immediately
                 // Also override the active styling on nav tabs
@@ -67,8 +75,18 @@
                     }
                 `;
                 document.head.appendChild(style);
-                // Store for later removal
+                
+                // Store tab info for later use
                 window._savedTabPreload = savedTab;
+                window._savedTabTitle = tabTitles[savedTab];
+                
+                // Update page title as soon as DOM is ready
+                document.addEventListener('DOMContentLoaded', function() {
+                    const pageTitle = document.getElementById('pageTitle');
+                    if (pageTitle && window._savedTabTitle) {
+                        pageTitle.textContent = window._savedTabTitle;
+                    }
+                }, { once: true });
             }
         })();
     </script>

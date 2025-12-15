@@ -188,38 +188,16 @@
     
     /**
      * Show a loading overlay while validating authentication
+     * Disabled - no overlay shown, page renders immediately
      */
     function showLoadingOverlay() {
-        // Avoid duplicates
-        if (document.getElementById('auth-loading-overlay')) {
-            return;
-        }
-
-        // Create loading overlay
-        var overlay = document.createElement('div');
-        overlay.id = 'auth-loading-overlay';
-        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:#1a1a2e;display:flex;flex-direction:column;justify-content:center;align-items:center;z-index:999999;';
-        overlay.innerHTML = '<div style="width:40px;height:40px;border:3px solid #3b82f6;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>' +
-            '<p style="color:#9ca3af;margin-top:16px;font-family:Inter,sans-serif;">Verifying authentication...</p>' +
-            '<style>@keyframes spin{to{transform:rotate(360deg);}}</style>';
-
-        // Insert immediately even if <body> is not ready yet.
-        // This prevents a race where validation finishes before the overlay is attached,
-        // then the overlay gets attached later and never removed.
-        if (document.body) {
-            document.body.insertBefore(overlay, document.body.firstChild);
-        } else if (document.documentElement) {
-            document.documentElement.appendChild(overlay);
-        }
+        // Disabled - no loading overlay
     }
     
     /**
      * Hide the loading overlay
      */
     function hideLoadingOverlay() {
-        var overlay = document.getElementById('auth-loading-overlay');
-        if (overlay) {
-            overlay.remove();
-        }
+        // Disabled - no loading overlay to hide
     }
 })();

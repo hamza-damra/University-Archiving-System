@@ -41,15 +41,30 @@
         // Immediately apply saved tab state before page renders to prevent flash
         (function() {
             const savedTab = localStorage.getItem('adminCurrentTab');
-            if (savedTab && ['dashboard', 'users', 'departments', 'courses', 'reports'].includes(savedTab)) {
+            if (savedTab && savedTab !== 'dashboard' && ['users', 'departments', 'courses', 'reports'].includes(savedTab)) {
                 // Add CSS to hide default tab and show saved tab immediately
+                // Also override the active styling on nav tabs
                 const style = document.createElement('style');
                 style.id = 'tab-preload-style';
                 style.textContent = `
                     #dashboard-tab { display: none !important; }
                     #${savedTab}-tab { display: block !important; }
-                    .nav-tab[data-tab="dashboard"] { background: transparent !important; color: inherit !important; }
-                    .nav-tab[data-tab="${savedTab}"] { background: var(--nav-active-bg, #f3e8ff) !important; color: var(--nav-active-color, #7c3aed) !important; }
+                    .nav-tab.active[data-tab="dashboard"] { 
+                        background: transparent !important; 
+                        color: #6b7280 !important;
+                    }
+                    .nav-tab[data-tab="${savedTab}"] { 
+                        background: #f3e8ff !important; 
+                        color: #7c3aed !important;
+                    }
+                    .dark .nav-tab.active[data-tab="dashboard"] { 
+                        background: transparent !important; 
+                        color: #9ca3af !important;
+                    }
+                    .dark .nav-tab[data-tab="${savedTab}"] { 
+                        background: rgba(139, 92, 246, 0.2) !important; 
+                        color: #a78bfa !important;
+                    }
                 `;
                 document.head.appendChild(style);
                 // Store for later removal

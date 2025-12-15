@@ -108,6 +108,12 @@ class AdminDashboardPage {
                 await this.loadDashboardStats();
             });
             
+            // Restore saved tab from localStorage (if any)
+            const savedTab = localStorage.getItem('adminCurrentTab');
+            if (savedTab && ['dashboard', 'users', 'departments', 'courses', 'reports'].includes(savedTab)) {
+                this.switchTab(savedTab);
+            }
+            
             console.log('[AdminDashboard] Initialized successfully');
         } catch (error) {
             console.error('[AdminDashboard] Initialization error:', error);
@@ -246,6 +252,9 @@ class AdminDashboardPage {
         }
 
         this.currentTab = tabName;
+        
+        // Save current tab to localStorage for persistence on refresh
+        localStorage.setItem('adminCurrentTab', tabName);
     }
 
     /**

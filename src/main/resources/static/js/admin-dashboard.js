@@ -2091,6 +2091,12 @@ class AdminDashboardPage {
             this.closeDeleteModal();
             this.loadDepartments();
             
+            // Refresh users tab data if it has been loaded
+            if (this.loadedTabs.has('users')) {
+                await this.loadDepartmentsForFilters();
+                await this.loadUsers();
+            }
+            
         } catch (error) {
             console.error('[AdminDashboard] Delete department error:', error);
             showToast(error.message || 'Failed to delete department', 'error');

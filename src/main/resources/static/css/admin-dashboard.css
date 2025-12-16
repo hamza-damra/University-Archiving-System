@@ -536,14 +536,17 @@ button:focus-visible {
     color: white;
 }
 
-/* Skeleton shimmer for dark mode */
+/* Skeleton shimmer loading effect */
 .skeleton-shimmer {
     background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
     background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 4px;
 }
 
-[data-theme="dark"] .skeleton-shimmer {
+/* Dark mode support for both class and data-attribute */
+[data-theme="dark"] .skeleton-shimmer,
+.dark .skeleton-shimmer {
     background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
     background-size: 200% 100%;
 }
@@ -555,5 +558,27 @@ button:focus-visible {
     100% {
         background-position: -200% 0;
     }
+}
+
+/* Skeleton table row styling */
+.animate-pulse td {
+    background: transparent !important;
+}
+
+/* Ensure table container has minimum height to prevent layout shift */
+.overflow-x-auto:has(table) {
+    min-height: 320px;
+}
+
+/* Table body minimum dimensions during skeleton loading */
+#usersTableBody,
+#departmentsTableBody,
+#coursesTableBody {
+    transition: opacity 0.15s ease-out;
+}
+
+/* Skeleton rows maintain consistent sizing */
+.skeleton-shimmer {
+    min-height: 1rem;
 }
 

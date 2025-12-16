@@ -52,11 +52,37 @@ function updateAccessToken(newToken) {
 
 /**
  * Clear authentication data from localStorage
+ * Also clears any cached role-specific data that could cause navigation issues
  */
 export function clearAuthData() {
+    // Core auth data
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userInfo');
+    
+    // Clear all role-specific cached data to prevent stale state
+    // Admin-specific
+    localStorage.removeItem('admin_selected_academic_year');
+    localStorage.removeItem('admin_selected_semester');
+    localStorage.removeItem('admin_last_page');
+    localStorage.removeItem('adminCurrentTab');
+    
+    // Deanship-specific
+    localStorage.removeItem('deanship_selected_academic_year');
+    localStorage.removeItem('deanship_selected_semester');
+    localStorage.removeItem('deanship_academic_years_options');
+    localStorage.removeItem('deanship_semesters_options');
+    localStorage.removeItem('deanship_user_name');
+    localStorage.removeItem('deanship-active-tab');
+    localStorage.removeItem('deanship_file_explorer_html');
+    
+    // HOD-specific (if any)
+    localStorage.removeItem('hod_selected_academic_year');
+    localStorage.removeItem('hod_selected_semester');
+    
+    // Professor-specific (if any)
+    localStorage.removeItem('prof_selected_academic_year');
+    localStorage.removeItem('prof_selected_semester');
 }
 
 /**

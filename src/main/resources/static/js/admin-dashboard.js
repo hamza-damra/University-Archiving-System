@@ -733,6 +733,9 @@ class AdminDashboardPage {
         if (userModalClose) userModalClose.addEventListener('click', () => this.closeUserModal());
         if (userModalCancel) userModalCancel.addEventListener('click', () => this.closeUserModal());
         
+        // Password toggle functionality
+        this.setupPasswordToggle();
+        
         // Role change handler for email domain and field visibility
         const userRoleSelect = document.getElementById('userRole');
         if (userRoleSelect) {
@@ -818,6 +821,98 @@ class AdminDashboardPage {
         if (userForm) {
             userForm.addEventListener('submit', (e) => this.handleUserFormSubmit(e));
         }
+    }
+    
+    /**
+     * Setup password visibility toggle functionality
+     * Ensures the toggle button is always visible and functional
+     */
+    setupPasswordToggle() {
+        const passwordField = document.getElementById('userPassword');
+        const passwordContainer = passwordField?.parentElement;
+        
+        if (!passwordField || !passwordContainer) {
+            return;
+        }
+        
+        // Remove any existing toggle buttons to prevent duplicates
+        const existingToggles = passwordContainer.querySelectorAll('button[id="togglePasswordBtn"], button[aria-label="Toggle password visibility"]');
+        existingToggles.forEach((btn, index) => {
+            if (index > 0) {
+                btn.remove(); // Remove duplicates, keep only the first one
+            }
+        });
+        
+        const toggleBtn = document.getElementById('togglePasswordBtn');
+        const eyeIcon = document.getElementById('passwordEyeIcon');
+        const eyeOffIcon = document.getElementById('passwordEyeOffIcon');
+        
+        if (!toggleBtn || !eyeIcon || !eyeOffIcon) {
+            return;
+        }
+        
+        // Reset password field type
+        passwordField.type = 'password';
+        
+        // Ensure correct icon state - eye visible (password hidden), eye-off hidden
+        eyeIcon.style.display = 'block';
+        eyeIcon.classList.remove('hidden');
+        eyeOffIcon.style.display = 'none';
+        eyeOffIcon.classList.add('hidden');
+        
+        // Ensure toggle button is always visible
+        toggleBtn.style.display = 'flex';
+        toggleBtn.style.visibility = 'visible';
+        toggleBtn.style.opacity = '1';
+        toggleBtn.style.pointerEvents = 'auto';
+        
+        // Remove any existing click listeners by cloning the button
+        const newToggleBtn = toggleBtn.cloneNode(true);
+        toggleBtn.parentNode.replaceChild(newToggleBtn, toggleBtn);
+        
+        // Get fresh references after replacement
+        const freshToggleBtn = document.getElementById('togglePasswordBtn');
+        const freshEyeIcon = document.getElementById('passwordEyeIcon');
+        const freshEyeOffIcon = document.getElementById('passwordEyeOffIcon');
+        
+        if (!freshToggleBtn || !freshEyeIcon || !freshEyeOffIcon) {
+            return;
+        }
+        
+        // Ensure correct icon state after cloning
+        freshEyeIcon.style.display = 'block';
+        freshEyeIcon.classList.remove('hidden');
+        freshEyeOffIcon.style.display = 'none';
+        freshEyeOffIcon.classList.add('hidden');
+        
+        // Ensure visibility again after replacement
+        freshToggleBtn.style.display = 'flex';
+        freshToggleBtn.style.visibility = 'visible';
+        freshToggleBtn.style.opacity = '1';
+        freshToggleBtn.style.pointerEvents = 'auto';
+        
+        // Toggle password visibility on click
+        freshToggleBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isPassword = passwordField.type === 'password';
+            passwordField.type = isPassword ? 'text' : 'password';
+            
+            if (isPassword) {
+                // Show password - show eye-off icon
+                freshEyeIcon.style.display = 'none';
+                freshEyeIcon.classList.add('hidden');
+                freshEyeOffIcon.style.display = 'block';
+                freshEyeOffIcon.classList.remove('hidden');
+            } else {
+                // Hide password - show eye icon
+                freshEyeIcon.style.display = 'block';
+                freshEyeIcon.classList.remove('hidden');
+                freshEyeOffIcon.style.display = 'none';
+                freshEyeOffIcon.classList.add('hidden');
+            }
+        });
     }
     
     /**
@@ -1372,6 +1467,8 @@ class AdminDashboardPage {
                 this.refreshDropdown(departmentField);
                 // Re-apply reset after dropdowns are initialized to ensure proper state
                 this.resetDepartmentField();
+                // Re-initialize password toggle to ensure it's visible
+                this.setupPasswordToggle();
             }, 50);
         }
     }
@@ -1470,6 +1567,8 @@ class AdminDashboardPage {
                 }
                 // Refresh dropdowns with current values
                 this.refreshDropdown(document.getElementById('userRole'));
+                // Re-initialize password toggle to ensure it's visible
+                this.setupPasswordToggle();
                 this.refreshDropdown(document.getElementById('userDepartment'));
                 
                 // Re-apply field states after dropdowns are initialized
@@ -1826,19 +1925,45 @@ class AdminDashboardPage {
     }
 
     /**
-     * Show/hide users table loading state
+     * Show/hide users table loading state with shimmer skeleton
      */
     showUsersTableLoading(show) {
         const tbody = document.getElementById('usersTableBody');
         if (tbody && show) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-8">
-                        <div class="inline-block w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                        <p class="mt-2 text-gray-500 dark:text-gray-400">Loading users...</p>
+            // Generate 5 skeleton rows for a professional loading experience
+            const skeletonRows = Array(5).fill(0).map(() => `
+                <tr class="animate-pulse">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="w-8 h-8 rounded-full skeleton-shimmer"></div>
+                            <div class="ml-3 space-y-2">
+                                <div class="h-4 w-28 rounded skeleton-shimmer"></div>
+                                <div class="h-3 w-16 rounded skeleton-shimmer"></div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-40 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-6 w-20 rounded-full skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-32 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-6 w-16 rounded-full skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex gap-2">
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                        </div>
                     </td>
                 </tr>
-            `;
+            `).join('');
+            
+            tbody.innerHTML = skeletonRows;
         }
     }
 
@@ -2134,14 +2259,28 @@ class AdminDashboardPage {
     showDepartmentsTableLoading(show) {
         const tbody = document.getElementById('departmentsTableBody');
         if (tbody && show) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="text-center py-8">
-                        <div class="inline-block w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                        <p class="mt-2 text-gray-500 dark:text-gray-400">Loading departments...</p>
+            // Generate 4 skeleton rows for departments
+            const skeletonRows = Array(4).fill(0).map(() => `
+                <tr class="animate-pulse">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-40 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-6 w-16 rounded-full skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-56 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex gap-2">
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                        </div>
                     </td>
                 </tr>
-            `;
+            `).join('');
+            
+            tbody.innerHTML = skeletonRows;
         }
     }
 
@@ -2544,14 +2683,31 @@ class AdminDashboardPage {
     showCoursesTableLoading(show) {
         const tbody = document.getElementById('coursesTableBody');
         if (tbody && show) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-8">
-                        <div class="inline-block w-8 h-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin"></div>
-                        <p class="mt-2 text-gray-500 dark:text-gray-400">Loading courses...</p>
+            // Generate 5 skeleton rows for courses
+            const skeletonRows = Array(5).fill(0).map(() => `
+                <tr class="animate-pulse">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-20 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-48 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-36 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="h-4 w-8 rounded skeleton-shimmer"></div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex gap-2">
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                            <div class="w-8 h-8 rounded skeleton-shimmer"></div>
+                        </div>
                     </td>
                 </tr>
-            `;
+            `).join('');
+            
+            tbody.innerHTML = skeletonRows;
         }
     }
 

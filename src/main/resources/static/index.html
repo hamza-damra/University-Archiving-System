@@ -337,7 +337,15 @@
 </head>
 
 <body class="bg-gray-50 min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full">
+    <!-- Auth Check Loading Screen - shown while validating existing session -->
+    <div id="authCheckOverlay" class="fixed inset-0 bg-gray-50 dark:bg-[#131314] flex items-center justify-center z-[100]">
+        <div class="text-center">
+            <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-purple-500 mx-auto mb-4"></div>
+            <p class="text-gray-600 dark:text-gray-400">Checking session...</p>
+        </div>
+    </div>
+
+    <div id="loginContent" class="max-w-md w-full" style="visibility: hidden;">
         <!-- Logo/Header -->
         <div class="text-center mb-8">
             <!-- Theme Toggle -->

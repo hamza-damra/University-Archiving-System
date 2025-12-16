@@ -27,18 +27,44 @@ function redirectToDashboard(role) {
     }
 }
 
+// Show login page content (called when auth check completes and user is not authenticated)
+function showLoginPage() {
+    const overlay = document.getElementById('authCheckOverlay');
+    const loginContent = document.getElementById('loginContent');
+    
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    if (loginContent) {
+        loginContent.style.visibility = 'visible';
+    }
+}
+
 // Check if already logged in with valid token
 (async function checkExistingAuth() {
     if (isAuthenticated()) {
-        // Validate the existing token
+        // Validate the existing token with the server
+        // This prevents stale localStorage data from causing auto-redirect
         const isValid = await initializeAuth();
         if (isValid) {
             const userInfo = JSON.parse(localStorage.getItem('userInfo'));
-            redirectToDashboard(userInfo.role);
-            return;
+            if (userInfo && userInfo.role) {
+                // User is authenticated - redirect immediately
+                // Keep the loading overlay visible during redirect for smooth UX
+                redirectToDashboard(userInfo.role);
+                return;
+            }
         }
-        // Token was invalid, user will see login form
+        // Token was invalid or user info missing - explicitly clear all auth data
+        // to prevent any future auto-redirect attempts with stale data
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userInfo');
+        console.log('Cleared invalid/expired auth data');
     }
+    
+    // Not authenticated or auth failed - show the login page
+    showLoginPage();
 })();
 
 // Check for error parameters in URL

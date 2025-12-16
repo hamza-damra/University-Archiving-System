@@ -1690,6 +1690,16 @@ tbody tr:hover .file-metadata-badge {
     color: var(--text-secondary) !important;
 }
 
+/* Hide browser native password reveal icons */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear,
+input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-clear-button {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
 /* Login form inputs */
 .dark input[type="email"],
 .dark input[type="password"] {

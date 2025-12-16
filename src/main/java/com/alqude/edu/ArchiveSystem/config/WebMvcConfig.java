@@ -3,11 +3,16 @@ package com.alqude.edu.ArchiveSystem.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.lang.NonNull;
+import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ViewResolver;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.view.InternalResourceViewResolver;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Spring MVC Configuration for view resolution.
@@ -76,5 +81,39 @@ public class WebMvcConfig implements WebMvcConfigurer {
     public void addViewControllers(@NonNull ViewControllerRegistry registry) {
         // View controllers can be added here for simple page mappings
         // Deanship pages use @Controller with @PreAuthorize for security
+    }
+
+    /**
+     * Add interceptor to set Cache-Control headers for HTML pages.
+     * This prevents browsers from caching HTML pages which could cause
+     * stale authentication redirects.
+     * 
+     * @param registry InterceptorRegistry to add interceptors to
+     */
+    @Override
+    public void addInterceptors(@NonNull InterceptorRegistry registry) {
+        registry.addInterceptor(new NoCacheHtmlInterceptor())
+                .addPathPatterns("/**/*.html", "/", "/index.html")
+                .excludePathPatterns("/css/**", "/js/**", "/api/**");
+    }
+
+    /**
+     * Interceptor that adds no-cache headers to HTML responses.
+     * Prevents browser from caching HTML pages and auth-related redirects.
+     */
+    private static class NoCacheHtmlInterceptor implements HandlerInterceptor {
+        @Override
+        public boolean preHandle(@NonNull HttpServletRequest request, 
+                                 @NonNull HttpServletResponse response, 
+                                 @NonNull Object handler) {
+            String path = request.getRequestURI();
+            // Add no-cache headers for HTML pages
+            if (path.endsWith(".html") || path.equals("/")) {
+                response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                response.setHeader("Pragma", "no-cache");
+                response.setHeader("Expires", "0");
+            }
+            return true;
+        }
     }
 }

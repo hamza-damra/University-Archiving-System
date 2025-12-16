@@ -412,7 +412,17 @@ async function loadAcademicYears() {
 
         if (academicYears.length === 0) {
             academicYearSelect.innerHTML = '<option value="">No academic years available</option>';
+            semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
             refreshDropdowns();
+            // Clear dashboard loading state when no academic years exist
+            document.getElementById('totalCoursesCount').textContent = '0';
+            document.getElementById('submittedDocsCount').textContent = '0';
+            document.getElementById('pendingDocsCount').textContent = '0';
+            document.getElementById('overdueDocsCount').textContent = '0';
+            document.getElementById('dashboardSummary').textContent = 'No academic years available. Please contact the administrator to set up academic years.';
+            // Clear courses loading state
+            courses = [];
+            renderCourses();
             showToast('No academic years found. Please contact the administrator.', 'warning');
             return;
         }
@@ -463,7 +473,17 @@ async function loadAcademicYears() {
         }
         showToast('Unable to load academic years. Please refresh the page or contact support if the problem persists.', 'error');
         academicYearSelect.innerHTML = '<option value="">Error loading years</option>';
+        semesterSelect.innerHTML = '<option value="">Select academic year first</option>';
         refreshDropdowns();
+        // Clear dashboard loading state on error
+        document.getElementById('totalCoursesCount').textContent = '0';
+        document.getElementById('submittedDocsCount').textContent = '0';
+        document.getElementById('pendingDocsCount').textContent = '0';
+        document.getElementById('overdueDocsCount').textContent = '0';
+        document.getElementById('dashboardSummary').textContent = 'Unable to load dashboard data. Please refresh the page.';
+        // Clear courses loading state
+        courses = [];
+        renderCourses();
     }
 }
 
@@ -475,6 +495,12 @@ async function loadSemesters(academicYearId) {
         if (semesters.length === 0) {
             semesterSelect.innerHTML = '<option value="">No semesters available for this year</option>';
             refreshDropdowns();
+            // Clear dashboard loading state when no semesters exist
+            document.getElementById('totalCoursesCount').textContent = '0';
+            document.getElementById('submittedDocsCount').textContent = '0';
+            document.getElementById('pendingDocsCount').textContent = '0';
+            document.getElementById('overdueDocsCount').textContent = '0';
+            document.getElementById('dashboardSummary').textContent = 'No semesters available for the selected academic year.';
             showToast('No semesters found for the selected academic year.', 'warning');
             courses = [];
             renderCourses();
@@ -521,6 +547,15 @@ async function loadSemesters(academicYearId) {
         showToast('Unable to load semesters. Please try selecting a different academic year or refresh the page.', 'error');
         semesterSelect.innerHTML = '<option value="">Error loading semesters</option>';
         refreshDropdowns();
+        // Clear dashboard loading state on error
+        document.getElementById('totalCoursesCount').textContent = '0';
+        document.getElementById('submittedDocsCount').textContent = '0';
+        document.getElementById('pendingDocsCount').textContent = '0';
+        document.getElementById('overdueDocsCount').textContent = '0';
+        document.getElementById('dashboardSummary').textContent = 'Unable to load semesters. Please try again.';
+        // Clear courses loading state
+        courses = [];
+        renderCourses();
     }
 }
 

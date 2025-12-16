@@ -7,8 +7,8 @@ import com.alqude.edu.ArchiveSystem.entity.UploadedFile;
 import com.alqude.edu.ArchiveSystem.entity.User;
 import com.alqude.edu.ArchiveSystem.exception.EntityNotFoundException;
 import com.alqude.edu.ArchiveSystem.repository.UploadedFileRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,7 +26,6 @@ import java.util.Set;
  * Handles file preview operations with permission validation.
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 @SuppressWarnings("null")
 public class FilePreviewServiceImpl implements FilePreviewService {
@@ -34,6 +33,44 @@ public class FilePreviewServiceImpl implements FilePreviewService {
     private final UploadedFileRepository uploadedFileRepository;
     private final FileExplorerService fileExplorerService;
     private final OfficeDocumentConverter officeDocumentConverter;
+    
+    @Value("${file.upload.directory:uploads/}")
+    private String uploadDirectory;
+    
+    public FilePreviewServiceImpl(UploadedFileRepository uploadedFileRepository,
+                                   FileExplorerService fileExplorerService,
+                                   OfficeDocumentConverter officeDocumentConverter) {
+        this.uploadedFileRepository = uploadedFileRepository;
+        this.fileExplorerService = fileExplorerService;
+        this.officeDocumentConverter = officeDocumentConverter;
+    }
+    
+    /**
+     * Resolves a relative file URL to an absolute path using the upload directory.
+     */
+    private Path resolveFilePath(String fileUrl) {
+        return Paths.get(uploadDirectory).resolve(fileUrl).normalize();
+    }
+    
+    /**
+     * Generate a safe folder name from professor's name.
+     * Sanitizes the name to be filesystem-safe while remaining readable.
+     */
+    private String generateProfessorFolderName(User professor) {
+        String firstName = professor.getFirstName() != null ? professor.getFirstName().trim() : "";
+        String lastName = professor.getLastName() != null ? professor.getLastName().trim() : "";
+        
+        String fullName = (firstName + " " + lastName).trim();
+        
+        if (fullName.isEmpty()) {
+            return "prof_" + professor.getId();
+        }
+        
+        String sanitized = fullName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        sanitized = sanitized.replaceAll("\\s+", " ").replaceAll("_+", "_").trim();
+        
+        return sanitized;
+    }
     
     // Supported MIME types for preview
     private static final Set<String> TEXT_TYPES = Set.of(
@@ -176,7 +213,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         // Read file content
         try {
-            Path filePath = Paths.get(file.getFileUrl());
+            Path filePath = resolveFilePath(file.getFileUrl());
             return Files.readString(filePath);
         } catch (IOException e) {
             log.error("Error reading file content: {}", e.getMessage(), e);
@@ -203,7 +240,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         // Read first N lines of file
         try {
-            Path filePath = Paths.get(file.getFileUrl());
+            Path filePath = resolveFilePath(file.getFileUrl());
             
             // Read lines with limit
             java.util.List<String> lines = Files.lines(filePath)
@@ -235,7 +272,7 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         // Read file as bytes
         try {
-            Path filePath = Paths.get(file.getFileUrl());
+            Path filePath = resolveFilePath(file.getFileUrl());
             return Files.readAllBytes(filePath);
         } catch (IOException e) {
             log.error("Error reading file preview: {}", e.getMessage(), e);
@@ -305,17 +342,23 @@ public class FilePreviewServiceImpl implements FilePreviewService {
             }
         }
         
-        // Fallback: Check if the file's physical path contains the professor's ID
+        // Fallback: Check if the file's physical path contains the professor's identifier
         // This handles legacy files that may not have proper folder/uploader associations
         if (user.getRole() == Role.ROLE_PROFESSOR) {
             String fileUrl = file.getFileUrl();
             if (fileUrl != null) {
-                // Check for professorId if set
+                // Check for professor's name (new format)
+                String professorFolderName = generateProfessorFolderName(user);
+                if (fileUrl.contains(professorFolderName)) {
+                    log.info("File path contains professor name {} - granting access", professorFolderName);
+                    return true;
+                }
+                // Check for professorId if set (legacy)
                 if (user.getProfessorId() != null && fileUrl.contains(user.getProfessorId())) {
                     log.info("File path contains professor ID {} - granting access", user.getProfessorId());
                     return true;
                 }
-                // Check for fallback format "prof_<userId>"
+                // Check for fallback format "prof_<userId>" (legacy)
                 String fallbackId = "prof_" + user.getId();
                 if (fileUrl.contains(fallbackId)) {
                     log.info("File path contains fallback ID {} - granting access", fallbackId);
@@ -426,7 +469,9 @@ public class FilePreviewServiceImpl implements FilePreviewService {
         
         // Convert to HTML
         try {
-            return officeDocumentConverter.convertToHtml(file.getFileUrl(), mimeType);
+            Path filePath = resolveFilePath(file.getFileUrl());
+            log.debug("Resolved file path for Office conversion: {}", filePath);
+            return officeDocumentConverter.convertToHtml(filePath.toString(), mimeType);
         } catch (IOException e) {
             log.error("Error converting Office document to HTML: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to convert Office document: " + e.getMessage(), e);

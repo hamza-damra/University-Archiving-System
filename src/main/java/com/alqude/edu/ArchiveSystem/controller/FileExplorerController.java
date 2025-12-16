@@ -207,7 +207,7 @@ public class FileExplorerController {
                         .body(ApiResponse.error("Invalid path format. Must specify document type folder."));
             }
 
-            // Find professor - handle both professorId and fallback format "prof_<id>"
+            // Find professor - handle name format, professorId, and legacy "prof_<id>" format
             User professor = findProfessorByIdentifier(pathInfo.professorId)
                     .orElseThrow(() -> new EntityNotFoundException("Professor not found: " + pathInfo.professorId));
 
@@ -358,12 +358,18 @@ public class FileExplorerController {
         if (!hasAccess && currentUser.getRole() == Role.ROLE_PROFESSOR) {
             String fileUrl = file.getFileUrl();
             if (fileUrl != null) {
-                // Check professorId
-                if (currentUser.getProfessorId() != null && fileUrl.contains(currentUser.getProfessorId())) {
+                // Check professor's name (new format)
+                String professorFolderName = generateProfessorFolderName(currentUser);
+                if (fileUrl.contains(professorFolderName)) {
+                    hasAccess = true;
+                    log.debug("File path contains professor name - granting download access");
+                }
+                // Check professorId (legacy)
+                if (!hasAccess && currentUser.getProfessorId() != null && fileUrl.contains(currentUser.getProfessorId())) {
                     hasAccess = true;
                     log.debug("File path contains professorId - granting download access");
                 }
-                // Check fallback format
+                // Check fallback format (legacy)
                 String fallbackId = "prof_" + currentUser.getId();
                 if (!hasAccess && fileUrl.contains(fallbackId)) {
                     hasAccess = true;
@@ -415,22 +421,68 @@ public class FileExplorerController {
     }
 
     /**
-     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * Generate a safe folder name from professor's name.
+     * Sanitizes the name to be filesystem-safe while remaining readable.
+     */
+    private String generateProfessorFolderName(User professor) {
+        String firstName = professor.getFirstName() != null ? professor.getFirstName().trim() : "";
+        String lastName = professor.getLastName() != null ? professor.getLastName().trim() : "";
+        
+        String fullName = (firstName + " " + lastName).trim();
+        
+        if (fullName.isEmpty()) {
+            return "prof_" + professor.getId();
+        }
+        
+        String sanitized = fullName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        sanitized = sanitized.replaceAll("\\s+", " ").replaceAll("_+", "_").trim();
+        
+        return sanitized;
+    }
+
+    /**
+     * Find professor by identifier - supports multiple formats:
+     * 1. Professor's full name (new format): "firstName lastName"
+     * 2. Legacy fallback format: "prof_<id>"
+     * 3. Legacy professorId field value
+     * 
      * @param professorIdentifier The professor identifier from path
      * @return Optional containing the professor User entity, or empty if not found
      */
     private java.util.Optional<User> findProfessorByIdentifier(String professorIdentifier) {
-        // Check if this is a fallback identifier (prof_<id>)
-        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+        if (professorIdentifier == null || professorIdentifier.isEmpty() || "null".equals(professorIdentifier)) {
+            log.warn("Invalid professor identifier: {}", professorIdentifier);
+            return java.util.Optional.empty();
+        }
+        
+        // 1. Check if this is a legacy fallback identifier (prof_<id>)
+        if (professorIdentifier.startsWith("prof_")) {
             try {
                 Long userId = Long.parseLong(professorIdentifier.substring(5));
-                return userRepository.findById(userId);
+                java.util.Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    return userOpt;
+                }
             } catch (NumberFormatException e) {
-                return java.util.Optional.empty();
+                // Not a valid prof_<id> format, continue to other lookups
             }
         }
         
-        // Otherwise, look up by professorId
-        return userRepository.findByProfessorId(professorIdentifier);
+        // 2. Try looking up by professorId field
+        java.util.Optional<User> byProfessorId = userRepository.findByProfessorId(professorIdentifier);
+        if (byProfessorId.isPresent()) {
+            return byProfessorId;
+        }
+        
+        // 3. Try looking up by name (new format)
+        java.util.List<User> allProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR);
+        for (User professor : allProfessors) {
+            String folderName = generateProfessorFolderName(professor);
+            if (folderName.equals(professorIdentifier)) {
+                return java.util.Optional.of(professor);
+            }
+        }
+        
+        return java.util.Optional.empty();
     }
 }

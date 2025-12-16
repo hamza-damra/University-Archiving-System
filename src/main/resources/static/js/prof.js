@@ -2235,11 +2235,11 @@ function showFileExplorerUploadModal(path, documentType, preselectedFiles = null
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-2">
                     Upload ${formattedType}
-                    <span class="text-gray-500 font-normal">(PDF or ZIP, max 10 files)</span>
+                    <span class="text-gray-500 font-normal">(PDF or ZIP, max 10 files, up to 100MB each)</span>
                 </label>
                 <input type="file" id="uploadFilesInput" multiple accept=".pdf,.zip"
                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none hover:bg-gray-100 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
-                <p class="mt-1 text-xs text-gray-500">Maximum file size: 10MB per file</p>
+                <p class="mt-1 text-xs text-gray-500">Maximum file size: 100MB per file</p>
             </div>
             
             <div class="mb-4">
@@ -2299,11 +2299,11 @@ function showFileExplorerUploadModal(path, documentType, preselectedFiles = null
                         return;
                     }
 
-                    // Validate file sizes
-                    const maxSize = 10 * 1024 * 1024; // 10MB
+                    // Validate file sizes (100MB per file)
+                    const maxSize = 100 * 1024 * 1024; // 100MB
                     for (const file of files) {
                         if (file.size > maxSize) {
-                            showToast(`File "${file.name}" exceeds 10MB limit`, 'error');
+                            showToast(`File "${file.name}" exceeds 100MB limit`, 'error');
                             return;
                         }
                     }

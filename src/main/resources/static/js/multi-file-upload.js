@@ -308,7 +308,15 @@ export function showMultiFileUploadModal(requestId, allowedExtensions, existingF
             close();
         } catch (error) {
             console.error('Upload error:', error);
-            showError(error.message || 'Upload failed');
+            // Parse error to get friendly message
+            let errorMessage = 'Upload failed. Please try again.';
+            if (typeof window.getFriendlyErrorMessage === 'function') {
+                errorMessage = window.getFriendlyErrorMessage(error.message || '', 'upload');
+            } else if (error.message && !error.message.startsWith('{')) {
+                // Only use error.message if it's not raw JSON
+                errorMessage = error.message;
+            }
+            showError(errorMessage);
             uploadBtn.disabled = false;
             cancelBtn.disabled = false;
             uploadBtn.textContent = 'Upload';

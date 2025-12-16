@@ -4265,3 +4265,76 @@ body:not(.dark) #fileExplorerFileList .bg-blue-50 .text-gray-500 {
 .dark #fileExplorerInstructionCard .instruction-highlight {
     color: #eff6ff;
 }
+
+/* ============================================
+   File Row Animations - Sync & Delete Support
+   ============================================ */
+
+/* Smooth transitions for file rows */
+.file-row {
+    transition: opacity 0.3s ease, transform 0.3s ease, background-color 0.2s ease;
+}
+
+/* Animation for file being removed */
+.file-row.removing {
+    opacity: 0;
+    transform: translateX(-20px);
+}
+
+/* Animation for file appearing (after refresh) */
+@keyframes fileSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.file-row.new {
+    animation: fileSlideIn 0.3s ease forwards;
+}
+
+/* Staggered animation delay for multiple files */
+.file-row:nth-child(1) { animation-delay: 0ms; }
+.file-row:nth-child(2) { animation-delay: 50ms; }
+.file-row:nth-child(3) { animation-delay: 100ms; }
+.file-row:nth-child(4) { animation-delay: 150ms; }
+.file-row:nth-child(5) { animation-delay: 200ms; }
+
+/* Deleted content warning state */
+.file-explorer .deleted-content-warning {
+    background-color: #fef3c7;
+    border: 1px solid #f59e0b;
+    border-radius: 0.5rem;
+    padding: 1rem 1.5rem;
+    margin: 1rem 0;
+}
+
+.dark .file-explorer .deleted-content-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.deleted-content-warning .warning-icon {
+    color: #f59e0b;
+}
+
+.deleted-content-warning .warning-title {
+    color: #92400e;
+    font-weight: 600;
+}
+
+.dark .deleted-content-warning .warning-title {
+    color: #fbbf24;
+}
+
+.deleted-content-warning .warning-message {
+    color: #78350f;
+}
+
+.dark .deleted-content-warning .warning-message {
+    color: #fcd34d;
+}

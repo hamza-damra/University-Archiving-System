@@ -54,10 +54,19 @@ export class OfficeRenderer {
         } catch (error) {
             console.error('Error rendering Office document:', error);
             
-            // Check if this is a conversion error
-            if (error.message.includes('conversion') || error.message.includes('convert')) {
+            // Show toast notification for user feedback
+            if (typeof window.handleFileError === 'function') {
+                window.handleFileError(error, 'preview');
+            }
+            
+            // Check if this is a conversion error or file not found
+            if (error.message.includes('conversion') || error.message.includes('convert') || 
+                error.message.includes('corrupted') || error.message.includes('unsupported')) {
                 // Show conversion error with download fallback
                 this.renderConversionError(container, error);
+            } else if (error.status === 404 || error.message.includes('not found')) {
+                // Show file not found error
+                this.renderFileNotFoundError(container, error);
             } else {
                 // Re-throw other errors to be handled by preview modal
                 throw error;
@@ -312,6 +321,39 @@ export class OfficeRenderer {
     }
 
     /**
+     * Render file not found error
+     * @private
+     * @param {HTMLElement} container - Container element
+     * @param {Error} error - Error object
+     */
+    renderFileNotFoundError(container, error) {
+        container.innerHTML = '';
+        container.className = 'flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900';
+        
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-center p-8 max-w-md';
+        
+        errorDiv.innerHTML = `
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-amber-400 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                File Not Found
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400 mb-4">
+                This file could not be found. It may have been moved or deleted from the server.
+            </p>
+            <p class="text-sm text-gray-500 dark:text-gray-500">
+                Please refresh the file explorer and try again.
+            </p>
+        `;
+        
+        container.appendChild(errorDiv);
+    }
+
+    /**
      * Render conversion error with download fallback
      * @private
      * @param {HTMLElement} container - Container element
@@ -320,6 +362,9 @@ export class OfficeRenderer {
     renderConversionError(container, error) {
         container.innerHTML = '';
         container.className = 'flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900';
+        
+        // User-friendly message - don't show raw JSON or technical details
+        const friendlyMessage = 'The document could not be converted for preview. Please try downloading the file.';
         
         const errorDiv = document.createElement('div');
         errorDiv.className = 'text-center p-8 max-w-md';
@@ -331,13 +376,10 @@ export class OfficeRenderer {
                 </svg>
             </div>
             <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Conversion Failed
+                Preview Unavailable
             </h3>
-            <p class="text-gray-600 dark:text-gray-400 mb-2">
-                Unable to convert document for preview.
-            </p>
-            <p class="text-sm text-gray-500 dark:text-gray-500 mb-6">
-                ${this.escapeHtml(error.message)}
+            <p class="text-gray-600 dark:text-gray-400 mb-6">
+                ${this.escapeHtml(friendlyMessage)}
             </p>
             <button 
                 class="office-download-btn px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center gap-2"
@@ -408,7 +450,14 @@ export class OfficeRenderer {
             
         } catch (error) {
             console.error('Error downloading file:', error);
-            alert('Failed to download file. Please try again.');
+            // Use toast notification if available, fallback to alert
+            if (typeof window.handleFileError === 'function') {
+                window.handleFileError(error, 'download');
+            } else if (typeof window.Toast !== 'undefined') {
+                window.Toast.error('Failed to download file. Please try again.', 'Download Failed');
+            } else {
+                alert('Failed to download file. Please try again.');
+            }
         }
     }
 

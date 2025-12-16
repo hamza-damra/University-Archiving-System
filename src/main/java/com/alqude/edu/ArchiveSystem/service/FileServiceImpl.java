@@ -44,8 +44,13 @@ public class FileServiceImpl implements FileService {
     @Value("${file.upload.directory:uploads/}")
     private String uploadDirectory;
 
-    private static final List<String> DEFAULT_ALLOWED_EXTENSIONS = Arrays.asList("pdf", "zip");
-    private static final long MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+    // Allowed file extensions for assignment/document uploads
+    // Supports common university document types (PDF, Office docs, text, archives, images, CSV)
+    private static final List<String> DEFAULT_ALLOWED_EXTENSIONS = Arrays.asList(
+            "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx",
+            "txt", "zip", "rar", "jpg", "jpeg", "png", "gif", "csv");
+    // Maximum size for a single file in assignment/document uploads (100MB)
+    private static final long MAX_SINGLE_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
 
     @Override
     @Transactional
@@ -300,7 +305,8 @@ public class FileServiceImpl implements FileService {
             if (resource.exists() && resource.isReadable()) {
                 return resource;
             } else {
-                throw FileUploadException.fileNotFound(null);
+                log.error("Physical file not found on disk: {}", fileUrl);
+                throw FileUploadException.physicalFileNotFound(fileUrl);
             }
         } catch (MalformedURLException e) {
             log.error("Error loading file as resource: {}", fileUrl, e);
@@ -457,6 +463,31 @@ public class FileServiceImpl implements FileService {
         }
     }
 
+    /**
+     * Generate a safe folder name from professor's name.
+     * Sanitizes the name to be filesystem-safe while remaining readable.
+     */
+    private String generateProfessorFolderName(User professor) {
+        String firstName = professor.getFirstName() != null ? professor.getFirstName().trim() : "";
+        String lastName = professor.getLastName() != null ? professor.getLastName().trim() : "";
+        
+        // Combine names
+        String fullName = (firstName + " " + lastName).trim();
+        
+        // If name is empty, use fallback
+        if (fullName.isEmpty()) {
+            return "prof_" + professor.getId();
+        }
+        
+        // Sanitize: remove characters invalid in file paths: \ / : * ? " < > |
+        String sanitized = fullName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        
+        // Collapse multiple spaces/underscores into single ones
+        sanitized = sanitized.replaceAll("\\s+", " ").replaceAll("_+", "_").trim();
+        
+        return sanitized;
+    }
+
     private UploadedFile saveFile(MultipartFile file, DocumentSubmission submission,
             CourseAssignment courseAssignment, int order, User uploader) {
         try {
@@ -466,18 +497,15 @@ public class FileServiceImpl implements FileService {
             Course course = courseAssignment.getCourse();
             User professor = courseAssignment.getProfessor();
 
-            // Use professorId if available, otherwise fallback to "prof_<userId>"
-            String professorIdStr = professor.getProfessorId();
-            if (professorIdStr == null || professorIdStr.trim().isEmpty()) {
-                professorIdStr = "prof_" + professor.getId();
-                log.info("Professor {} has no professorId, using fallback: {}", professor.getName(), professorIdStr);
-            }
+            // Use professor's full name for folder path (sanitized for filesystem)
+            String professorFolderName = generateProfessorFolderName(professor);
+            log.info("Using professor folder name: {} for professor {}", professorFolderName, professor.getEmail());
 
             // Generate file path
             String filePath = generateFilePath(
                     academicYear.getYearCode(),
                     semester.getType().name(),
-                    professorIdStr,
+                    professorFolderName,
                     course.getCourseCode(),
                     submission.getDocumentType(),
                     file.getOriginalFilename());

@@ -49,28 +49,82 @@ public class FolderServiceImpl implements FolderService {
     };
 
     /**
-     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * Generate a safe folder name from professor's name.
+     * Sanitizes the name to be filesystem-safe while remaining readable.
+     * 
+     * @param professor The professor user
+     * @return A sanitized folder name in format "firstName lastName"
+     */
+    private String generateProfessorFolderName(User professor) {
+        String firstName = professor.getFirstName() != null ? professor.getFirstName().trim() : "";
+        String lastName = professor.getLastName() != null ? professor.getLastName().trim() : "";
+        
+        // Combine names
+        String fullName = (firstName + " " + lastName).trim();
+        
+        // If name is empty, use fallback
+        if (fullName.isEmpty()) {
+            return "prof_" + professor.getId();
+        }
+        
+        // Sanitize: replace problematic characters with underscore, keep spaces and common chars
+        // Remove characters that are invalid in file paths: \ / : * ? " < > |
+        String sanitized = fullName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        
+        // Collapse multiple spaces/underscores into single ones
+        sanitized = sanitized.replaceAll("\\s+", " ").replaceAll("_+", "_").trim();
+        
+        return sanitized;
+    }
+
+    /**
+     * Find professor by identifier - supports multiple formats:
+     * 1. Professor's full name (new format): "firstName lastName"
+     * 2. Legacy fallback format: "prof_<id>"
+     * 3. Legacy professorId field value
+     * 
      * @param professorIdentifier The professor identifier from path
      * @return The professor User entity
      * @throws EntityNotFoundException if professor not found
      */
     private User findProfessorByIdentifier(String professorIdentifier) {
-        // Check if this is a fallback identifier (prof_<id>)
-        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+        if (professorIdentifier == null || professorIdentifier.isEmpty() || "null".equals(professorIdentifier)) {
+            throw new EntityNotFoundException("Invalid professor identifier: " + professorIdentifier);
+        }
+        
+        // 1. Check if this is a legacy fallback identifier (prof_<id>)
+        if (professorIdentifier.startsWith("prof_")) {
             try {
                 Long userId = Long.parseLong(professorIdentifier.substring(5));
-                return userRepository.findById(userId)
-                        .orElseThrow(() -> new EntityNotFoundException(
-                                "Professor not found with id: " + userId));
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    log.debug("Found professor by legacy fallback ID: {}", professorIdentifier);
+                    return userOpt.get();
+                }
             } catch (NumberFormatException e) {
-                throw new EntityNotFoundException("Invalid professor identifier format: " + professorIdentifier);
+                // Not a valid prof_<id> format, continue to other lookups
             }
         }
         
-        // Otherwise, look up by professorId
-        return userRepository.findByProfessorId(professorIdentifier)
-                .orElseThrow(() -> new EntityNotFoundException(
-                        "Professor not found: " + professorIdentifier));
+        // 2. Try looking up by professorId field
+        Optional<User> byProfessorId = userRepository.findByProfessorId(professorIdentifier);
+        if (byProfessorId.isPresent()) {
+            log.debug("Found professor by professorId: {}", professorIdentifier);
+            return byProfessorId.get();
+        }
+        
+        // 3. Try looking up by name (new format) - search for professors whose generated folder name matches
+        List<User> allProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR);
+        for (User professor : allProfessors) {
+            String folderName = generateProfessorFolderName(professor);
+            if (folderName.equals(professorIdentifier)) {
+                log.debug("Found professor by folder name match: {} -> {} {}", 
+                        professorIdentifier, professor.getFirstName(), professor.getLastName());
+                return professor;
+            }
+        }
+        
+        throw new EntityNotFoundException("Professor not found: " + professorIdentifier);
     }
 
     @Override
@@ -107,17 +161,14 @@ public class FolderServiceImpl implements FolderService {
             return existingFolder.get();
         }
 
-        // Generate folder path: {yearCode}/{semesterType}/{professorId}
+        // Generate folder path: {yearCode}/{semesterType}/{professorFolderName}
         String yearCode = academicYear.getYearCode();
         String semesterType = semester.getType().name().toLowerCase();
-        // Use professorId if available, otherwise fallback to "prof_<userId>"
-        String professorIdStr = professor.getProfessorId();
-        if (professorIdStr == null || professorIdStr.trim().isEmpty()) {
-            professorIdStr = "prof_" + professor.getId();
-            log.info("Professor {} has no professorId, using fallback: {}", professor.getName(), professorIdStr);
-        }
+        // Use professor's full name for folder (sanitized for filesystem)
+        String professorFolderName = generateProfessorFolderName(professor);
+        log.info("Using professor folder name: {} for professor {}", professorFolderName, professor.getEmail());
 
-        String folderPath = yearCode + "/" + semesterType + "/" + professorIdStr;
+        String folderPath = yearCode + "/" + semesterType + "/" + professorFolderName;
         String folderName = professor.getFirstName() + " " + professor.getLastName();
 
         // Create physical directory
@@ -350,7 +401,7 @@ public class FolderServiceImpl implements FolderService {
                         "Semester not found: " + components.getSemesterType() + " for year "
                                 + components.getAcademicYearCode()));
 
-        // Find professor by professorId or fallback format "prof_<id>"
+        // Find professor by name format, professorId, or legacy "prof_<id>" format
         User professor = findProfessorByIdentifier(components.getProfessorId());
 
         // Verify user has permission (user must be the professor)

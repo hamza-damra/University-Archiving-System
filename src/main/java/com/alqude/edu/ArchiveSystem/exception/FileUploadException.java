@@ -104,6 +104,15 @@ public class FileUploadException extends ArchiveSystemException {
         );
     }
     
+    public static FileUploadException physicalFileNotFound(String fileUrl) {
+        return new FileUploadException(
+            FILE_NOT_FOUND, 
+            "The file could not be found on the server. It may have been moved or deleted from storage.",
+            HttpStatus.NOT_FOUND,
+            List.of("The file record exists but the physical file is missing", "Contact administrator for assistance")
+        );
+    }
+    
     public static FileUploadException processingError(String fileName, String details) {
         return new FileUploadException(
             FILE_PROCESSING_ERROR, 

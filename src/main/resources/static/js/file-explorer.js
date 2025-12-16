@@ -68,6 +68,7 @@ import { fileExplorer } from './api.js';
 import { showToast, showModal, formatDate } from './ui.js';
 import { fileExplorerState } from './file-explorer-state.js';
 import { FilePreviewButton } from './file-preview-button.js';
+import { fileExplorerSync } from './file-explorer-sync.js';
 
 /**
  * Minimum loading time in milliseconds to prevent flickering/flash effect
@@ -197,11 +198,112 @@ export class FileExplorer {
             this.onStateChange(state);
         });
 
+        // Initialize sync service
+        this.initSyncService();
+
         // Check if container already has structure (e.g. restored from storage)
         // If so, skip initial render to prevent flash
         if (!this.container.querySelector('#fileExplorerBreadcrumbs')) {
             this.render();
         }
+    }
+
+    /**
+     * Initialize the file explorer sync service
+     * Sets up listeners for deleted content and navigation events
+     */
+    initSyncService() {
+        // Start the sync service
+        fileExplorerSync.start(30000); // Sync every 30 seconds
+
+        // Listen for sync events
+        fileExplorerSync.addListener((event, data) => {
+            this.handleSyncEvent(event, data);
+        });
+
+        // Listen for navigation events (e.g., when current folder is deleted)
+        window.addEventListener('fileExplorerNavigate', (e) => {
+            const { path, reason, deletedPath } = e.detail;
+            if (reason === 'deleted') {
+                this.handleDeletedNavigation(path, deletedPath);
+            }
+        });
+        
+        // NOTE: Files are only removed from UI via the sync service when
+        // the database record is actually deleted by an admin.
+        // Download/preview 404 errors do NOT remove files from UI.
+    }
+
+    /**
+     * Handle sync service events
+     * @param {string} event - Event type
+     * @param {Object} data - Event data
+     */
+    handleSyncEvent(event, data) {
+        switch (event) {
+            case 'pathDeleted':
+                // Current path was deleted - state will be updated via navigation event
+                console.log('[FileExplorer] Path deleted:', data.path);
+                break;
+                
+            case 'filesDeleted':
+                // Files in current view were deleted
+                this.handleFilesDeleted(data.files);
+                break;
+                
+            case 'filesRemoved':
+                // Files were removed from UI, update state
+                this.updateStateAfterFilesRemoved(data.files);
+                break;
+        }
+    }
+
+    /**
+     * Handle navigation after a path is deleted
+     * @param {string} safePath - Safe path to navigate to
+     * @param {string} deletedPath - The path that was deleted
+     */
+    async handleDeletedNavigation(safePath, deletedPath) {
+        console.log('[FileExplorer] Navigating away from deleted path:', deletedPath, '→', safePath);
+        
+        // Clear the sync service's deleted cache for this path
+        fileExplorerSync.clearDeletedCache();
+        
+        // Navigate to safe path
+        if (safePath) {
+            await this.loadNode(safePath, false);
+        } else {
+            // Navigate to root
+            await this.loadRoot(false);
+        }
+    }
+
+    /**
+     * Handle files that were deleted from the server
+     * @param {Array} files - Array of deleted file objects
+     */
+    handleFilesDeleted(files) {
+        if (!this.currentNode || !this.currentNode.files) return;
+        
+        const deletedIds = new Set(files.map(f => f.id));
+        
+        // Remove deleted files from current node
+        this.currentNode.files = this.currentNode.files.filter(f => !deletedIds.has(f.id));
+        
+        // Update state
+        fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
+        
+        // Re-render file list
+        this.renderFileList(this.currentNode);
+    }
+
+    /**
+     * Update state after files are removed from UI
+     * @param {Array} files - Array of removed file objects
+     */
+    updateStateAfterFilesRemoved(files) {
+        // State is already updated via handleFilesDeleted
+        // This is a hook for any additional cleanup needed
     }
 
     /**
@@ -471,7 +573,15 @@ export class FileExplorer {
                 // Actual error occurred
                 fileExplorerState.setError(error.message || 'Failed to load file explorer');
                 if (!isBackground) {
-                    showToast('Failed to load file explorer', 'error');
+                    // Show detailed error toast
+                    if (typeof window.Toast !== 'undefined') {
+                        window.Toast.error(
+                            'Unable to load file explorer. Please select a different semester or refresh the page.',
+                            'Failed to Load'
+                        );
+                    } else {
+                        showToast('Failed to load file explorer', 'error');
+                    }
                     this.renderError('Failed to load file explorer', 'Please try again or select a different semester');
                 }
             }
@@ -540,29 +650,47 @@ export class FileExplorer {
             // Clear loading state
             fileExplorerState.setFileListLoading(false);
         } catch (error) {
-            // Check if this is a "not found" error (404)
-            const isNotFoundError = error.message && (
+            // Check if this is a "not found" error (404 - folder may have been deleted)
+            const isNotFoundError = error.status === 404 || (error.message && (
                 error.message.toLowerCase().includes('not found') ||
-                error.message.toLowerCase().includes('professor not found')
-            );
+                error.message.toLowerCase().includes('professor not found') ||
+                error.message.toLowerCase().includes('does not exist')
+            ));
 
             if (isNotFoundError) {
-                // This is likely an empty folder or missing data, not a real error
-                console.warn('Path not found (empty data):', path);
-
-                // Show friendly empty state instead of error
-                const container = document.getElementById('fileExplorerFileList');
-                if (container) {
-                    container.innerHTML = this.renderEmptyState(
-                        'This folder has no content yet',
-                        'folder'
-                    );
+                // Folder was likely deleted by admin
+                console.warn('Path not found (may be deleted):', path);
+                
+                // Show user-friendly message about deleted content
+                this.showDeletedContentMessage(path, 'folder');
+                
+                // Navigate to parent folder or root
+                const parentPath = this.getParentPath(path);
+                if (parentPath) {
+                    // Navigate to parent after a brief delay
+                    setTimeout(() => {
+                        this.loadNode(parentPath);
+                    }, 100);
+                } else {
+                    // Navigate to root
+                    setTimeout(() => {
+                        this.loadRoot(false);
+                    }, 100);
                 }
             } else {
                 // Actual error occurred
                 console.error('Error loading node:', error);
                 fileExplorerState.setError(error.message || 'Failed to load folder');
-                showToast('Failed to load folder', 'error');
+                
+                // Show detailed error toast
+                if (typeof window.Toast !== 'undefined') {
+                    window.Toast.error(
+                        'Unable to load folder contents. Please refresh and try again.',
+                        'Failed to Load Folder'
+                    );
+                } else {
+                    showToast('Failed to load folder', 'error');
+                }
 
                 // Show error in file list using shared error state rendering
                 const container = document.getElementById('fileExplorerFileList');
@@ -1152,7 +1280,7 @@ export class FileExplorer {
         const fileIconClass = this.getFileIconClass(fileType);
 
         return `
-            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-all group">
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 transition-all group file-row" data-file-id="${fileId}">
                 <td class="px-4 py-3 whitespace-nowrap">
                     <div class="flex items-center">
                         <div class="file-icon-container w-14 h-14 flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg mr-3 flex-shrink-0">
@@ -1320,8 +1448,23 @@ export class FileExplorer {
             const response = await fileExplorer.downloadFile(fileId);
 
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || 'Failed to download file');
+                // Parse error response and create user-friendly error
+                const error = new Error();
+                error.status = response.status;
+                
+                try {
+                    const errorData = await response.json();
+                    // Extract user-friendly message from API response
+                    error.message = errorData.error?.message || errorData.message || 'Failed to download file';
+                    error.errorCode = errorData.error?.errorCode || errorData.errorCode;
+                } catch (e) {
+                    // If not JSON, use status-based message
+                    error.message = response.status === 404 ? 'File not found' : 
+                                   response.status === 403 ? 'Access denied' : 
+                                   'Failed to download file';
+                }
+                
+                throw error;
             }
 
             // Get filename from Content-Disposition header
@@ -1390,16 +1533,70 @@ export class FileExplorer {
         } catch (error) {
             console.error('Error downloading file:', error);
 
-            // Show error message
-            const errorMessage = error.message || 'Failed to download file';
-            showToast(errorMessage, 'error');
+            const status = error.status;
+            const errorCode = error.errorCode;
+            const isNotFoundError = status === 404 || errorCode === 'FILE_NOT_FOUND';
 
-            // If it's a permission error, show more details
-            if (error.message && error.message.includes('403')) {
-                showToast('You do not have permission to download this file', 'error');
-            } else if (error.message && error.message.includes('404')) {
-                showToast('File not found', 'error');
+            // NOTE: Do NOT remove files from UI on download 404 errors!
+            // The file record may still exist in database (physical file missing).
+            // Files are only removed from UI when the sync service detects 
+            // the database record was actually deleted by an admin.
+
+            // Use enhanced toast if available
+            if (typeof window.handleFileError === 'function') {
+                window.handleFileError(error, 'download');
+            } else if (typeof window.Toast !== 'undefined') {
+                if (status === 403 || errorCode === 'ACCESS_DENIED') {
+                    window.Toast.error('You do not have permission to download this file.', 'Access Denied');
+                } else if (isNotFoundError) {
+                    // File record exists but physical file is missing
+                    window.Toast.error('This file could not be found. It may have been moved or deleted from the server.', 'File Not Found');
+                } else {
+                    window.Toast.error('Unable to download this file. Please try again.', 'Download Failed');
+                }
+            } else {
+                // Fallback to basic toast with friendly message
+                showToast('Unable to download file. Please try again.', 'error');
             }
+        }
+    }
+
+    /**
+     * Handle a file that was deleted from the server
+     * Removes it from the UI and updates state
+     * @param {number} fileId - ID of the deleted file
+     */
+    handleFileDeleted(fileId) {
+        // Find and remove the file element from DOM with animation
+        const fileElement = document.querySelector(`[data-file-id="${fileId}"]`);
+        if (fileElement) {
+            fileElement.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            fileElement.style.opacity = '0';
+            fileElement.style.transform = 'translateX(-20px)';
+            
+            setTimeout(() => {
+                fileElement.remove();
+                
+                // Check if file list is now empty
+                const fileListContainer = document.getElementById('fileExplorerFileList');
+                const remainingFiles = fileListContainer?.querySelectorAll('[data-file-id]');
+                if (remainingFiles && remainingFiles.length === 0 && this.currentNode) {
+                    // Check if there are no folders either
+                    const hasFolders = this.currentNode.children && this.currentNode.children.length > 0;
+                    if (!hasFolders) {
+                        // Show empty state
+                        if (fileListContainer) {
+                            fileListContainer.innerHTML = this.renderEmptyState('This folder is empty', 'folder');
+                        }
+                    }
+                }
+            }, 300);
+        }
+
+        // Update state
+        if (this.currentNode && this.currentNode.files) {
+            this.currentNode.files = this.currentNode.files.filter(f => f.id !== fileId);
+            fileExplorerState.setCurrentNode(this.currentNode, this.currentPath);
         }
     }
 
@@ -1445,6 +1642,97 @@ export class FileExplorer {
         if (fileListContainer) {
             fileListContainer.innerHTML = errorHtml;
         }
+    }
+
+    /**
+     * Show a user-friendly message when content has been deleted
+     * @param {string} path - The path that was deleted
+     * @param {string} type - Type of content ('file' or 'folder')
+     */
+    showDeletedContentMessage(path, type = 'folder') {
+        const name = this.getPathDisplayName(path);
+        const messages = {
+            file: {
+                title: 'File No Longer Available',
+                message: `"${name}" has been removed. It may have been deleted by an administrator.`,
+                icon: 'document'
+            },
+            folder: {
+                title: 'Folder No Longer Available',
+                message: `"${name}" has been removed. Redirecting to available folder...`,
+                icon: 'folder'
+            }
+        };
+
+        const config = messages[type] || messages.folder;
+
+        // Show toast notification
+        if (typeof window.Toast !== 'undefined') {
+            window.Toast.warning(config.message, config.title);
+        } else {
+            showToast(config.message, 'warning');
+        }
+
+        // Show inline message in file list
+        const container = document.getElementById('fileExplorerFileList');
+        if (container) {
+            container.innerHTML = this.renderDeletedState(config.message, type);
+        }
+    }
+
+    /**
+     * Render a deleted content state with consistent styling
+     * @param {string} message - Message to display
+     * @param {string} type - Type of deleted content
+     * @returns {string} HTML string for deleted state
+     */
+    renderDeletedState(message, type = 'folder') {
+        const iconPath = type === 'file' 
+            ? 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z'
+            : 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z';
+
+        return `
+            <div class="text-center py-12">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-100 dark:bg-amber-900/30 mb-4">
+                    <svg class="w-8 h-8 text-amber-500 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${iconPath}"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Content No Longer Available
+                </h3>
+                <p class="text-gray-500 dark:text-gray-400 text-sm max-w-md mx-auto mb-4">
+                    ${this.escapeHtml(message)}
+                </p>
+                <p class="text-gray-400 dark:text-gray-500 text-xs">
+                    Redirecting to available content...
+                </p>
+            </div>
+        `;
+    }
+
+    /**
+     * Get the display name from a path
+     * @param {string} path - Full path
+     * @returns {string} Display name
+     */
+    getPathDisplayName(path) {
+        if (!path) return 'Unknown';
+        const parts = path.split('/').filter(Boolean);
+        return parts[parts.length - 1] || 'Folder';
+    }
+
+    /**
+     * Get the parent path from a given path
+     * @param {string} path - Full path
+     * @returns {string|null} Parent path or null if at root
+     */
+    getParentPath(path) {
+        if (!path) return null;
+        const parts = path.split('/').filter(Boolean);
+        if (parts.length <= 1) return null;
+        parts.pop();
+        return parts.join('/');
     }
 
     /**
@@ -2364,6 +2652,9 @@ export class FileExplorer {
             this.unsubscribe();
             this.unsubscribe = null;
         }
+        
+        // Stop the sync service
+        fileExplorerSync.stop();
     }
 }
 

@@ -10,6 +10,7 @@ import { showToast } from './ui.js';
 import { TextRenderer } from './text-renderer.js';
 import { PDFRenderer } from './pdf-renderer.js';
 import { CodeRenderer } from './code-renderer.js';
+import { OfficeRenderer } from './office-renderer.js';
 
 /**
  * FilePreviewModal class
@@ -471,12 +472,28 @@ export class FilePreviewModal {
      */
     handleError(error) {
         let errorType = 'generic';
-        let message = error.message || 'Failed to load preview';
         let showRetry = false;
         let showDownload = false;
 
+        // Parse error message - handle JSON error responses
+        let message = error.message || 'Failed to load preview';
+        try {
+            if (typeof message === 'string' && message.startsWith('{')) {
+                const parsed = JSON.parse(message);
+                message = parsed.error?.message || parsed.message || 'Failed to load preview';
+            }
+        } catch (e) {
+            // Not JSON, use as-is
+        }
+        
+        // Use parseApiError if available for consistent error parsing
+        if (typeof window.parseApiError === 'function') {
+            const parsed = window.parseApiError(error);
+            message = parsed.message || message;
+        }
+
         // Detect error type from error message or properties
-        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        if (error.name === 'TypeError' && error.message && error.message.includes('fetch')) {
             // Network error
             errorType = 'network';
             message = 'Unable to connect to the server. Please check your internet connection and try again.';
@@ -486,9 +503,15 @@ export class FilePreviewModal {
             errorType = 'permission';
             message = 'You don\'t have permission to preview this file. Please contact your administrator if you believe this is an error.';
         } else if (error.status === 404 || message.includes('not found') || message.includes('deleted')) {
-            // File not found
+            // File not found - physical file may be missing but record still exists
             errorType = 'notfound';
-            message = 'This file could not be found. It may have been deleted or moved.';
+            message = 'This file could not be found on the server. It may have been moved or deleted.';
+            showDownload = false; // Can't download if file is missing
+            
+            // NOTE: Do NOT dispatch fileDeleted event here!
+            // The file record may still exist in database (physical file missing).
+            // Files are only removed from UI when the sync service detects 
+            // the database record was actually deleted by an admin.
         } else if (error.status === 500 || message.includes('service') || message.includes('server')) {
             // Service error
             errorType = 'service';
@@ -512,6 +535,21 @@ export class FilePreviewModal {
         }
 
         this.showError(message, { type: errorType, showRetry, showDownload });
+        
+        // Show toast notification for user feedback
+        if (typeof window.Toast !== 'undefined') {
+            const toastTitle = {
+                'network': 'Connection Error',
+                'permission': 'Access Denied',
+                'notfound': 'File Not Found',
+                'service': 'Service Unavailable',
+                'corrupted': 'File Error',
+                'unsupported': 'Unsupported Format',
+                'generic': 'Preview Error'
+            }[errorType] || 'Error';
+            
+            window.Toast.error(message, toastTitle);
+        }
         
         // Announce error to screen readers
         this.announceToScreenReader(`Error loading preview: ${message}`);
@@ -1084,8 +1122,10 @@ export class FilePreviewModal {
             return new TextRenderer();
         }
         
-        // Other renderers will be added in subsequent tasks
-        // - OfficeRenderer for Office documents
+        // Office documents (doc, docx, xls, xlsx, ppt, pptx)
+        if (OfficeRenderer.supportsFormat(fileType)) {
+            return new OfficeRenderer();
+        }
         
         return null; // Unsupported format
     }

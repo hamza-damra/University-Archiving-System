@@ -485,6 +485,35 @@ export class EnhancedToast {
     static toastIdCounter = 0;
     
     /**
+     * Parse raw JSON error messages to extract user-friendly message
+     * @param {string} message - Raw message which might be JSON
+     * @returns {string} User-friendly message
+     */
+    static parseErrorMessage(message) {
+        if (!message || typeof message !== 'string') {
+            return 'An error occurred. Please try again.';
+        }
+        
+        // Try to parse JSON error responses
+        if (message.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(message);
+                // Extract user-friendly message from API response structure
+                const friendlyMessage = parsed.error?.message || parsed.message;
+                if (friendlyMessage && typeof friendlyMessage === 'string') {
+                    return friendlyMessage;
+                }
+                return 'An error occurred. Please try again.';
+            } catch (e) {
+                // Not valid JSON, use as-is but truncate if too long
+                return message.length > 200 ? 'An error occurred. Please try again.' : message;
+            }
+        }
+        
+        return message;
+    }
+    
+    /**
      * Show an enhanced toast notification
      * @param {string} message - Toast message
      * @param {string} type - Toast type (success, error, info, warning)
@@ -502,6 +531,9 @@ export class EnhancedToast {
         const toastContainer = document.getElementById('toastContainer');
         if (!toastContainer) return null;
         
+        // Parse error messages to extract user-friendly text
+        const cleanMessage = type === 'error' ? this.parseErrorMessage(message) : message;
+        
         // Remove oldest toast if we've reached the limit
         if (this.toasts.length >= this.maxToasts) {
             const oldestToast = this.toasts.shift();
@@ -517,7 +549,7 @@ export class EnhancedToast {
         toast.setAttribute('data-toast-id', toastId);
         
         const icon = this.getToastIcon(type);
-        const formattedMessage = message.replace(/\n/g, '<br>');
+        const formattedMessage = cleanMessage.replace(/\n/g, '<br>');
         
         let actionButton = '';
         if (action && actionLabel && onAction) {

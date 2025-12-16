@@ -143,18 +143,40 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     }
 
     /**
+     * Generate a safe folder name from professor's name.
+     * Sanitizes the name to be filesystem-safe while remaining readable.
+     */
+    private String generateProfessorFolderName(User professor) {
+        String firstName = professor.getFirstName() != null ? professor.getFirstName().trim() : "";
+        String lastName = professor.getLastName() != null ? professor.getLastName().trim() : "";
+        
+        // Combine names
+        String fullName = (firstName + " " + lastName).trim();
+        
+        // If name is empty, use fallback
+        if (fullName.isEmpty()) {
+            return "prof_" + professor.getId();
+        }
+        
+        // Sanitize: remove characters invalid in file paths: \ / : * ? " < > |
+        String sanitized = fullName.replaceAll("[\\\\/:*?\"<>|]", "_");
+        
+        // Collapse multiple spaces/underscores into single ones
+        sanitized = sanitized.replaceAll("\\s+", " ").replaceAll("_+", "_").trim();
+        
+        return sanitized;
+    }
+
+    /**
      * Build a professor node
      */
     private FileExplorerNode buildProfessorNode(String parentPath, User professor, User currentUser) {
-        // Use professorId if available, otherwise fall back to "prof_" + database ID
-        String professorIdentifier = professor.getProfessorId();
-        if (professorIdentifier == null || professorIdentifier.trim().isEmpty()) {
-            professorIdentifier = "prof_" + professor.getId();
-            log.warn("Professor {} {} has no professorId, using fallback: {}", 
-                    professor.getFirstName(), professor.getLastName(), professorIdentifier);
-        }
+        // Use professor's full name for folder path (sanitized for filesystem)
+        String professorFolderName = generateProfessorFolderName(professor);
+        log.debug("Using professor folder name: {} for professor {} {}", 
+                professorFolderName, professor.getFirstName(), professor.getLastName());
         
-        String professorPath = parentPath + "/" + professorIdentifier;
+        String professorPath = parentPath + "/" + professorFolderName;
 
         boolean isOwnProfile = professor.getId().equals(currentUser.getId());
 
@@ -169,7 +191,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 .build();
 
         // Add metadata
-        node.getMetadata().put("professorId", professorIdentifier);
+        node.getMetadata().put("professorId", professor.getProfessorId());
+        node.getMetadata().put("professorFolderName", professorFolderName);
         node.getMetadata().put("email", professor.getEmail());
         node.getMetadata().put("departmentId",
                 professor.getDepartment() != null ? professor.getDepartment().getId() : null);
@@ -197,7 +220,11 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     }
 
     /**
-     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * Find professor by identifier - supports multiple formats:
+     * 1. Professor's full name (new format): "firstName lastName"
+     * 2. Legacy fallback format: "prof_<id>"
+     * 3. Legacy professorId field value
+     * 
      * @param professorIdentifier The professor identifier from path
      * @return The professor User entity
      * @throws EntityNotFoundException if professor not found
@@ -208,23 +235,54 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     }
     
     /**
-     * Find professor by identifier (either professorId or fallback format "prof_<id>")
+     * Find professor by identifier - supports multiple formats:
+     * 1. Professor's full name (new format): "firstName lastName"
+     * 2. Legacy fallback format: "prof_<id>"
+     * 3. Legacy professorId field value
+     * 
      * @param professorIdentifier The professor identifier from path
      * @return Optional containing the professor User entity, or empty if not found
      */
     private Optional<User> findProfessorByIdentifierOptional(String professorIdentifier) {
-        // Check if this is a fallback identifier (prof_<id>)
-        if (professorIdentifier != null && professorIdentifier.startsWith("prof_")) {
+        if (professorIdentifier == null || professorIdentifier.isEmpty() || "null".equals(professorIdentifier)) {
+            log.warn("Invalid professor identifier: {}", professorIdentifier);
+            return Optional.empty();
+        }
+        
+        // 1. Check if this is a legacy fallback identifier (prof_<id>)
+        if (professorIdentifier.startsWith("prof_")) {
             try {
                 Long userId = Long.parseLong(professorIdentifier.substring(5));
-                return userRepository.findById(userId);
+                Optional<User> userOpt = userRepository.findById(userId);
+                if (userOpt.isPresent()) {
+                    log.debug("Found professor by legacy fallback ID: {}", professorIdentifier);
+                    return userOpt;
+                }
             } catch (NumberFormatException e) {
-                return Optional.empty();
+                // Not a valid prof_<id> format, continue to other lookups
             }
         }
         
-        // Otherwise, look up by professorId
-        return userRepository.findByProfessorId(professorIdentifier);
+        // 2. Try looking up by professorId field
+        Optional<User> byProfessorId = userRepository.findByProfessorId(professorIdentifier);
+        if (byProfessorId.isPresent()) {
+            log.debug("Found professor by professorId: {}", professorIdentifier);
+            return byProfessorId;
+        }
+        
+        // 3. Try looking up by name (new format) - search for professors whose generated folder name matches
+        List<User> allProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR);
+        for (User professor : allProfessors) {
+            String folderName = generateProfessorFolderName(professor);
+            if (folderName.equals(professorIdentifier)) {
+                log.debug("Found professor by folder name match: {} -> {} {}", 
+                        professorIdentifier, professor.getFirstName(), professor.getLastName());
+                return Optional.of(professor);
+            }
+        }
+        
+        log.warn("Could not find professor for identifier: {}", professorIdentifier);
+        return Optional.empty();
     }
 
     @Override

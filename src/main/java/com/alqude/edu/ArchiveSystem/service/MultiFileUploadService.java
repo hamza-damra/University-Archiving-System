@@ -57,7 +57,8 @@ public class MultiFileUploadService {
             "pdf", "doc", "docx", "ppt", "pptx", "xls", "xlsx",
             "txt", "zip", "rar", "jpg", "jpeg", "png", "gif", "csv");
 
-    private static final long MAX_SINGLE_FILE_SIZE = 10 * 1024 * 1024; // 10MB per file
+    // Legacy multi-file upload max size per file (100MB) to match new system limits
+    private static final long MAX_SINGLE_FILE_SIZE = 100 * 1024 * 1024; // 100MB per file
 
     /**
      * Upload multiple files for a document request

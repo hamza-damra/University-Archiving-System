@@ -154,6 +154,35 @@ export function createFormSubmitHandler(form, submitButton, onSubmit, options = 
 // ============================================================================
 
 /**
+ * Parse raw JSON error messages to extract user-friendly message
+ * @param {string} message - Raw message which might be JSON
+ * @returns {string} User-friendly message
+ */
+function parseErrorMessage(message) {
+    if (!message || typeof message !== 'string') {
+        return 'An error occurred. Please try again.';
+    }
+    
+    // Try to parse JSON error responses
+    if (message.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(message);
+            // Extract user-friendly message from API response structure
+            const friendlyMessage = parsed.error?.message || parsed.message;
+            if (friendlyMessage && typeof friendlyMessage === 'string') {
+                return friendlyMessage;
+            }
+            return 'An error occurred. Please try again.';
+        } catch (e) {
+            // Not valid JSON, use as-is but truncate if too long
+            return message.length > 200 ? 'An error occurred. Please try again.' : message;
+        }
+    }
+    
+    return message;
+}
+
+/**
  * Show a toast notification
  * @param {string} message - Toast message (supports multiline with \n)
  * @param {string} type - Toast type (success, error, info, warning)
@@ -161,9 +190,12 @@ export function createFormSubmitHandler(form, submitButton, onSubmit, options = 
  * @param {Object} options - Additional options (action, actionLabel, onAction)
  */
 export function showToast(message, type = 'info', duration = 5000, options = {}) {
+    // Parse error messages to extract user-friendly text
+    const cleanMessage = type === 'error' ? parseErrorMessage(message) : message;
+    
     // Try to use enhanced toast if available
     if (typeof window.EnhancedToast !== 'undefined') {
-        return window.EnhancedToast.show(message, type, { duration, ...options });
+        return window.EnhancedToast.show(cleanMessage, type, { duration, ...options });
     }
     
     // Fallback to basic toast
@@ -177,7 +209,7 @@ export function showToast(message, type = 'info', duration = 5000, options = {})
     const icon = getToastIcon(type);
     
     // Convert newlines to HTML breaks for multiline messages
-    const formattedMessage = message.replace(/\n/g, '<br>');
+    const formattedMessage = cleanMessage.replace(/\n/g, '<br>');
     
     toast.innerHTML = `
         <div class="flex-shrink-0">${icon}</div>
@@ -192,7 +224,7 @@ export function showToast(message, type = 'info', duration = 5000, options = {})
     toastContainer.appendChild(toast);
 
     // Auto remove after duration (longer for error messages with multiple lines)
-    const adjustedDuration = message.includes('\n') ? Math.max(duration, 8000) : duration;
+    const adjustedDuration = cleanMessage.includes('\n') ? Math.max(duration, 8000) : duration;
     setTimeout(() => {
         toast.style.opacity = '0';
         setTimeout(() => toast.remove(), 300);

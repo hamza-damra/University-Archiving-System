@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Courses - Deanship Dashboard</title>
     <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
-    <script src="/js/auth-guard.js"></script>
+    <script src="/js/auth/auth-guard.js"></script>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/deanship-layout.css">
-    <script src="/js/theme.js"></script>
+    <script src="/js/core/theme.js"></script>
     <style>
         /* Page content - Theme aware */
         #page-content {
@@ -283,8 +283,8 @@
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
     
-    <script src="/js/notifications.js"></script>
-    <script type="module" src="/js/courses.js"></script>
+    <script src="/js/core/notifications.js"></script>
+    <script type="module" src="/js/shared/courses.js"></script>
     <script>
         // Initialize notifications for Dean dashboard
         document.addEventListener('DOMContentLoaded', function() {

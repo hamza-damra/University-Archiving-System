@@ -5,10 +5,10 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.5.7</version>
+		<version>3.5.9</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.alqude.edu</groupId>
+	<groupId>com.alquds.edu</groupId>
 	<artifactId>ArchiveSystem</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>ArchiveSystem</name>
@@ -201,7 +201,7 @@
 						<path>
 							<groupId>org.projectlombok</groupId>
 							<artifactId>lombok</artifactId>
-							<version>${lombok.version}</version>
+							<version>1.18.30</version>
 						</path>
 						<path>
 							<groupId>org.projectlombok</groupId>

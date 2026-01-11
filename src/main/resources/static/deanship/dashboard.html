@@ -1,192 +1,674 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Deanship Dashboard</title>
+    <title>Deanship Dashboard - Al-Quds University Archiving System</title>
     <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
-    <script src="/js/auth-guard.js"></script>
+    <script src="/js/auth/auth-guard.js"></script>
+    <!-- NOTE: Tailwind CSS CDN is used for development only. 
+         For production, install Tailwind CSS as a PostCSS plugin: 
+         https://tailwindcss.com/docs/installation -->
+    <script>
+        // Suppress Tailwind CSS production warning for development environment
+        (function() {
+            const originalWarn = console.warn;
+            console.warn = function(...args) {
+                if (args[0] && typeof args[0] === 'string' && args[0].includes('cdn.tailwindcss.com should not be used in production')) {
+                    return;
+                }
+                originalWarn.apply(console, args);
+            };
+        })();
+    </script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="/css/common.css">
-    <link rel="stylesheet" href="/css/deanship-layout.css">
+    <link rel="stylesheet" href="/css/deanship-dashboard.css">
     <link rel="stylesheet" href="/css/file-preview-modal.css">
-    <script src="/js/theme.js"></script>
-    <style>
-        /* Dashboard-specific styles */
-        .dashboard-welcome {
-            margin-bottom: var(--spacing-2xl);
-        }
-        
-        .dashboard-welcome h1 {
-            font-size: var(--font-size-3xl);
-            font-weight: var(--font-weight-bold);
-            color: var(--color-text-primary);
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .dashboard-welcome p {
-            font-size: var(--font-size-lg);
-            color: var(--color-text-secondary);
-        }
-        
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: var(--spacing-lg);
-            margin-bottom: var(--spacing-2xl);
-        }
-        
-        .dashboard-card {
-            background-color: var(--color-bg-primary);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: var(--spacing-lg);
-            box-shadow: var(--shadow-md);
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            flex-direction: column;
-            min-height: 200px;
-        }
-        
-        .dashboard-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-        }
-        
-        .dashboard-card-icon {
-            font-size: 48px;
-            margin-bottom: var(--spacing-md);
-            color: var(--color-primary);
-        }
-        
-        .dashboard-card-title {
-            font-size: var(--font-size-xl);
-            font-weight: var(--font-weight-semibold);
-            color: var(--color-text-primary);
-            margin-bottom: var(--spacing-sm);
-        }
-        
-        .dashboard-card-description {
-            font-size: var(--font-size-md);
-            color: var(--color-text-secondary);
-            margin-bottom: var(--spacing-md);
-            flex: 1;
-        }
-        
-        .dashboard-card-stat {
-            font-size: var(--font-size-2xl);
-            font-weight: var(--font-weight-bold);
-            color: var(--color-primary);
-            margin-bottom: var(--spacing-md);
-        }
-        
-        .dashboard-card-button {
-            width: 100%;
-            padding: var(--spacing-md);
-            background-color: var(--color-primary);
-            color: white;
-            border: none;
-            border-radius: var(--radius-md);
-            font-size: var(--font-size-md);
-            font-weight: var(--font-weight-medium);
-            cursor: pointer;
-            transition: background-color 0.2s;
-            min-height: 44px;
-        }
-        
-        .dashboard-card-button:hover {
-            background-color: var(--color-primary-dark);
-        }
-        
-        .dashboard-card-button:focus {
-            outline: 2px solid var(--color-primary);
-            outline-offset: 2px;
-        }
-        
-        @media (max-width: 768px) {
-            .dashboard-cards {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/modern-dropdown.js"></script>
+
 </head>
-<body>
-    <div id="deanship-layout">
-        <!-- Header -->
-        <header class="deanship-header">
-            <div class="header-title">Al-Quds University / Deanship Dashboard</div>
-            <div class="header-user">
-                <!-- Theme Toggle -->
-                <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode" title="Toggle dark mode">
-                    <!-- Sun icon (shown in dark mode) -->
-                    <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    <!-- Moon icon (shown in light mode) -->
-                    <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                </button>
-                <span class="header-user-name" id="deanshipName">Loading...</span>
-                <button class="header-logout-btn" id="logoutBtn">Logout</button>
+
+<body class="bg-gray-50 h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside
+        class="w-[260px] bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto hidden md:flex flex-col z-20" id="mainSidebar">
+        <div class="p-6 border-b border-gray-100" id="sidebarHeader">
+            <div class="flex items-center gap-3" id="sidebarHeaderContent">
+                <div
+                    class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                    D</div>
+                <div id="sidebarHeaderText">
+                    <h1 class="font-bold text-gray-900 text-lg leading-tight">Deanship System</h1>
+                    <p class="text-xs text-gray-500">Al-Quds University</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <div class="nav-tab" data-tab="dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                <span class="sidebar-label">Dashboard</span>
+            </div>
+            <div class="nav-tab" data-tab="academic-years">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="sidebar-label">Academic Years</span>
+            </div>
+            <div class="nav-tab" data-tab="professors">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+                <span class="sidebar-label">Professors</span>
+            </div>
+            <div class="nav-tab" data-tab="courses">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                <span class="sidebar-label">Courses</span>
+            </div>
+            <div class="nav-tab" data-tab="assignments">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <span class="sidebar-label">Assignments</span>
+            </div>
+            <div class="nav-tab" data-tab="reports">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span class="sidebar-label">Reports</span>
+            </div>
+            <div class="nav-tab" data-tab="file-explorer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                <span class="sidebar-label">File Explorer</span>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-200" id="sidebarFooter">
+            <button id="logoutBtn"
+                class="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                data-tooltip="Sign out of your account">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span class="sidebar-label">Logout</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div class="px-6 py-4">
+                <div class="flex justify-between items-center mb-2">
+                    <div class="flex items-center md:hidden">
+                        <button class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
+                        <span class="ml-3 font-bold text-gray-900">Deanship</span>
+                    </div>
+
+                    <div class="hidden md:block">
+                        <h2 class="text-xl font-semibold text-gray-800" id="pageTitle">Dashboard</h2>
+                    </div>
+
+                    <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode"
+                        data-tooltip="Toggle dark mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon icon (shown in light mode) -->
+                        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-medium text-gray-900" id="deanshipName">Loading...</p>
+                            <p class="text-xs text-gray-500">Administrator</p>
+                        </div>
+                        <div
+                            class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            A
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
-        
-        <!-- Navigation -->
-        <nav class="deanship-nav">
-            <a href="/deanship/dashboard" class="nav-link">Dashboard</a>
-            <a href="/deanship/academic-years" class="nav-link">Academic Years</a>
-            <a href="/deanship/professors" class="nav-link">Professors</a>
-            <a href="/deanship/courses" class="nav-link">Courses</a>
-            <a href="/deanship/course-assignments" class="nav-link">Assignments</a>
-            <a href="/deanship/reports" class="nav-link">Reports</a>
-            <a href="/deanship/file-explorer" class="nav-link">File Explorer</a>
-        </nav>
-        
-        <!-- Global Filters -->
-        <div class="deanship-filters">
-            <label class="filter-label" for="academicYearSelect">Academic Year:</label>
-            <select id="academicYearSelect" class="filter-select">
-                <option value="">Select Academic Year</option>
-            </select>
-            
-            <label class="filter-label" for="semesterSelect">Semester:</label>
-            <select id="semesterSelect" class="filter-select">
-                <option value="">Select Semester</option>
-            </select>
-        </div>
-        
-        <!-- Main Content -->
-        <main id="page-content">
-            <div class="dashboard-welcome">
-                <h1>Welcome to Deanship Dashboard</h1>
-                <p>Manage academic structure and monitor submissions across the university</p>
+
+        <!-- Main Scrollable Area -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+
+            <!-- Context Bar (Academic Year & Semester Selector) -->
+            <div id="contextBar" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="academicYearSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Academic Year
+                        </label>
+                        <select id="academicYearSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="semesterSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Semester
+                        </label>
+                        <select id="semesterSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Select academic year first</option>
+                        </select>
+                    </div>
+                </div>
             </div>
+
+            <!-- Dashboard Tab (New) -->
+            <div id="dashboard-tab" class="tab-content">
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-500 text-sm font-medium">Total Professors</h3>
+                            <div class="p-2 stat-card-blue rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline">
+                            <span class="text-2xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-500 text-sm font-medium">Active Courses</h3>
+                            <div class="p-2 stat-card-green rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253">
+                                    </path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline">
+                            <span class="text-2xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+
+                    <div class="card p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-gray-500 text-sm font-medium">Pending Reports</h3>
+                            <div class="p-2 stat-card-purple rounded-lg">
+                                <svg class="w-5 h-5 stat-value" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="flex items-baseline">
+                            <span class="text-2xl font-bold text-gray-900">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Charts -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <!-- Submission Trends Chart -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Submission Trends (30 Days)</h3>
+                        <div id="submissionTrendsChart" class="h-64">
+                            <!-- Chart will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Department Compliance Chart -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Department Compliance</h3>
+                        <div id="departmentComplianceChart" class="h-64">
+                            <!-- Chart will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Status Distribution Chart -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Status Distribution</h3>
+                        <div id="statusDistributionChart" class="h-64">
+                            <!-- Chart will be rendered here -->
+                        </div>
+                    </div>
+
+                    <!-- Recent Activity Feed -->
+                    <div class="card p-6">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Recent Activity</h3>
+                        <div id="recentActivityFeed" class="h-64 overflow-y-auto">
+                            <!-- Activity feed will be rendered here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions Card -->
+                <div class="card p-6">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
+                    <div id="quickActionsCard" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Quick action buttons will be rendered here -->
+                    </div>
+                </div>
+            </div>
+            <!-- Academic Years Tab -->
+            <div id="academic-years-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800">Academic Years Management</h2>
+                        <button id="addAcademicYearBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            data-tooltip="Create a new academic year with semesters">
+                            + Add Academic Year
+                        </button>
+                    </div>
+
+                    <div id="academicYearsTable" class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Year Code</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Start Year</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        End Year</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="academicYearsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Skeleton loader will be inserted by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Professors Tab -->
+            <div id="professors-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800">Professors Management</h2>
+                        <button id="addProfessorBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            data-tooltip="Add a new professor to the system">
+                            + Add Professor
+                        </button>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <input type="text" id="professorSearch" placeholder="Search professors..." class="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-gray-900 placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="professorDepartmentFilter" class="modern-dropdown w-full">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="professorsTableContainer">
+                        <div id="professorsTable" class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor ID</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Email</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Department</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="professorsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Skeleton loader will be inserted by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Courses Tab -->
+            <div id="courses-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800">Courses Management</h2>
+                        <button id="addCourseBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            data-tooltip="Add a new course to the system">
+                            + Add Course
+                        </button>
+                    </div>
+
+                    <!-- Search and Filter -->
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <input type="text" id="courseSearch" placeholder="Search courses..." class="flex-1 min-w-[200px] px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm text-gray-900 placeholder-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="courseDepartmentFilter" class="modern-dropdown w-full">
+                                <option value="">All Departments</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="coursesTableContainer">
+                        <div id="coursesTable" class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course Code</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Department</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Level</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="coursesTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Skeleton loader will be inserted by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Course Assignments Tab -->
+            <div id="assignments-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-semibold text-gray-800">Course Assignments</h2>
+                        <button id="addAssignmentBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                            data-tooltip="Assign a course to a professor">
+                            + Assign Course
+                        </button>
+                    </div>
+
+                    <!-- Filter -->
+                    <div class="mb-4 flex gap-3 items-center flex-wrap">
+                        <div class="w-[220px] flex-shrink-0">
+                            <select id="assignmentProfessorFilter" class="modern-dropdown w-full">
+                                <option value="">All Professors</option>
+                            </select>
+                        </div>
+                        <div class="w-[280px] flex-shrink-0">
+                            <select id="assignmentCourseFilter" class="modern-dropdown w-full">
+                                <option value="">All Courses</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="assignmentsTableContainer">
+                        <div id="assignmentsTable" class="overflow-x-auto">
+                            <table id="assignmentsTableContent" class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                <tr>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Professor</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Course</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Department</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Semester</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status</th>
+                                    <th
+                                        class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="assignmentsTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Skeleton loader will be inserted by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-content hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-6">Interactive Reports Dashboard</h2>
+
+                    <!-- Reports Dashboard Container -->
+                    <div id="reports-dashboard-container">
+                        <!-- Interactive reports dashboard will be rendered here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Explorer Tab -->
+            <!-- 
+            MASTER DESIGN REFERENCE: Professor Dashboard File Explorer Implementation
             
-            <div id="dashboardCards" class="dashboard-cards">
-                <!-- Cards will be dynamically inserted here -->
+            This File Explorer implementation uses the unified FileExplorer class from file-explorer.js
+            with Deanship-specific configuration. The HTML structure matches the Professor Dashboard
+            File Explorer layout (prof-dashboard.html) to ensure visual consistency.
+            
+            Configuration for Deanship:
+            - role: 'DEANSHIP'
+            - readOnly: true (Deanship can view but not upload)
+            - showAllDepartments: true (View all departments)
+            - showProfessorLabels: true (Show professor names on folders)
+            
+            The FileExplorer class handles all rendering, breadcrumb navigation, and file operations
+            while maintaining the canonical design from the Professor Dashboard.
+        -->
+            <div id="file-explorer-tab" class="tab-content hidden">
+                <div class="space-y-4">
+                    <!-- Instruction Card -->
+                    <div id="fileExplorerInstructionCard" class="rounded-xl shadow-sm p-5 transition-colors duration-200">
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0">
+                                <svg class="w-6 h-6 instruction-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-sm font-semibold instruction-title mb-1">How to Use the File Explorer</h3>
+                                <p class="text-sm instruction-text">Select an <strong class="instruction-highlight">Academic Year</strong> and <strong class="instruction-highlight">Semester</strong> from the filters above to browse files from all departments. You have read-only access to view and download files.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- File Explorer Card -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-100">File Explorer</h2>
+                            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"></path>
+                                </svg>
+                                All Departments
+                            </span>
+                        </div>
+
+                        <!-- File Explorer Container -->
+                        <!-- The FileExplorer class will render breadcrumbs, tree view, and file list here -->
+                        <div id="fileExplorerContainer">
+                            <!-- Enhanced Loading Skeleton with Dark Mode Support -->
+                            <div class="animate-pulse space-y-4">
+                                <div class="h-12 bg-gradient-to-r from-gray-200 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    <div class="space-y-3">
+                                        <div class="h-32 bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/30 dark:to-blue-800/20 rounded-lg"></div>
+                                        <div class="h-24 bg-gradient-to-br from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                    </div>
+                                    <div class="md:col-span-2 space-y-3">
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                        <div class="h-16 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-700 dark:to-gray-800 rounded-lg"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
+
+        <!-- Footer -->
+        <footer class="mt-auto py-6 text-center text-sm text-gray-500">
+            <p>Al-Quds University — Archiving System</p>
+        </footer>
     </div>
-    
-    <!-- Toast Container -->
-    <div id="toastContainer" class="fixed top-4 right-4 space-y-2" style="z-index: 10000;"></div>
-    
+
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
-    
-    <script src="/js/modern-dropdown.js"></script>
-    <script src="/js/notifications.js"></script>
-    <!-- Toast Notification System - must load before other modules -->
-    <script type="module" src="/js/toast-notifications.js"></script>
-    <script type="module" src="/js/dashboard.js"></script>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2" style="z-index: 10000;"></div>
+
+    <!-- Early Tab Restoration Script - Runs immediately to prevent flicker -->
     <script>
-        // Initialize notifications for Dean dashboard
-        document.addEventListener('DOMContentLoaded', function() {
-            // Wait a bit for the header to be fully rendered
-            setTimeout(() => {
-                NotificationManager.init('deanship');
-            }, 100);
-        });
+        (function () {
+            // Restore the active tab IMMEDIATELY before any other scripts load
+            const savedTab = localStorage.getItem('deanship-active-tab') || 'dashboard';
+
+            // Show only the saved tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                const tabId = content.id.replace('-tab', '');
+                if (tabId === savedTab) {
+                    content.classList.remove('hidden');
+                } else {
+                    content.classList.add('hidden');
+                }
+            });
+
+            // Update tab navigation styling
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                if (tab.dataset.tab === savedTab) {
+                    tab.classList.add('active');
+                } else {
+                    tab.classList.remove('active');
+                }
+            });
+
+            // Restore Username
+            const savedUserName = localStorage.getItem('deanship_user_name');
+            if (savedUserName) {
+                document.getElementById('deanshipName').textContent = savedUserName;
+            }
+
+            // Restore Academic Year Options and Selection
+            const savedAcademicOptions = localStorage.getItem('deanship_academic_years_options');
+            const savedAcademicYear = localStorage.getItem('deanship_selected_academic_year');
+            const academicSelect = document.getElementById('academicYearSelect');
+
+            if (savedAcademicOptions) {
+                academicSelect.innerHTML = savedAcademicOptions;
+                if (savedAcademicYear) {
+                    academicSelect.value = savedAcademicYear;
+                }
+            }
+
+            // Restore Semester Options and Selection
+            const savedSemesterOptions = localStorage.getItem('deanship_semesters_options');
+            const savedSemester = localStorage.getItem('deanship_selected_semester');
+            const semesterSelect = document.getElementById('semesterSelect');
+
+            if (savedSemesterOptions) {
+                semesterSelect.innerHTML = savedSemesterOptions;
+                if (savedSemester) {
+                    semesterSelect.value = savedSemester;
+                }
+            }
+
+            // Restore File Explorer Content
+            const savedFileExplorerHtml = localStorage.getItem('deanship_file_explorer_html');
+            const fileExplorerContainer = document.getElementById('fileExplorerContainer');
+            if (savedFileExplorerHtml && fileExplorerContainer) {
+                fileExplorerContainer.innerHTML = savedFileExplorerHtml;
+            }
+        })();
     </script>
+
+    <!-- External Libraries for Export Functionality -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <!-- Dashboard Modules -->
+    <script src="/js/deanship/deanship-tables.js"></script>
+    <script src="/js/deanship/deanship-export.js"></script>
+    <script src="/js/deanship/deanship-reports.js"></script>
+
+    <!-- Toast Notification System - must load before other modules -->
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/deanship/deanship.js"></script>
 </body>
+
 </html>
+
+
+
+

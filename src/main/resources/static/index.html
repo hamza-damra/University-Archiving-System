@@ -7,7 +7,7 @@
     <title>Login - Al-Quds University Archiving System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/common.css">
-    <script src="/js/theme.js"></script>
+    <script src="/js/core/theme.js"></script>
     <style>
         /* Login page specific dark theme styles */
         .dark .login-card {
@@ -333,6 +333,140 @@
             border-color: rgba(168, 85, 247, 0.3);
             box-shadow: 0 8px 25px -5px rgba(168, 85, 247, 0.15);
         }
+        
+        /* Enhanced Login Button Loading State */
+        .login-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .login-btn:not(:disabled):hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+        }
+        
+        .dark .login-btn:not(:disabled):hover {
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+        }
+        
+        .login-btn:active:not(:disabled) {
+            transform: translateY(0);
+        }
+        
+        .login-btn.btn-loading {
+            pointer-events: none;
+        }
+        
+        .login-btn .btn-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn .btn-spinner {
+            width: 20px;
+            height: 20px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .login-btn.btn-loading .btn-spinner {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .login-btn .btn-text {
+            transition: all 0.3s ease;
+        }
+        
+        .login-btn.btn-loading .btn-text {
+            opacity: 0.9;
+        }
+        
+        /* Success state */
+        .login-btn.btn-success {
+            background-color: #10b981 !important;
+            transform: scale(1.02);
+        }
+        
+        .login-btn.btn-success .btn-spinner {
+            opacity: 0;
+            transform: scale(0);
+        }
+        
+        .login-btn.btn-success .btn-checkmark {
+            opacity: 1;
+            transform: scale(1);
+        }
+        
+        .login-btn .btn-checkmark {
+            width: 20px;
+            height: 20px;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            left: calc(50% - 60px);
+        }
+        
+        /* Shimmer effect during loading */
+        .login-btn.btn-loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            animation: shimmer 1.5s infinite;
+        }
+        
+        @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Pulse ring animation */
+        .login-btn.btn-loading::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6, #3b82f6);
+            background-size: 200% 100%;
+            animation: borderGlow 2s linear infinite;
+            z-index: -1;
+            opacity: 0.5;
+        }
+        
+        .dark .login-btn.btn-loading::before {
+            background: linear-gradient(90deg, #a855f7, #ec4899, #a855f7);
+            background-size: 200% 100%;
+        }
+        
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        
+        /* Spinner animation */
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .btn-spinner-icon {
+            animation: spin 1s linear infinite;
+        }
     </style>
 </head>
 
@@ -409,8 +543,19 @@
 
                 <!-- Submit Button -->
                 <button type="submit" id="submitBtn"
-                    class="login-btn w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition font-medium">
-                    Sign In
+                    class="login-btn w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium">
+                    <span class="btn-content">
+                        <!-- Spinner (hidden by default) -->
+                        <svg class="btn-spinner btn-spinner-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <!-- Checkmark (for success state) -->
+                        <svg class="btn-checkmark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 13l4 4L19 7" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        <span class="btn-text">Sign In</span>
+                    </span>
                 </button>
             </form>
         </div>
@@ -505,18 +650,9 @@
         </div>
     </div>
 
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay"
-        class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="loading-overlay-content bg-white rounded-lg p-6 flex items-center space-x-3">
-            <div class="loading-spinner animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span class="loading-text text-gray-700">Signing in...</span>
-        </div>
-    </div>
-
     <!-- Toast Notification System -->
-    <script type="module" src="/js/toast-notifications.js"></script>
-    <script type="module" src="/js/auth.js"></script>
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/auth/auth.js"></script>
     <script>
         // About Modal Functions
         function openAboutModal() {

@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - Al-Quds University Archiving System</title>
     <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
-    <script src="/js/auth-guard.js"></script>
+    <script src="/js/auth/auth-guard.js"></script>
     <script>
         // Suppress Tailwind CSS production warning for development environment
         (function() {
@@ -35,8 +35,8 @@
     <link rel="stylesheet" href="/css/admin-dashboard.css">
     <link rel="stylesheet" href="/css/admin-modals.css">
     <link rel="stylesheet" href="/css/file-preview-modal.css">
-    <script src="/js/theme.js"></script>
-    <script src="/js/modern-dropdown.js"></script>
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/modern-dropdown.js"></script>
     <script>
         // Immediately apply saved tab state before page renders to prevent flash
         (function() {
@@ -759,8 +759,8 @@
     </div>
 
     <!-- Toast Notification System - must load before other modules -->
-    <script type="module" src="/js/toast-notifications.js"></script>
-    <script type="module" src="/js/admin-dashboard.js"></script>
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/admin/admin-dashboard.js"></script>
 </body>
 
 </html>

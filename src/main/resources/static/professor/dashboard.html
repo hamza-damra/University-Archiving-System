@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professor Dashboard - Al-Quds University Archiving System</title>
+    <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
+    <script src="/js/auth/auth-guard.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/prof-dashboard.css">
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/modern-dropdown.js"></script>
+
+</head>
+
+<body class="bg-gray-50 h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside
+        class="w-[260px] bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto hidden md:flex flex-col z-20">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    P</div>
+                <div>
+                    <h1 class="font-bold text-gray-900 text-lg leading-tight">Faculty System</h1>
+                    <p class="text-xs text-gray-500">Al-Quds University</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <div id="dashboardTab" class="nav-tab active" data-tab="dashboard" onclick="switchTab('dashboard')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+            </div>
+            <div id="coursesTab" class="nav-tab" data-tab="courses" onclick="switchTab('courses')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                My Courses
+            </div>
+            <div id="fileExplorerTab" class="nav-tab" data-tab="fileExplorer" onclick="switchTab('fileExplorer')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                File Explorer
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-200">
+            <button id="logoutBtn"
+                class="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0" style="z-index: 1200;">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center md:hidden">
+                    <button class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span class="ml-3 font-bold text-gray-900">Professor Dashboard</span>
+                </div>
+
+                <div class="hidden md:block">
+                    <h2 class="text-xl font-semibold text-gray-800" id="pageTitle">Dashboard</h2>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <!-- Notifications -->
+                    <div class="relative" style="z-index: 1300;">
+                        <button id="notificationsBtn"
+                            class="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
+                            aria-label="Notifications">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+                                </path>
+                            </svg>
+                            <span id="notificationBadge"
+                                class="hidden absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-600 ring-2 ring-white"></span>
+                        </button>
+                        <!-- Notification Dropdown -->
+                        <div id="notificationsDropdown"
+                            class="hidden w-80 rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+                            style="z-index: 9999; position: fixed; background: var(--bg-elevated, #ffffff);">
+                            <div class="p-3 border-b border-gray-200 flex justify-between items-center" style="background: var(--bg-elevated, #ffffff);">
+                                <h3 class="text-sm font-semibold text-gray-800">Notifications</h3>
+                                <button id="closeNotificationsDropdown" class="text-gray-400 hover:text-gray-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div id="notificationsList" class="max-h-64 overflow-y-auto" style="background: var(--bg-elevated, #ffffff);">
+                                <p class="text-gray-500 text-sm p-4 text-center">Loading notifications...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Theme Toggle -->
+                    <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode"
+                        title="Toggle dark mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon icon (shown in light mode) -->
+                        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right hidden sm:block min-w-[120px]">
+                            <p class="text-sm font-medium text-gray-900" id="professorName">Loading...</p>
+                            <p class="text-xs text-gray-500">Professor</p>
+                        </div>
+                        <div
+                            class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            P
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Area -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+
+            <!-- Context Bar (Academic Year & Semester Selector) -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="academicYearSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Academic Year
+                        </label>
+                        <select id="academicYearSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="semesterSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Semester
+                        </label>
+                        <select id="semesterSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboardTabContent" class="tab-content">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">Dashboard Overview</h2>
+
+                <!-- Overview Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                    <div class="card p-6 flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 mb-1">My Courses</p>
+                            <h3 class="text-3xl font-bold text-gray-900" id="totalCoursesCount"><div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div></h3>
+                        </div>
+                        <div class="p-3 bg-blue-50 rounded-lg text-blue-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Submitted</p>
+                            <h3 class="text-3xl font-bold text-gray-900" id="submittedDocsCount"><div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div></h3>
+                        </div>
+                        <div class="p-3 bg-green-50 rounded-lg text-green-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Pending</p>
+                            <h3 class="text-3xl font-bold text-gray-900" id="pendingDocsCount"><div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div></h3>
+                        </div>
+                        <div class="p-3 bg-yellow-50 rounded-lg text-yellow-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <div class="card p-6 flex items-start justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-500 mb-1">Overdue</p>
+                            <h3 class="text-3xl font-bold text-gray-900" id="overdueDocsCount"><div class="flex items-center h-9"><div class="spinner spinner-sm"></div></div></h3>
+                        </div>
+                        <div class="p-3 bg-red-50 rounded-lg text-red-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Summary -->
+                <div class="card p-6">
+                    <h3 class="font-semibold text-gray-800 mb-2">Quick Summary</h3>
+                    <p class="text-gray-600 text-sm" id="dashboardSummary">
+                        Loading dashboard data...
+                    </p>
+                </div>
+            </div>
+
+            <!-- My Courses Tab -->
+            <div id="coursesTabContent" class="tab-content hidden">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">My Courses</h2>
+
+                <!-- Courses Container -->
+                <div id="coursesContainer">
+                    <!-- Loading skeleton -->
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="emptyState" class="hidden text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No courses assigned</h3>
+                    <p class="mt-1 text-sm text-gray-500">You have no courses assigned for the selected semester.</p>
+                </div>
+            </div>
+
+            <!-- File Explorer Tab -->
+            <div id="fileExplorerTabContent" class="tab-content hidden">
+                <h2 class="text-xl font-semibold text-gray-800 mb-6">File Explorer</h2>
+
+                <!-- File Explorer Container - The FileExplorer component renders its own breadcrumbs -->
+                <div id="fileExplorerContainer">
+                    <!-- Loading skeleton -->
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-16 bg-white border border-gray-200 rounded-lg"></div>
+                        <div class="h-16 bg-white border border-gray-200 rounded-lg"></div>
+                        <div class="h-16 bg-white border border-gray-200 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Upload Modal -->
+    <div id="uploadModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-lg w-full">
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 id="uploadModalTitle" class="text-lg font-semibold text-gray-900">Upload Files</h3>
+                <button onclick="closeUploadModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <!-- File Input -->
+                <div>
+                    <label for="uploadFiles" class="block text-sm font-medium text-gray-700 mb-2">
+                        Select Files
+                    </label>
+                    <input 
+                        type="file" 
+                        id="uploadFiles" 
+                        multiple 
+                        accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.zip,.rar"
+                        class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <p class="mt-1 text-xs text-gray-500">
+                        Maximum file size: 100MB. Allowed types: PDF, Word, PowerPoint, Excel, Images, Text, Archives
+                    </p>
+                </div>
+
+                <!-- Notes Textarea -->
+                <div>
+                    <label for="uploadNotes" class="block text-sm font-medium text-gray-700 mb-2">
+                        Notes (Optional)
+                    </label>
+                    <textarea 
+                        id="uploadNotes" 
+                        rows="3" 
+                        placeholder="Add any notes about these files..."
+                        class="block w-full px-3 py-2 text-sm text-gray-900 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    ></textarea>
+                </div>
+
+                <!-- Error Message -->
+                <div id="uploadError" class="hidden p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div class="flex items-start">
+                        <svg class="w-5 h-5 text-red-600 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p id="uploadErrorMessage" class="text-sm text-red-800"></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+                <button 
+                    onclick="closeUploadModal()" 
+                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    Cancel
+                </button>
+                <button 
+                    id="uploadBtn" 
+                    onclick="console.log('Upload button clicked!'); if(typeof handleUpload === 'function') { handleUpload(); } else { console.error('handleUpload is not a function!', typeof handleUpload); }" 
+                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Upload Files
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2" style="z-index: 10000;"></div>
+
+    <!-- Toast Notification System - must load before other modules -->
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/file-explorer/multi-file-upload.js"></script>
+    <script type="module" src="/js/shared/prof.js"></script>
+</body>
+
+</html>

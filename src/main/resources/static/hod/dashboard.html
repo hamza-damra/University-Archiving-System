@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HOD Dashboard - Al-Quds University Archiving System</title>
+    <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
+    <script src="/js/auth/auth-guard.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/css/common.css">
+    <link rel="stylesheet" href="/css/hod-dashboard.css">
+    <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <script src="/js/core/theme.js"></script>
+    <script src="/js/core/modern-dropdown.js"></script>
+
+</head>
+
+<body class="bg-gray-50 h-screen flex overflow-hidden">
+    <!-- Sidebar -->
+    <aside id="sidebar"
+        class="w-[260px] bg-white border-r border-gray-200 flex-shrink-0 h-screen sticky top-0 overflow-y-auto hidden md:flex flex-col z-20">
+        <div class="p-6 border-b border-gray-100">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    H</div>
+                <div>
+                    <h1 class="font-bold text-gray-900 text-lg leading-tight">HOD System</h1>
+                    <p class="text-xs text-gray-500">Al-Quds University</p>
+                </div>
+            </div>
+        </div>
+
+        <nav class="flex-1 p-4 space-y-1">
+            <div class="nav-tab active" data-tab="dashboard">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+                Dashboard
+            </div>
+            <div class="nav-tab" data-tab="submission-status">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Submission Status
+            </div>
+            <div class="nav-tab" data-tab="reports">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Reports
+            </div>
+            <div class="nav-tab" data-tab="file-explorer">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                </svg>
+                File Explorer
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-gray-200">
+            <button id="logoutBtn"
+                class="flex items-center w-full px-4 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors">
+                <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- Main Content Wrapper -->
+    <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <!-- Top Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
+            <div class="px-6 py-4 flex justify-between items-center">
+                <div class="flex items-center md:hidden">
+                    <button id="sidebarToggle" class="text-gray-500 hover:text-gray-700 focus:outline-none">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span class="ml-3 font-bold text-gray-900">HOD</span>
+                </div>
+
+                <div class="hidden md:block">
+                    <h2 class="text-xl font-semibold text-gray-800" id="pageTitle">Dashboard</h2>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <!-- Theme Toggle -->
+                    <button class="theme-toggle" onclick="themeManager.toggle()" aria-label="Toggle dark mode"
+                        title="Toggle dark mode">
+                        <!-- Sun icon (shown in dark mode) -->
+                        <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                        <!-- Moon icon (shown in light mode) -->
+                        <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </button>
+
+                    <div class="flex items-center space-x-3">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-medium text-gray-900" id="hodName">Loading...</p>
+                            <p class="text-xs text-gray-500">Head of Department</p>
+                        </div>
+                        <div
+                            class="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+                            H
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Scrollable Area -->
+        <main class="flex-1 overflow-y-auto p-6 md:p-8">
+
+            <!-- Context Bar (Academic Year & Semester Selector) -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-8">
+                <div class="flex flex-wrap items-center gap-6">
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="academicYearSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Academic Year
+                        </label>
+                        <select id="academicYearSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div class="flex-1 min-w-[200px]">
+                        <label for="semesterSelect"
+                            class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                            Semester
+                        </label>
+                        <select id="semesterSelect"
+                            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-shadow">
+                            <option value="">Select academic year first</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content">
+                <div class="space-y-6">
+                    <!-- Dashboard Overview -->
+                    <div id="dashboardOverview" class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Dashboard Overview</h2>
+                        <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                            <div class="stat-card stat-card-blue text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="totalProfessors">-</div>
+                                <div class="text-sm stat-label mt-1">Professors</div>
+                            </div>
+                            <div class="stat-card stat-card-green text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="totalCourses">-</div>
+                                <div class="text-sm stat-label mt-1">Courses</div>
+                            </div>
+                            <div class="stat-card stat-card-purple text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="submittedCount">-</div>
+                                <div class="text-sm stat-label mt-1">Submitted</div>
+                            </div>
+                            <div class="stat-card stat-card-yellow text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="missingCount">-</div>
+                                <div class="text-sm stat-label mt-1">Missing</div>
+                            </div>
+                            <div class="stat-card stat-card-red text-center p-4 rounded-lg">
+                                <div class="text-3xl font-bold stat-value" id="overdueCount">-</div>
+                                <div class="text-sm stat-label mt-1">Overdue</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submission Status Tab -->
+            <div id="submission-status-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Submission Status Report -->
+                    <div id="submissionStatusSection" class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-gray-800">Professor Submission Status</h2>
+                            <div class="flex space-x-2">
+                                <button id="viewReportBtn"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    View Report
+                                </button>
+                                <button id="downloadReportBtn"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Download PDF
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filters -->
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                                <label for="filterCourse" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Course
+                                </label>
+                                <select id="filterCourse" class="modern-dropdown w-full">
+                                    <option value="">All Courses</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterDocType" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Document Type
+                                </label>
+                                <select id="filterDocType" class="modern-dropdown w-full">
+                                    <option value="">All Types</option>
+                                    <option value="SYLLABUS">Syllabus</option>
+                                    <option value="EXAM">Exam</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="PROJECT_DOCS">Project Docs</option>
+                                    <option value="LECTURE_NOTES">Lecture Notes</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="filterStatus" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Status
+                                </label>
+                                <select id="filterStatus" class="modern-dropdown w-full">
+                                    <option value="">All Status</option>
+                                    <option value="UPLOADED">Uploaded</option>
+                                    <option value="NOT_UPLOADED">Not Uploaded</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submission Status Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Document Type</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="submissionStatusTableBody" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                            Select a semester to view submission status
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports Tab -->
+            <div id="reports-tab" class="tab-content hidden">
+                <div class="space-y-6">
+                    <!-- Report Filters Card -->
+                    <div class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="text-xl font-semibold text-gray-800">Generate Report</h2>
+                            <div class="flex space-x-2">
+                                <button id="btnClearReportFilters"
+                                    class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Clear Filters
+                                </button>
+                                <button id="btnGenerateReport"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition flex items-center">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Generate Report
+                                </button>
+                                <button id="btnExportPdf"
+                                    class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm transition flex items-center"
+                                    disabled>
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
+                                    </svg>
+                                    Export PDF
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <p class="text-gray-600 text-sm mb-4">
+                            <svg class="w-4 h-4 inline-block mr-1 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Reports are filtered to your department only. Select filters below to customize your report.
+                        </p>
+                        
+                        <!-- Filters Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <!-- Course Filter -->
+                            <div>
+                                <label for="reportFilterCourse" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Course
+                                </label>
+                                <select id="reportFilterCourse" class="modern-dropdown w-full">
+                                    <option value="">All Courses</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Professor Filter -->
+                            <div>
+                                <label for="reportFilterProfessor" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Professor
+                                </label>
+                                <select id="reportFilterProfessor" class="modern-dropdown w-full">
+                                    <option value="">All Professors</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Document Type Filter -->
+                            <div>
+                                <label for="reportFilterDocType" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Document Type
+                                </label>
+                                <select id="reportFilterDocType" class="modern-dropdown w-full">
+                                    <option value="">All Types</option>
+                                    <option value="SYLLABUS">Syllabus</option>
+                                    <option value="EXAM">Exam</option>
+                                    <option value="ASSIGNMENT">Assignment</option>
+                                    <option value="PROJECT_DOCS">Project Docs</option>
+                                    <option value="LECTURE_NOTES">Lecture Notes</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Status Filter -->
+                            <div>
+                                <label for="reportFilterStatus" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Status
+                                </label>
+                                <select id="reportFilterStatus" class="modern-dropdown w-full">
+                                    <option value="">All Status</option>
+                                    <option value="UPLOADED">Uploaded</option>
+                                    <option value="NOT_UPLOADED">Not Uploaded</option>
+                                    <option value="OVERDUE">Overdue</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Start Date Filter -->
+                            <div>
+                                <label for="reportFilterStartDate" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    Start Date
+                                </label>
+                                <input type="date" id="reportFilterStartDate" class="modern-date-input">
+                            </div>
+                            
+                            <!-- End Date Filter -->
+                            <div>
+                                <label for="reportFilterEndDate" class="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5">
+                                    End Date
+                                </label>
+                                <input type="date" id="reportFilterEndDate" class="modern-date-input">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Statistics Summary -->
+                    <div id="reportStatsSummary" class="bg-white rounded-lg shadow-md p-6 hidden">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Report Summary</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="stat-card stat-card-blue text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportTotalSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Total Expected</div>
+                            </div>
+                            <div class="stat-card stat-card-green text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportCompletedSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Submitted</div>
+                            </div>
+                            <div class="stat-card stat-card-yellow text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportPendingSubmissions">0</div>
+                                <div class="text-sm stat-label mt-1">Pending</div>
+                            </div>
+                            <div class="stat-card stat-card-purple text-center p-4 rounded-lg">
+                                <div class="text-2xl font-bold stat-value" id="reportCompletionRate">0%</div>
+                                <div class="text-sm stat-label mt-1">Completion Rate</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Report Results Table -->
+                    <div id="reportResultsSection" class="bg-white rounded-lg shadow-md p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-gray-800">Report Results</h3>
+                            <div id="reportPaginationInfo" class="text-sm text-gray-500"></div>
+                        </div>
+                        
+                        <!-- Report Table -->
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Document Type
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Submitted At
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reportResultsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                            <div class="flex flex-col items-center">
+                                                <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                                    </path>
+                                                </svg>
+                                                <p>Select a semester and click "Generate Report" to view results</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination Controls -->
+                        <div id="reportPagination" class="flex justify-between items-center mt-4 hidden">
+                            <div class="flex items-center space-x-3">
+                                <label for="reportPageSize" class="text-sm text-gray-600">Rows per page:</label>
+                                <select id="reportPageSize" class="modern-dropdown">
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center space-x-2">
+                                <button id="reportPrevPage"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled>
+                                    Previous
+                                </button>
+                                <span id="reportPageIndicator" class="text-sm text-gray-600">Page 1 of 1</span>
+                                <button id="reportNextPage"
+                                    class="px-3 py-1 border border-gray-300 rounded-md text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled>
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- File Explorer Tab -->
+            <div id="file-explorer-tab" class="tab-content hidden">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">File Explorer</h2>
+                    <div id="hodFileExplorer"></div>
+                </div>
+            </div>
+
+            <!-- Legacy Content (hidden by default) -->
+            <div id="legacy-content" class="hidden">
+                <div class="space-y-6">
+                    <!-- Legacy Requests Section (for backward compatibility) -->
+                    <div id="legacyRequestsSection" class="bg-white rounded-lg shadow-md p-6">
+                        <h2 class="text-xl font-semibold text-gray-800 mb-4">Legacy Document Requests</h2>
+
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Course</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Type</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Professor</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Deadline</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Status</th>
+                                        <th
+                                            class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="requestsTableBody" class="bg-white divide-y divide-gray-200">
+                                    <!-- Loading skeleton -->
+                                    <tr>
+                                        <td colspan="6" class="px-4 py-8 text-center text-gray-500">
+                                            <div class="animate-pulse">Loading requests...</div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals Container -->
+    <div id="modalsContainer"></div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 right-4 space-y-2" style="z-index: 10000;"></div>
+
+    <script src="/js/core/notifications.js"></script>
+    <!-- Toast Notification System - must load before other modules -->
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/shared/hod.js"></script>
+    <script>
+        // Initialize notifications for HOD dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            // Wait a bit for the header to be fully rendered
+            setTimeout(() => {
+                NotificationManager.init('hod');
+            }, 100);
+        });
+    </script>
+</body>
+
+</html>

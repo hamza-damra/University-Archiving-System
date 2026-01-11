@@ -26,6 +26,53 @@
       "name": "file.upload.directory",
       "type": "java.lang.String",
       "description": "Directory path where uploaded files will be stored."
+    },
+    {
+      "name": "file.max-size",
+      "type": "java.lang.Long",
+      "description": "Maximum allowed size for uploaded files in bytes.",
+      "defaultValue": 52428800
+    },
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Comma-separated list of allowed origins for CORS configuration.",
+      "defaultValue": "http://localhost:3000,http://localhost:8080"
+    },
+    {
+      "name": "app.rate-limit.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable or disable rate limiting.",
+      "defaultValue": true
+    },
+    {
+      "name": "app.rate-limit.login.requests-per-minute",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of login requests allowed per minute.",
+      "defaultValue": 5
+    },
+    {
+      "name": "app.rate-limit.api.requests-per-minute",
+      "type": "java.lang.Integer",
+      "description": "Maximum number of API requests allowed per minute.",
+      "defaultValue": 100
+    },
+    {
+      "name": "app.keep-alive.enabled",
+      "type": "java.lang.Boolean",
+      "description": "Enable keep-alive mechanism for Render.com free tier.",
+      "defaultValue": false
+    },
+    {
+      "name": "app.keep-alive.url",
+      "type": "java.lang.String",
+      "description": "URL to ping for keep-alive mechanism."
+    },
+    {
+      "name": "spring.session.store-type",
+      "type": "java.lang.String",
+      "description": "Store type for Spring Session (e.g., jdbc, redis, none).",
+      "defaultValue": "jdbc"
     }
   ]
 }

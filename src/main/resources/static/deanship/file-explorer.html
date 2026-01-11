@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Explorer - Deanship Dashboard</title>
     <!-- Auth Guard - MUST be first script to check authentication before any content loads -->
-    <script src="/js/auth-guard.js"></script>
+    <script src="/js/auth/auth-guard.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/deanship-layout.css">
     <link rel="stylesheet" href="/css/file-preview-modal.css">
-    <script src="/js/theme.js"></script>
+    <script src="/js/core/theme.js"></script>
     <style>
         /* Page content - Theme aware */
         #page-content {
@@ -159,10 +159,10 @@
     <!-- Modals Container -->
     <div id="modalsContainer"></div>
     
-    <script src="/js/notifications.js"></script>
+    <script src="/js/core/notifications.js"></script>
     <!-- Toast Notification System - must load before other modules -->
-    <script type="module" src="/js/toast-notifications.js"></script>
-    <script type="module" src="/js/file-explorer-page.js"></script>
+    <script type="module" src="/js/core/toast-notifications.js"></script>
+    <script type="module" src="/js/file-explorer/file-explorer-page.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(() => NotificationManager.init('deanship'), 100);

@@ -297,14 +297,21 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     @Override
     @Transactional(readOnly = true)
     public SystemWideReport generateSystemWideReportWithRoleFilter(Long semesterId, User currentUser) {
-        log.info("Generating system-wide report for semester {} with role-based filtering", semesterId);
+        return generateSystemWideReportWithRoleFilter(semesterId, currentUser, null);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public SystemWideReport generateSystemWideReportWithRoleFilter(Long semesterId, User currentUser, Long departmentId) {
+        log.info("Generating system-wide report for semester {} with role-based filtering, departmentId: {}", 
+                semesterId, departmentId);
         
         // Validate semester exists
         Semester semester = semesterRepository.findById(semesterId)
                 .orElseThrow(() -> new EntityNotFoundException("Semester not found with id: " + semesterId));
         
-        // Get departments based on user role
-        List<Department> departments = getDepartmentsForUser(currentUser);
+        // Get departments based on user role and optional department filter
+        List<Department> departments = getDepartmentsForUser(currentUser, departmentId);
         
         // Generate summary for each department
         List<DepartmentReportSummary> departmentSummaries = new ArrayList<>();
@@ -524,23 +531,25 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     }
     
     /**
-     * Get departments based on user role.
-     * For Admin/Dean: returns all departments.
-     * For HOD: returns only their own department.
-     * 
-     * @param currentUser The current authenticated user
-     * @return List of departments the user can access
+     * Get departments accessible to the current user based on their role and optional department filter.
+     * Admin and Dean: if departmentId is provided, returns only that department; otherwise all departments.
+     * HOD and Professor: always returns their own department (departmentId is ignored).
      */
-    private List<Department> getDepartmentsForUser(User currentUser) {
+    private List<Department> getDepartmentsForUser(User currentUser, Long departmentId) {
         switch (currentUser.getRole()) {
             case ROLE_ADMIN:
             case ROLE_DEANSHIP:
-                // Admin and Dean can see all departments
+                // Admin and Dean can see all departments, or filter by specific department
+                if (departmentId != null) {
+                    return departmentRepository.findById(departmentId)
+                            .map(List::of)
+                            .orElse(List.of());
+                }
                 return departmentRepository.findAll();
                 
             case ROLE_HOD:
             case ROLE_PROFESSOR:
-                // HOD and Professor can only see their own department
+                // HOD and Professor can only see their own department (departmentId is ignored)
                 if (currentUser.getDepartment() == null) {
                     log.warn("User {} has no department assigned", currentUser.getEmail());
                     return List.of();

@@ -72,6 +72,19 @@ public interface SemesterReportService {
     SystemWideReport generateSystemWideReportWithRoleFilter(Long semesterId, User currentUser);
     
     /**
+     * Generate system-wide report with role-based filtering and optional department filter.
+     * For HOD users, returns report limited to their department only (departmentId is ignored).
+     * For Dean/Admin users, if departmentId is provided, returns report for that department only.
+     * If departmentId is null, returns full system-wide report.
+     * 
+     * @param semesterId The semester to report on
+     * @param currentUser The current authenticated user
+     * @param departmentId Optional department ID to filter by (for Admin/Dean only)
+     * @return System-wide report with department summaries (filtered by role and department)
+     */
+    SystemWideReport generateSystemWideReportWithRoleFilter(Long semesterId, User currentUser, Long departmentId);
+    
+    /**
      * Get available filter options based on user role.
      * For Dean/Admin: includes all departments.
      * For HOD: excludes department filter (restricted to own department).

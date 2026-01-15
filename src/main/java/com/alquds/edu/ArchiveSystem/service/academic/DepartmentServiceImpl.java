@@ -16,15 +16,21 @@ import com.alquds.edu.ArchiveSystem.repository.auth.RefreshTokenRepository;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.FileSystemUtils;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Implementation of DepartmentService.
@@ -51,6 +57,9 @@ public class DepartmentServiceImpl implements DepartmentService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final CourseAssignmentRepository courseAssignmentRepository;
     private final DocumentSubmissionRepository documentSubmissionRepository;
+    
+    @Value("${file.upload.directory:uploads/}")
+    private String uploadDirectory;
     
     public DepartmentServiceImpl(
             DepartmentRepository departmentRepository, 
@@ -257,13 +266,41 @@ public class DepartmentServiceImpl implements DepartmentService {
             
             // 8. Delete folders owned by user
             var folders = folderRepository.findByOwnerId(userId);
-            // Delete folders in reverse order (children first)
-            folders.sort((f1, f2) -> {
-                // Sort by path length descending so children are deleted first
-                return Integer.compare(f2.getPath().length(), f1.getPath().length());
-            });
-            folderRepository.deleteAll(folders);
-            logger.debug("Deleted {} folders for user ID: {}", folders.size(), userId);
+            if (!folders.isEmpty()) {
+                // Collect unique physical directories to delete
+                Set<String> physicalPathsToDelete = new HashSet<>();
+                for (var folder : folders) {
+                    if (folder.getPath() != null) {
+                        physicalPathsToDelete.add(folder.getPath());
+                    }
+                }
+                
+                // Delete folders in reverse order (children first)
+                folders.sort((f1, f2) -> {
+                    // Sort by path length descending so children are deleted first
+                    return Integer.compare(f2.getPath().length(), f1.getPath().length());
+                });
+                folderRepository.deleteAll(folders);
+                logger.debug("Deleted {} folder records from database for user ID: {}", folders.size(), userId);
+                
+                // Delete physical directories (sort by path length descending to delete children first)
+                List<String> sortedPaths = physicalPathsToDelete.stream()
+                        .sorted(Comparator.comparingInt(String::length).reversed())
+                        .collect(Collectors.toList());
+                
+                for (String folderPath : sortedPaths) {
+                    try {
+                        Path physicalPath = Path.of(uploadDirectory, folderPath);
+                        if (Files.exists(physicalPath)) {
+                            FileSystemUtils.deleteRecursively(physicalPath);
+                            logger.debug("Deleted physical directory: {}", physicalPath);
+                        }
+                    } catch (IOException e) {
+                        logger.warn("Could not delete physical directory for path: {}", folderPath, e);
+                    }
+                }
+                logger.info("Deleted {} physical directories for user ID: {}", physicalPathsToDelete.size(), userId);
+            }
             
             // 9. Delete refresh tokens
             refreshTokenRepository.deleteAllByUserId(userId);

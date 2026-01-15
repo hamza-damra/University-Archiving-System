@@ -1,0 +1,19 @@
+{
+  "testType": "backend",
+  "framework": "spring-boot",
+  "language": "java",
+  "baseUrl": "http://localhost:8080",
+  "apiPrefix": "/api/hod",
+  "prdPath": "./testsprite_tests/tmp/prd_files/hod_backend_prd.md",
+  "outputPath": "./testsprite_tests/output",
+  "authentication": {
+    "enabled": true,
+    "type": "jwt",
+    "loginEndpoint": "/api/auth/login",
+    "tokenPath": "token",
+    "credentials": {
+      "email": "hod.ce@hod.alquds.edu",
+      "password": "hod123"
+    }
+  }
+}

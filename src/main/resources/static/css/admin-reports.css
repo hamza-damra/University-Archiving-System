@@ -1,0 +1,358 @@
+/**
+ * Admin Reports Page Styles
+ * Professional styling for the reporting dashboard
+ * Uses CSS variables from common.css for theme consistency
+ */
+
+/* Filter Panel - match Users/Courses neutral style */
+.reports-filter-card {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark .reports-filter-card {
+    background: var(--bg-secondary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+/* Report Cards - Using CSS variables for dark mode consistency */
+.report-card {
+    transition: all 0.3s ease;
+}
+
+.report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode for report cards - uses same colors as rest of site */
+.dark .report-card {
+    background-color: var(--bg-primary) !important;
+    border-color: var(--border-primary) !important;
+}
+
+.dark .report-card:hover {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Dark mode for text in report cards */
+.dark .report-card h3,
+.dark .report-card .text-gray-800 {
+    color: var(--text-primary) !important;
+}
+
+.dark .report-card .text-gray-500 {
+    color: var(--text-secondary) !important;
+}
+
+/* Dark mode for tables inside report cards */
+.dark .report-card thead,
+.dark .report-card .bg-gray-50 {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark .report-card tbody {
+    background-color: var(--bg-secondary) !important;
+}
+
+.dark .report-card table {
+    border-color: var(--border-primary) !important;
+}
+
+.dark .report-card .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--border-primary) !important;
+}
+
+/* Dark mode for dynamically generated table rows */
+.dark .report-table-row:hover {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark .report-text-primary {
+    color: var(--text-primary) !important;
+}
+
+.dark .report-text-secondary {
+    color: var(--text-secondary) !important;
+}
+
+.dark .report-text-green {
+    color: #4ade80 !important;
+}
+
+.dark .report-text-orange {
+    color: #fb923c !important;
+}
+
+.dark .report-text-red {
+    color: #f87171 !important;
+}
+
+.dark .report-progress-bg {
+    background-color: var(--bg-tertiary) !important;
+}
+
+.dark .report-progress-fill {
+    background-color: #3b82f6 !important;
+}
+
+/* Statistics card label */
+.stat-card-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-tertiary);
+    margin-bottom: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.dark .stat-card-label {
+    color: var(--text-secondary) !important;
+}
+
+.stat-card-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* Dark mode stat value colors */
+.dark .stat-card-value.text-blue-600 {
+    color: #60a5fa !important;
+}
+
+.dark .stat-card-value.text-green-600 {
+    color: #4ade80 !important;
+}
+
+.dark .stat-card-value.text-orange-600 {
+    color: #fb923c !important;
+}
+
+.dark .stat-card-value.text-red-600 {
+    color: #f87171 !important;
+}
+
+.dark .stat-card-value.text-purple-600 {
+    color: #c084fc !important;
+}
+
+.dark .stat-card-value.text-teal-600 {
+    color: #2dd4bf !important;
+}
+
+.stat-card-trend {
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.stat-card-trend.positive {
+    color: var(--accent-green);
+}
+
+.stat-card-trend.negative {
+    color: var(--accent-red);
+}
+
+/* Chart containers now use Tailwind classes in HTML */
+
+/* Data tables now use Tailwind classes in HTML */
+
+/* Progress Bar */
+.progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--border-primary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-right: 0.5rem;
+}
+
+.dark .progress-bar-container {
+    background: var(--border-primary);
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-blue-hover));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+}
+
+/* Export Buttons */
+.export-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-purple-hover) 100%);
+    color: var(--text-inverse);
+    border: none;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow-sm);
+}
+
+.export-button:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+    background: linear-gradient(135deg, var(--accent-purple-hover) 0%, var(--accent-purple) 100%);
+}
+
+.export-button:active {
+    transform: translateY(0);
+}
+
+.export-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Loading State */
+.reports-loading {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+.reports-loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid var(--border-primary);
+    border-top-color: var(--accent-purple);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.dark .reports-loading-spinner {
+    border-color: var(--border-primary);
+    border-top-color: var(--accent-purple);
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Action Buttons */
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.action-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.dark .action-button {
+    background: var(--bg-elevated);
+    border-color: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.action-button:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-secondary);
+}
+
+.dark .action-button:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-secondary);
+}
+
+.action-button.primary {
+    background: var(--accent-purple);
+    color: var(--text-inverse);
+    border-color: var(--accent-purple);
+}
+
+.action-button.primary:hover {
+    background: var(--accent-purple-hover);
+    border-color: var(--accent-purple-hover);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .reports-filter-panel {
+        padding: 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-card-value {
+        font-size: 1.5rem;
+    }
+
+    .chart-container {
+        height: 300px;
+        padding: 1rem;
+    }
+
+    .reports-table-container {
+        padding: 1rem;
+    }
+
+    .reports-table th,
+    .reports-table td {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.75rem;
+    }
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-tertiary);
+}
+
+.dark .empty-state {
+    color: var(--text-tertiary);
+}
+
+.empty-state-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    opacity: 0.5;
+}
+
+.empty-state-title {
+    font-size: 1.125rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.dark .empty-state-title {
+    color: var(--text-primary);
+}
+
+.empty-state-message {
+    font-size: 0.875rem;
+}

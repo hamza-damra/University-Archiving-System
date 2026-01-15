@@ -35,6 +35,9 @@
     <link rel="stylesheet" href="/css/admin-dashboard.css">
     <link rel="stylesheet" href="/css/admin-modals.css">
     <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <link rel="stylesheet" href="/css/admin-reports.css">
+    <!-- Chart.js for reports -->
+    <script src="/js/lib/chart.umd.min.js"></script>
     <script src="/js/core/theme.js"></script>
     <script src="/js/core/modern-dropdown.js"></script>
     <script>
@@ -492,50 +495,159 @@
             <!-- Reports Tab -->
             <div id="reports-tab" class="tab-content hidden">
                 <div class="space-y-6">
+                    <!-- Wrap reports content in same style container as other tabs -->
                     <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md border border-gray-200 dark:border-gray-700 p-6">
-                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">System Reports</h2>
-                        <div id="reportsContainer">
-                            <!-- Reports content -->
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <!-- Submission Stats Card -->
-                                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6">
-                                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Submission Statistics</h3>
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Total Submissions</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportTotalSubmissions">-</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Recent (7 days)</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportRecentSubmissions">-</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Pending Review</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportPendingSubmissions">-</span>
-                                        </div>
-                                    </div>
+                        <h2 class="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-4">Reports</h2>
+                        
+                        <!-- Filter Panel - Matching Users/Courses tabs style -->
+                        <div class="reports-filter-card bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4 mb-6">
+                            <div class="flex flex-wrap items-end gap-4">
+                                <div class="min-w-[180px]">
+                                    <label for="reportAcademicYearFilter" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Academic Year
+                                    </label>
+                                    <select id="reportAcademicYearFilter" class="modern-dropdown w-full">
+                                        <option value="">Select Academic Year</option>
+                                    </select>
                                 </div>
-                                <!-- User Stats Card -->
-                                <div class="bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600 p-6">
-                                    <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">User Statistics</h3>
-                                    <div class="space-y-3">
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Total Professors</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportProfessors">-</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Total HODs</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportHods">-</span>
-                                        </div>
-                                        <div class="flex justify-between">
-                                            <span class="text-gray-600 dark:text-gray-400">Departments</span>
-                                            <span class="font-semibold text-gray-800 dark:text-gray-200" id="reportDepartments">-</span>
-                                        </div>
-                                    </div>
+                                <div class="min-w-[160px]">
+                                    <label for="reportSemesterFilter" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Semester
+                                    </label>
+                                    <select id="reportSemesterFilter" class="modern-dropdown w-full">
+                                        <option value="">Select Semester</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-[180px]">
+                                    <label for="reportDepartmentFilter" class="block text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1.5">
+                                        Department
+                                    </label>
+                                    <select id="reportDepartmentFilter" class="modern-dropdown w-full">
+                                        <option value="">All Departments</option>
+                                    </select>
+                                </div>
+                                <div class="min-w-[140px]">
+                                    <button id="refreshReportBtn" class="w-full h-[52px] px-5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors flex items-center justify-center gap-2 font-medium">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        Refresh
+                                    </button>
                                 </div>
                             </div>
                         </div>
+
+                    <!-- Loading Indicator -->
+                    <div id="reportsLoading" class="reports-loading">
+                        <div class="reports-loading-spinner"></div>
                     </div>
+
+                    <!-- Reports Container -->
+                    <div id="reportsContainer">
+                        <!-- Statistics Cards - match System Overview style -->
+                        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+                            <div class="text-center p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg border border-blue-100 dark:border-blue-800">
+                                <div class="text-3xl font-bold text-blue-600 dark:text-blue-400" id="statTotalSubmissions">0</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Total Submissions</div>
+                            </div>
+                            <div class="text-center p-4 bg-green-50 dark:bg-green-900/30 rounded-lg border border-green-100 dark:border-green-800">
+                                <div class="text-3xl font-bold text-green-600 dark:text-green-400" id="statCompletionRate">0%</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Completion Rate</div>
+                            </div>
+                            <div class="text-center p-4 bg-yellow-50 dark:bg-yellow-900/30 rounded-lg border border-yellow-100 dark:border-yellow-800">
+                                <div class="text-3xl font-bold text-yellow-600 dark:text-yellow-400" id="statPendingDocuments">0</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Pending Documents</div>
+                            </div>
+                            <div class="text-center p-4 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-100 dark:border-red-800">
+                                <div class="text-3xl font-bold text-red-600 dark:text-red-400" id="statOverdueDocuments">0</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Overdue Documents</div>
+                            </div>
+                            <div class="text-center p-4 bg-indigo-50 dark:bg-indigo-900/30 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                                <div class="text-3xl font-bold text-indigo-600 dark:text-indigo-400" id="statTotalProfessors">0</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Total Professors</div>
+                            </div>
+                            <div class="text-center p-4 bg-teal-50 dark:bg-teal-900/30 rounded-lg border border-teal-100 dark:border-teal-800">
+                                <div class="text-3xl font-bold text-teal-600 dark:text-teal-400" id="statTotalCourses">0</div>
+                                <div class="text-sm text-gray-600 dark:text-gray-400 mt-1">Total Courses</div>
+                            </div>
+                        </div>
+
+                        <!-- Charts Section -->
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                            <!-- Submissions Timeline Chart -->
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4" style="height: 400px;">
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Submissions Over Time</h3>
+                                <div style="position: relative; height: calc(100% - 3rem);">
+                                    <canvas id="submissionsChart"></canvas>
+                                </div>
+                            </div>
+
+                            <!-- Status Distribution Chart -->
+                            <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4" style="height: 400px;">
+                                <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Document Status Distribution</h3>
+                                <div style="position: relative; height: calc(100% - 3rem);">
+                                    <canvas id="statusChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Department Performance Chart -->
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4 mb-6" style="height: 400px;">
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Department Performance</h3>
+                            <div style="position: relative; height: calc(100% - 3rem);">
+                                <canvas id="departmentChart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Export Actions -->
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4 mb-6">
+                            <div class="flex justify-between items-center">
+                                <h3 class="text-lg font-semibold text-gray-800">Export Reports</h3>
+                                <div class="action-buttons">
+                                    <button id="exportPdfBtn" class="export-button">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                        </svg>
+                                        Export PDF
+                                    </button>
+                                    <button id="exportCsvBtn" class="export-button">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Export CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Department Summary Table -->
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-600 p-4">
+                            <h3 class="text-lg font-semibold text-gray-800 dark:text-gray-200 mb-4">Department Summary</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-100 dark:bg-gray-700">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Department</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Professors</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Overdue</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completion Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="departmentTableBody" class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                                        <tr>
+                                            <td colspan="7" class="px-6 py-8 text-center text-gray-500">
+                                                Select a semester to view reports
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    </div> <!-- end inner container -->
                 </div>
             </div>
         </main>
@@ -742,7 +854,7 @@
             </div>
         </div>
 
-        <!-- Delete Confirmation Modal -->
+        <!-- Delete Confirmation Modal (Generic) -->
         <div class="admin-modal-overlay hidden" id="deleteModal">
             <div class="admin-modal bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4" role="alertdialog">
                 <div class="p-6 text-center">
@@ -752,6 +864,67 @@
                     <div class="flex justify-center gap-3">
                         <button type="button" id="deleteModalCancel" class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600">Cancel</button>
                         <button type="button" id="deleteModalConfirm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700">Delete</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced User Delete Confirmation Modal -->
+        <div class="admin-modal-overlay hidden" id="deleteUserModal">
+            <div class="admin-modal bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-lg w-full mx-4" role="alertdialog">
+                <div class="p-6">
+                    <!-- Header -->
+                    <div class="text-center mb-4">
+                        <div class="text-5xl mb-2">⚠️</div>
+                        <h3 class="text-xl font-bold text-gray-800 dark:text-gray-200" id="deleteUserModalTitle">Delete User?</h3>
+                    </div>
+                    
+                    <!-- User Info -->
+                    <div class="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 mb-4">
+                        <div class="flex items-center gap-3 mb-2">
+                            <div class="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                <span class="text-red-600 dark:text-red-400 font-semibold" id="deleteUserAvatar">--</span>
+                            </div>
+                            <div>
+                                <p class="font-semibold text-gray-800 dark:text-gray-200" id="deleteUserName">Loading...</p>
+                                <p class="text-sm text-gray-500 dark:text-gray-400" id="deleteUserEmail">Loading...</p>
+                            </div>
+                        </div>
+                        <span class="inline-block px-2 py-0.5 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300" id="deleteUserRole">-</span>
+                    </div>
+                    
+                    <!-- Data to be deleted -->
+                    <div class="mb-4">
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">The following data will be permanently deleted:</h4>
+                        <div class="grid grid-cols-2 gap-2 text-sm" id="deleteUserDataList">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                    
+                    <!-- Warning Message -->
+                    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4" id="deleteUserWarningBox">
+                        <p class="text-amber-800 dark:text-amber-300 text-sm" id="deleteUserWarning">Loading...</p>
+                    </div>
+                    
+                    <!-- Delete All Data Checkbox -->
+                    <div class="flex items-center gap-2 mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                        <input type="checkbox" id="deleteUserAllData" checked class="w-4 h-4 text-red-600 rounded focus:ring-red-500">
+                        <label for="deleteUserAllData" class="text-sm text-red-700 dark:text-red-300">
+                            <span class="font-semibold">Delete all associated data</span> (folders, files, submissions)
+                        </label>
+                    </div>
+                    
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end gap-3">
+                        <button type="button" id="deleteUserModalCancel" class="px-4 py-2 text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+                            Cancel
+                        </button>
+                        <button type="button" id="deleteUserModalConfirm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                            Delete User
+                        </button>
                     </div>
                 </div>
             </div>

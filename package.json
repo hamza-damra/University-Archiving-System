@@ -1,0 +1,33 @@
+{
+  "name": "university-archiving-system-tests",
+  "version": "1.0.0",
+  "description": "Test suite for University Archiving System Admin Panel",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "testsprite": {
+    "projectType": "backend",
+    "framework": "spring-boot",
+    "baseUrl": "http://localhost:8080",
+    "testType": "backend"
+  },
+  "keywords": ["testing", "spring-boot", "admin-panel"],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@testing-library/dom": "^9.3.0",
+    "@testing-library/jest-dom": "^6.1.0",
+    "@testing-library/user-event": "^14.5.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "babel-jest": "^29.7.0",
+    "@babel/core": "^7.23.0",
+    "@babel/preset-env": "^7.23.0",
+    "@playwright/test": "^1.40.0"
+  }
+}

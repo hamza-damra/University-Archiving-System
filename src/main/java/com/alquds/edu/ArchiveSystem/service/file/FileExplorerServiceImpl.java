@@ -413,6 +413,11 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             info.setType(NodeType.DOCUMENT_TYPE);
         }
 
+        if (parts.length >= 6) {
+            // File ID is the 6th part
+            info.setType(NodeType.FILE);
+        }
+
         return info;
     }
 

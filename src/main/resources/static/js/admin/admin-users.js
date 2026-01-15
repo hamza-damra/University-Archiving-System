@@ -371,7 +371,7 @@ class AdminUsersPage {
         if (!emailError) return;
         
         if (role === 'ROLE_PROFESSOR') {
-            emailError.textContent = 'Professor email must end with @stuff.alquds.edu';
+            emailError.textContent = 'Professor email must end with @staff.alquds.edu';
             emailError.classList.add('visible');
             emailError.style.color = 'var(--color-info)';
         } else if (role === 'ROLE_HOD') {
@@ -397,9 +397,9 @@ class AdminUsersPage {
         let errorMessage = '';
         
         if (role === 'ROLE_PROFESSOR') {
-            if (!email.endsWith('@stuff.alquds.edu')) {
+            if (!email.endsWith('@staff.alquds.edu')) {
                 isValid = false;
-                errorMessage = 'Professor email must end with @stuff.alquds.edu';
+                errorMessage = 'Professor email must end with @staff.alquds.edu';
             }
         } else if (role === 'ROLE_HOD') {
             const hodPattern = /^hod\.[a-z0-9]+@hod\.alquds\.edu$/;

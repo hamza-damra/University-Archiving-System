@@ -89,4 +89,21 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, Long
      * @return count of files in the folder
      */
     long countByFolderId(Long folderId);
+    
+    /**
+     * Count the number of files uploaded by a specific user.
+     * 
+     * @param uploaderId the ID of the uploader
+     * @return count of files uploaded by the user
+     */
+    long countByUploaderId(Long uploaderId);
+    
+    /**
+     * Calculate total file size for files uploaded by a specific user.
+     * 
+     * @param uploaderId the ID of the uploader
+     * @return total file size in bytes, or null if no files
+     */
+    @Query("SELECT COALESCE(SUM(f.fileSize), 0) FROM UploadedFile f WHERE f.uploader.id = :uploaderId")
+    Long sumFileSizeByUploaderId(@Param("uploaderId") Long uploaderId);
 }

@@ -1,6 +1,7 @@
 package com.alquds.edu.ArchiveSystem.config;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -23,6 +24,7 @@ import javax.sql.DataSource;
  * @author Archive System Team
  */
 @Configuration
+@ConditionalOnProperty(name = "spring.session.store-type", havingValue = "jdbc", matchIfMissing = true)
 @EnableJdbcHttpSession(
     tableName = "SPRING_SESSION",
     maxInactiveIntervalInSeconds = 1800  // 30 minutes default

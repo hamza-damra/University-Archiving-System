@@ -3,21 +3,32 @@ package com.alquds.edu.ArchiveSystem.service.user;
 import com.alquds.edu.ArchiveSystem.service.auth.EmailValidationService;
 
 import com.alquds.edu.ArchiveSystem.repository.academic.DepartmentRepository;
+import com.alquds.edu.ArchiveSystem.repository.academic.CourseAssignmentRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.UserRepository;
+import com.alquds.edu.ArchiveSystem.repository.file.FolderRepository;
+import com.alquds.edu.ArchiveSystem.repository.file.UploadedFileRepository;
+import com.alquds.edu.ArchiveSystem.repository.submission.DocumentSubmissionRepository;
 import com.alquds.edu.ArchiveSystem.exception.core.ValidationException;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 import com.alquds.edu.ArchiveSystem.entity.auth.Role;
 import com.alquds.edu.ArchiveSystem.entity.academic.Department;
 import com.alquds.edu.ArchiveSystem.repository.auth.RefreshTokenRepository;
 import com.alquds.edu.ArchiveSystem.repository.submission.DocumentRequestRepository;
+import com.alquds.edu.ArchiveSystem.repository.user.NotificationRepository;
 
 import com.alquds.edu.ArchiveSystem.dto.user.UserCreateRequest;
+import com.alquds.edu.ArchiveSystem.dto.user.UserDeletionInfo;
 import com.alquds.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alquds.edu.ArchiveSystem.dto.user.UserUpdateRequest;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import com.alquds.edu.ArchiveSystem.exception.domain.UserException;
 import com.alquds.edu.ArchiveSystem.mapper.user.UserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -28,11 +39,15 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.FileSystemUtils;
 import org.springframework.util.StringUtils;
 
+import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -47,9 +62,17 @@ public class UserService implements UserDetailsService {
     private final DepartmentRepository departmentRepository;
     private final DocumentRequestRepository documentRequestRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final FolderRepository folderRepository;
+    private final UploadedFileRepository uploadedFileRepository;
+    private final CourseAssignmentRepository courseAssignmentRepository;
+    private final DocumentSubmissionRepository documentSubmissionRepository;
+    private final NotificationRepository notificationRepository;
     private final UserMapper userMapper;
     private final PasswordEncoder passwordEncoder;
     private final EmailValidationService emailValidationService;
+    
+    @Value("${file.upload.directory:uploads/}")
+    private String uploadDirectory;
     
     // Email validation pattern
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
@@ -204,8 +227,120 @@ public class UserService implements UserDetailsService {
         return userMapper.toResponse(updatedUser);
     }
     
+    /**
+     * Get information about what will be deleted when a user is removed.
+     * This allows admins to preview the deletion impact before confirming.
+     * 
+     * @param userId User ID to check
+     * @return UserDeletionInfo with counts and details
+     */
+    @Transactional(readOnly = true)
+    public UserDeletionInfo getUserDeletionInfo(Long userId) {
+        log.info("Getting deletion info for user with id: {}", userId);
+        
+        if (userId == null) {
+            throw new IllegalArgumentException("User ID cannot be null");
+        }
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> UserException.userNotFound(userId));
+        
+        // Count folders owned by user
+        var folders = folderRepository.findByOwnerId(userId);
+        int folderCount = folders.size();
+        
+        // Count files uploaded by user
+        long fileCount = uploadedFileRepository.countByUploaderId(userId);
+        
+        // Get total file size
+        Long totalFileSize = uploadedFileRepository.sumFileSizeByUploaderId(userId);
+        double totalFileSizeMb = totalFileSize != null ? totalFileSize / (1024.0 * 1024.0) : 0.0;
+        
+        // Count document submissions
+        var submissions = documentSubmissionRepository.findByProfessorId(userId);
+        int submissionCount = submissions.size();
+        
+        // Count course assignments
+        var courseAssignments = courseAssignmentRepository.findByProfessorId(userId);
+        int courseAssignmentCount = courseAssignments.size();
+        
+        // Count document requests created by user
+        long createdRequestCount = documentRequestRepository.countByCreatedBy_Id(userId);
+        
+        // Count document requests assigned to user
+        long assignedRequestCount = documentRequestRepository.countByProfessor_Id(userId);
+        
+        // Count notifications for user
+        var notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        int notificationCount = notifications.size();
+        
+        // Determine if user can be deleted and build warning message
+        boolean canDelete = true;
+        String blockingReason = null;
+        StringBuilder warningBuilder = new StringBuilder();
+        
+        // Check for self-deletion
+        User currentUser = getCurrentUser();
+        if (currentUser != null && currentUser.getId().equals(userId)) {
+            canDelete = false;
+            blockingReason = "You cannot delete your own account.";
+        }
+        
+        // Build warning message for deletable items
+        if (canDelete) {
+            if (folderCount > 0 || fileCount > 0) {
+                warningBuilder.append(String.format("This will delete %d folder(s) and %d file(s) (%.2f MB). ", 
+                    folderCount, fileCount, totalFileSizeMb));
+            }
+            if (submissionCount > 0) {
+                warningBuilder.append(String.format("%d document submission(s) will be removed. ", submissionCount));
+            }
+            if (courseAssignmentCount > 0) {
+                warningBuilder.append(String.format("%d course assignment(s) will be removed. ", courseAssignmentCount));
+            }
+            if (warningBuilder.length() == 0) {
+                warningBuilder.append("No associated data found. User can be safely deleted.");
+            }
+        }
+        
+        return UserDeletionInfo.builder()
+                .userId(userId)
+                .userName(user.getFirstName() + " " + user.getLastName())
+                .userEmail(user.getEmail())
+                .userRole(user.getRole().toString().replace("ROLE_", ""))
+                .folderCount(folderCount)
+                .fileCount((int) fileCount)
+                .totalFileSizeMb(Math.round(totalFileSizeMb * 100.0) / 100.0)
+                .submissionCount(submissionCount)
+                .courseAssignmentCount(courseAssignmentCount)
+                .notificationCount(notificationCount)
+                .createdRequestCount((int) createdRequestCount)
+                .assignedRequestCount((int) assignedRequestCount)
+                .canDelete(canDelete)
+                .blockingReason(blockingReason)
+                .warningMessage(warningBuilder.toString().trim())
+                .build();
+    }
+    
+    /**
+     * Delete a user with all associated data.
+     * Default behavior deletes folders and files.
+     * 
+     * @param userId User ID to delete
+     */
     public void deleteUser(Long userId) {
-        log.info("Deleting user with id: {}", userId);
+        deleteUser(userId, true);
+    }
+    
+    /**
+     * Delete a user with optional folder/file deletion.
+     * 
+     * @param userId User ID to delete
+     * @param deleteAllData If true, deletes all associated folders, files, submissions, and assignments.
+     *                      If false, only deletes user record (will fail if FK constraints exist).
+     */
+    public void deleteUser(Long userId, boolean deleteAllData) {
+        log.info("Deleting user with id: {}, deleteAllData: {}", userId, deleteAllData);
         
         // Validate input
         if (userId == null) {
@@ -222,20 +357,153 @@ public class UserService implements UserDetailsService {
             throw UserException.cannotDeleteSelf();
         }
         
-        // Check for dependencies
-        checkUserDependencies(userId);
+        if (deleteAllData) {
+            // Delete all associated data
+            deleteUserAssociatedData(user);
+        } else {
+            // Only check for dependencies if not deleting all data
+            checkUserDependencies(userId);
+        }
         
-        // Delete all refresh tokens for this user first
+        // Delete all refresh tokens for this user
         refreshTokenRepository.deleteAllByUserId(userId);
         log.debug("Deleted all refresh tokens for user id: {}", userId);
         
-        // Soft delete or hard delete based on business rules
-        // For now, we'll do a hard delete after checking dependencies
-        if (user == null) {
-            throw new IllegalStateException("User entity cannot be null for deletion");
+        // Delete all notifications for this user
+        var notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
+        if (!notifications.isEmpty()) {
+            notificationRepository.deleteAll(notifications);
+            log.debug("Deleted {} notifications for user id: {}", notifications.size(), userId);
         }
-        userRepository.delete(user);
-        log.info("User deleted successfully with id: {}", userId);
+        
+        // Delete folders owned by user (must be done before deleting user due to FK constraint)
+        var folders = folderRepository.findByOwnerId(userId);
+        if (!folders.isEmpty()) {
+            // Collect unique root-level physical directories to delete
+            Set<String> physicalPathsToDelete = new HashSet<>();
+            for (var folder : folders) {
+                if (folder.getPath() != null) {
+                    physicalPathsToDelete.add(folder.getPath());
+                }
+            }
+            
+            // Sort by path length descending so children are deleted first from DB
+            folders.sort((f1, f2) -> Integer.compare(f2.getPath().length(), f1.getPath().length()));
+            folderRepository.deleteAll(folders);
+            log.debug("Deleted {} folder records from database for user id: {}", folders.size(), userId);
+            
+            // Delete physical directories (sort by path length descending to delete children first)
+            List<String> sortedPaths = physicalPathsToDelete.stream()
+                    .sorted(Comparator.comparingInt(String::length).reversed())
+                    .collect(Collectors.toList());
+            
+            for (String folderPath : sortedPaths) {
+                try {
+                    Path physicalPath = Path.of(uploadDirectory, folderPath);
+                    if (Files.exists(physicalPath)) {
+                        FileSystemUtils.deleteRecursively(physicalPath);
+                        log.debug("Deleted physical directory: {}", physicalPath);
+                    }
+                } catch (IOException e) {
+                    log.warn("Could not delete physical directory for path: {}", folderPath, e);
+                }
+            }
+            log.info("Deleted {} physical directories for user id: {}", physicalPathsToDelete.size(), userId);
+        }
+        
+        // Delete the user
+        if (user != null) {
+            userRepository.delete(user);
+            log.info("User deleted successfully with id: {}", userId);
+        }
+    }
+    
+    /**
+     * Delete all associated data for a user including files, submissions, and assignments.
+     * 
+     * @param user The user whose data should be deleted
+     */
+    private void deleteUserAssociatedData(User user) {
+        Long userId = user.getId();
+        log.info("Deleting all associated data for user id: {}", userId);
+        
+        try {
+            // 1. Delete uploaded files (with physical files from filesystem)
+            var uploadedFiles = uploadedFileRepository.findByUploaderId(userId);
+            if (uploadedFiles != null && !uploadedFiles.isEmpty()) {
+                for (var file : uploadedFiles) {
+                    if (file.getFileUrl() != null) {
+                        try {
+                            Path filePath = Path.of(file.getFileUrl());
+                            Files.deleteIfExists(filePath);
+                            log.debug("Deleted physical file: {}", file.getFileUrl());
+                        } catch (IOException e) {
+                            log.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                        }
+                    }
+                }
+                uploadedFileRepository.deleteAll(uploadedFiles);
+                log.debug("Deleted {} uploaded files for user id: {}", uploadedFiles.size(), userId);
+            }
+            
+            // 2. Delete document submissions
+            var submissions = documentSubmissionRepository.findByProfessorId(userId);
+            if (submissions != null && !submissions.isEmpty()) {
+                // First delete files associated with these submissions
+                for (var submission : submissions) {
+                    var filesInSubmission = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
+                    if (filesInSubmission != null && !filesInSubmission.isEmpty()) {
+                        for (var file : filesInSubmission) {
+                            if (file.getFileUrl() != null) {
+                                try {
+                                    Path filePath = Path.of(file.getFileUrl());
+                                    Files.deleteIfExists(filePath);
+                                } catch (IOException e) {
+                                    log.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                                }
+                            }
+                        }
+                        uploadedFileRepository.deleteAll(filesInSubmission);
+                    }
+                }
+                documentSubmissionRepository.deleteAll(submissions);
+                log.debug("Deleted {} document submissions for user id: {}", submissions.size(), userId);
+            }
+            
+            // 3. Delete course assignments and their related submissions
+            var courseAssignments = courseAssignmentRepository.findByProfessorId(userId);
+            if (courseAssignments != null && !courseAssignments.isEmpty()) {
+                for (var assignment : courseAssignments) {
+                    var assignmentSubmissions = documentSubmissionRepository.findByCourseAssignmentId(assignment.getId());
+                    if (assignmentSubmissions != null && !assignmentSubmissions.isEmpty()) {
+                        // Delete files for these submissions
+                        for (var sub : assignmentSubmissions) {
+                            var filesInSub = uploadedFileRepository.findByDocumentSubmissionId(sub.getId());
+                            if (filesInSub != null && !filesInSub.isEmpty()) {
+                                for (var file : filesInSub) {
+                                    if (file.getFileUrl() != null) {
+                                        try {
+                                            Path filePath = Path.of(file.getFileUrl());
+                                            Files.deleteIfExists(filePath);
+                                        } catch (IOException e) {
+                                            log.warn("Could not delete physical file: {}", file.getFileUrl(), e);
+                                        }
+                                    }
+                                }
+                                uploadedFileRepository.deleteAll(filesInSub);
+                            }
+                        }
+                        documentSubmissionRepository.deleteAll(assignmentSubmissions);
+                    }
+                }
+                courseAssignmentRepository.deleteAll(courseAssignments);
+                log.debug("Deleted {} course assignments for user id: {}", courseAssignments.size(), userId);
+            }
+            
+        } catch (Exception e) {
+            log.error("Error deleting associated data for user id: {}", userId, e);
+            throw new RuntimeException("Failed to delete user associated data: " + e.getMessage(), e);
+        }
     }
     
     /**

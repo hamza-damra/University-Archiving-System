@@ -49,7 +49,7 @@ export class OfficeRenderer {
             const convertedContent = await this.fetchConvertedContent(fileId);
             
             // Render the converted content
-            this.renderConvertedContent(container, convertedContent);
+            await this.renderConvertedContent(container, convertedContent);
             
         } catch (error) {
             console.error('Error rendering Office document:', error);
@@ -60,17 +60,45 @@ export class OfficeRenderer {
             }
             
             // Check if this is a conversion error or file not found
-            if (error.message.includes('conversion') || error.message.includes('convert') || 
-                error.message.includes('corrupted') || error.message.includes('unsupported')) {
+            if (error.status === 403 || (error.message && error.message.toLowerCase().includes('permission'))) {
+                this.renderPermissionDeniedError(container, error);
+                return;
+            }
+
+            if (error.status === 404 || (error.message && error.message.toLowerCase().includes('not found'))) {
+                this.renderFileNotFoundError(container, error);
+                return;
+            }
+
+            if (error.status === 400 || (error.message && error.message.toLowerCase().includes('office document'))) {
+                // Unsupported / not-an-office-doc → preview not available, offer download
+                this.renderConversionNotAvailable(container);
+                return;
+            }
+
+            if (error.name === 'TypeError' || (error.message && error.message.toLowerCase().includes('network error'))) {
+                this.renderNetworkError(container, error);
+                return;
+            }
+
+            if (typeof error.status === 'number' && error.status >= 500) {
+                this.renderConversionError(container, error);
+                return;
+            }
+
+            if (error.message && (
+                error.message.includes('conversion') ||
+                error.message.includes('convert') ||
+                error.message.includes('corrupted') ||
+                error.message.includes('unsupported')
+            )) {
                 // Show conversion error with download fallback
                 this.renderConversionError(container, error);
-            } else if (error.status === 404 || error.message.includes('not found')) {
-                // Show file not found error
-                this.renderFileNotFoundError(container, error);
-            } else {
-                // Re-throw other errors to be handled by preview modal
-                throw error;
+                return;
             }
+
+            // Re-throw other errors to be handled by preview modal
+            throw error;
         }
     }
 
@@ -177,7 +205,7 @@ export class OfficeRenderer {
      * @param {HTMLElement} container - Container element
      * @param {Object} convertedContent - Converted content object
      */
-    renderConvertedContent(container, convertedContent) {
+    async renderConvertedContent(container, convertedContent) {
         container.innerHTML = '';
         container.className = 'office-renderer-container h-full overflow-auto bg-white dark:bg-gray-900';
         
@@ -186,10 +214,10 @@ export class OfficeRenderer {
         
         if (format === 'html') {
             // Render HTML content
-            this.renderHtmlContent(container, blob);
+            await this.renderHtmlContent(container, blob);
         } else if (format === 'pdf') {
             // Render PDF content
-            this.renderPdfContent(container, blob);
+            await this.renderPdfContent(container, blob);
         } else {
             // Binary format - show message that conversion is not available
             this.renderConversionNotAvailable(container);
@@ -203,7 +231,7 @@ export class OfficeRenderer {
      * @param {Blob} blob - HTML content blob
      */
     async renderHtmlContent(container, blob) {
-        const htmlText = await blob.text();
+        const htmlText = await this.readBlobAsText(blob);
         
         // Create iframe to safely render HTML
         const iframe = document.createElement('iframe');
@@ -248,6 +276,30 @@ export class OfficeRenderer {
             }
         `;
         iframeDoc.head.appendChild(style);
+    }
+
+    /**
+     * Read a Blob as text with fallbacks for older environments / test runners.
+     * @private
+     * @param {Blob} blob
+     * @returns {Promise<string>}
+     */
+    async readBlobAsText(blob) {
+        if (blob && typeof blob.text === 'function') {
+            return await blob.text();
+        }
+
+        // Fallback for environments where Blob.text() is not available (e.g., some test runners)
+        if (typeof FileReader !== 'undefined') {
+            return await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(String(reader.result ?? ''));
+                reader.onerror = () => reject(reader.error || new Error('Failed to read blob as text'));
+                reader.readAsText(blob);
+            });
+        }
+
+        throw new Error('Blob.text() is not available and FileReader is undefined');
     }
 
     /**
@@ -350,6 +402,66 @@ export class OfficeRenderer {
             </p>
         `;
         
+        container.appendChild(errorDiv);
+    }
+
+    /**
+     * Render permission denied error
+     * @private
+     * @param {HTMLElement} container - Container element
+     * @param {Error} error - Error object
+     */
+    renderPermissionDeniedError(container, error) {
+        container.innerHTML = '';
+        container.className = 'flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900';
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-center p-8 max-w-md';
+
+        errorDiv.innerHTML = `
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-red-400 dark:text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0-8v2m0-7a9 9 0 100 18 9 9 0 000-18z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Access Denied
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                You don't have permission to preview this file.
+            </p>
+        `;
+
+        container.appendChild(errorDiv);
+    }
+
+    /**
+     * Render network error state
+     * @private
+     * @param {HTMLElement} container - Container element
+     * @param {Error} error - Error object
+     */
+    renderNetworkError(container, error) {
+        container.innerHTML = '';
+        container.className = 'flex items-center justify-center h-full bg-gray-50 dark:bg-gray-900';
+
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'text-center p-8 max-w-md';
+
+        errorDiv.innerHTML = `
+            <div class="mb-4">
+                <svg class="w-16 h-16 mx-auto text-amber-400 dark:text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Network Error
+            </h3>
+            <p class="text-gray-600 dark:text-gray-400">
+                Unable to load the preview. Please check your connection and try again.
+            </p>
+        `;
+
         container.appendChild(errorDiv);
     }
 

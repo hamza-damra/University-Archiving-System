@@ -63,6 +63,8 @@ public class SecurityHeadersConfig implements WebMvcConfigurer {
                 "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; " +
                 "img-src 'self' data: blob:; " +
                 "connect-src 'self'; " +
+                "frame-src 'self' blob:; " +
+                "object-src 'self' blob:; " +
                 "frame-ancestors 'none';"
             );
 

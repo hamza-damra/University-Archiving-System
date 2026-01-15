@@ -62,7 +62,7 @@ public class ProfessorServiceImpl implements ProfessorService {
     public User createProfessor(ProfessorDTO dto) {
         log.info("Creating new professor with email: {}", dto.getEmail());
         
-        // Validate professor email format (must end with @stuff.alquds.edu)
+        // Validate professor email format (must end with @staff.alquds.edu)
         emailValidationService.validateProfessorEmail(dto.getEmail());
         
         // Validate email uniqueness

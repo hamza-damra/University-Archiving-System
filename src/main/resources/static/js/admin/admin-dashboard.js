@@ -6,6 +6,7 @@
 import { AdminLayout } from './admin-common.js';
 import { apiRequest, getUserInfo } from '../core/api.js';
 import { showToast, setButtonLoading } from '../core/ui.js';
+import AdminReportsPage from './admin-reports.js';
 
 // Minimum loading time for smooth UX
 const MIN_LOADING_TIME = 800;
@@ -78,6 +79,9 @@ class AdminDashboardPage {
         
         // Tabs that have been loaded
         this.loadedTabs = new Set(['dashboard']);
+        
+        // Reports module instance
+        this.reportsPage = null;
     }
 
     /**
@@ -1724,15 +1728,124 @@ class AdminDashboardPage {
     }
 
     /**
-     * Open delete user modal
+     * Open delete user modal with detailed deletion info
      */
-    openDeleteUserModal(userId) {
+    async openDeleteUserModal(userId) {
         // Prevent admin from deleting themselves
         if (userId === this.currentUserId) {
             showToast('You cannot delete your own account', 'error');
             return;
         }
         
+        this.deletingUserId = userId;
+        
+        // Show loading state
+        const modal = document.getElementById('deleteUserModal');
+        if (!modal) {
+            // Fallback to simple delete modal if enhanced modal doesn't exist
+            this.openSimpleDeleteModal(userId);
+            return;
+        }
+        
+        // Show modal with loading state
+        modal.classList.remove('hidden');
+        modal.classList.add('active');
+        
+        // Set initial loading state
+        document.getElementById('deleteUserName').textContent = 'Loading...';
+        document.getElementById('deleteUserEmail').textContent = '';
+        document.getElementById('deleteUserRole').textContent = '-';
+        document.getElementById('deleteUserAvatar').textContent = '--';
+        document.getElementById('deleteUserDataList').innerHTML = '<div class="col-span-2 text-center text-gray-500">Loading...</div>';
+        document.getElementById('deleteUserWarning').textContent = 'Loading deletion information...';
+        
+        try {
+            // Fetch deletion info from backend
+            // Note: apiRequest already extracts the 'data' field from ApiResponse
+            const info = await apiRequest(`/admin/users/${userId}/deletion-info`);
+            console.log('[AdminDashboard] Deletion info:', info);
+            
+            if (!info) {
+                throw new Error('No deletion info received');
+            }
+            
+            if (info.canDelete === false) {
+                showToast(info.blockingReason || 'Cannot delete this user', 'error');
+                this.closeDeleteUserModal();
+                return;
+            }
+            
+            // Populate modal with deletion info
+            this.populateDeleteUserModal(info);
+            
+        } catch (error) {
+            console.error('[AdminDashboard] Error fetching deletion info:', error);
+            showToast('Failed to load user deletion information', 'error');
+            this.closeDeleteUserModal();
+        }
+    }
+    
+    /**
+     * Populate the delete user modal with deletion info
+     */
+    populateDeleteUserModal(info) {
+        // User info
+        document.getElementById('deleteUserName').textContent = info.userName;
+        document.getElementById('deleteUserEmail').textContent = info.userEmail;
+        document.getElementById('deleteUserRole').textContent = info.userRole;
+        
+        // Avatar initials
+        const initials = info.userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+        document.getElementById('deleteUserAvatar').textContent = initials;
+        
+        // Data list
+        const dataList = document.getElementById('deleteUserDataList');
+        const items = [];
+        
+        if (info.folderCount > 0) {
+            items.push({ icon: '📁', label: 'Folders', count: info.folderCount });
+        }
+        if (info.fileCount > 0) {
+            items.push({ icon: '📄', label: 'Files', count: `${info.fileCount} (${info.totalFileSizeMb} MB)` });
+        }
+        if (info.submissionCount > 0) {
+            items.push({ icon: '📝', label: 'Submissions', count: info.submissionCount });
+        }
+        if (info.courseAssignmentCount > 0) {
+            items.push({ icon: '📚', label: 'Course Assignments', count: info.courseAssignmentCount });
+        }
+        
+        if (items.length === 0) {
+            dataList.innerHTML = '<div class="col-span-2 text-center text-green-600 dark:text-green-400">No associated data found</div>';
+            document.getElementById('deleteUserWarningBox').classList.add('hidden');
+        } else {
+            dataList.innerHTML = items.map(item => `
+                <div class="flex items-center gap-2 p-2 bg-white dark:bg-gray-600 rounded border border-gray-200 dark:border-gray-500">
+                    <span>${item.icon}</span>
+                    <span class="text-gray-700 dark:text-gray-300">${item.label}:</span>
+                    <span class="font-semibold text-gray-900 dark:text-gray-100">${item.count}</span>
+                </div>
+            `).join('');
+            document.getElementById('deleteUserWarningBox').classList.remove('hidden');
+            document.getElementById('deleteUserWarning').textContent = info.warningMessage;
+        }
+        
+        // Set up buttons
+        const confirmBtn = document.getElementById('deleteUserModalConfirm');
+        const cancelBtn = document.getElementById('deleteUserModalCancel');
+        
+        if (confirmBtn) {
+            confirmBtn.onclick = () => this.deleteUser();
+        }
+        if (cancelBtn) {
+            cancelBtn.onclick = () => this.closeDeleteUserModal();
+        }
+    }
+    
+    /**
+     * Fallback simple delete modal
+     */
+    openSimpleDeleteModal(userId) {
         this.deletingUserId = userId;
         const modal = document.getElementById('deleteModal');
         const title = document.getElementById('deleteModalTitle');
@@ -1741,7 +1854,6 @@ class AdminDashboardPage {
         if (title) title.textContent = 'Delete User?';
         if (message) message.textContent = 'This action cannot be undone. The user will be permanently deleted.';
         
-        // Set up confirm button
         const confirmBtn = document.getElementById('deleteModalConfirm');
         const cancelBtn = document.getElementById('deleteModalCancel');
         
@@ -1770,6 +1882,18 @@ class AdminDashboardPage {
         this.deletingUserId = null;
         this.deletingDepartmentId = null;
         this.deletingCourseId = null;
+    }
+    
+    /**
+     * Close enhanced user delete modal
+     */
+    closeDeleteUserModal() {
+        const modal = document.getElementById('deleteUserModal');
+        if (modal) {
+            modal.classList.remove('active');
+            modal.classList.add('hidden');
+        }
+        this.deletingUserId = null;
     }
 
     /**
@@ -1903,22 +2027,39 @@ class AdminDashboardPage {
     async deleteUser() {
         if (!this.deletingUserId) return;
         
-        // Get delete button and show loading state
-        const deleteBtn = document.getElementById('deleteModalConfirm');
+        // Check which modal is open and get the appropriate button
+        const enhancedModal = document.getElementById('deleteUserModal');
+        const isEnhancedModal = enhancedModal && !enhancedModal.classList.contains('hidden');
+        
+        const deleteBtn = isEnhancedModal 
+            ? document.getElementById('deleteUserModalConfirm')
+            : document.getElementById('deleteModalConfirm');
+        
         const { restore: restoreButton } = setButtonLoading(deleteBtn, 'Deleting...');
         
+        // Get the deleteAllData checkbox value (default true)
+        const deleteAllDataCheckbox = document.getElementById('deleteUserAllData');
+        const deleteAllData = deleteAllDataCheckbox ? deleteAllDataCheckbox.checked : true;
+        
         try {
-            await apiRequest(`/admin/users/${this.deletingUserId}`, {
+            await apiRequest(`/admin/users/${this.deletingUserId}?deleteAllData=${deleteAllData}`, {
                 method: 'DELETE',
             });
             
             showToast('User deleted successfully', 'success');
-            this.closeDeleteModal();
+            
+            // Close the appropriate modal
+            if (isEnhancedModal) {
+                this.closeDeleteUserModal();
+            } else {
+                this.closeDeleteModal();
+            }
+            
             this.loadUsers();
             
         } catch (error) {
             console.error('[AdminDashboard] Delete user error:', error);
-            showToast('Failed to delete user', 'error');
+            showToast('Failed to delete user: ' + (error.message || 'Unknown error'), 'error');
         } finally {
             restoreButton();
         }
@@ -2719,9 +2860,23 @@ class AdminDashboardPage {
      * Initialize reports tab
      */
     async initializeReportsTab() {
-        // Load fresh statistics when opening reports tab
-        await this.loadDashboardStats();
-        console.log('[AdminDashboard] Reports tab initialized');
+        try {
+            // Initialize modern dropdowns for reports filters first
+            if (typeof window.initModernDropdowns === 'function') {
+                window.initModernDropdowns('#reportAcademicYearFilter, #reportSemesterFilter, #reportDepartmentFilter');
+                console.log('[AdminDashboard] Reports dropdowns initialized');
+            }
+            
+            // Initialize reports module if not already done
+            if (!this.reportsPage) {
+                this.reportsPage = new AdminReportsPage();
+                await this.reportsPage.initialize();
+            }
+            console.log('[AdminDashboard] Reports tab initialized');
+        } catch (error) {
+            console.error('[AdminDashboard] Error initializing reports tab:', error);
+            this.handleError('Failed to initialize reports tab', error);
+        }
     }
 
     // ========================================

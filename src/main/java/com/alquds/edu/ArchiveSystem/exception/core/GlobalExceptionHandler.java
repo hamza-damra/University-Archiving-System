@@ -5,7 +5,6 @@ import com.alquds.edu.ArchiveSystem.exception.file.FileUploadException;
 import com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedAccessException;
 import com.alquds.edu.ArchiveSystem.exception.auth.TokenRefreshException;
 import com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException;
-import com.alquds.edu.ArchiveSystem.exception.domain.DocumentRequestException;
 
 import com.alquds.edu.ArchiveSystem.dto.common.ApiResponse;
 import com.alquds.edu.ArchiveSystem.dto.common.ErrorResponse;
@@ -37,13 +36,9 @@ import java.util.UUID;
 
 /**
  * Global exception handler for the application.
- * 
- * NOTE: This handler includes support for legacy DocumentRequestException
- * for backward compatibility during the transition period.
  */
 @RestControllerAdvice
 @Slf4j
-@SuppressWarnings("deprecation")
 public class GlobalExceptionHandler {
     
     private String generateRequestId() {
@@ -121,23 +116,6 @@ public class GlobalExceptionHandler {
                 .withSuggestions(ex.getSuggestions());
         
         return ResponseEntity.badRequest()
-                .body(ApiResponse.error(errorResponse).withRequestId(requestId));
-    }
-    
-    @ExceptionHandler(DocumentRequestException.class)
-    public ResponseEntity<ApiResponse<Object>> handleDocumentRequestException(
-            DocumentRequestException ex, WebRequest request) {
-        
-        String requestId = generateRequestId();
-        log.warn("Document request exception [{}]: {} - {}", requestId, ex.getErrorCode(), ex.getMessage());
-        
-        HttpStatus status = determineHttpStatus(ex.getErrorCode());
-        ErrorResponse errorResponse = ErrorResponse.of(ex.getErrorCode(), ex.getMessage())
-                .withPath(getRequestPath(request))
-                .withStatus(status.value())
-                .withSuggestions(ex.getSuggestions());
-        
-        return ResponseEntity.status(status)
                 .body(ApiResponse.error(errorResponse).withRequestId(requestId));
     }
     
@@ -553,17 +531,6 @@ public class GlobalExceptionHandler {
     }
     
     // ========== Helper Methods ==========
-    
-    private HttpStatus determineHttpStatus(String errorCode) {
-        return switch (errorCode) {
-            case DocumentRequestException.REQUEST_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case DocumentRequestException.PROFESSOR_NOT_FOUND -> HttpStatus.NOT_FOUND;
-            case DocumentRequestException.UNAUTHORIZED_ACCESS -> HttpStatus.FORBIDDEN;
-            case DocumentRequestException.DEADLINE_PASSED -> HttpStatus.GONE;
-            default -> HttpStatus.BAD_REQUEST;
-        };
-    }
-    
 
     private HttpStatus determineUserExceptionStatus(String errorCode) {
         return switch (errorCode) {

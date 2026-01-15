@@ -13,7 +13,6 @@ import com.alquds.edu.ArchiveSystem.entity.user.User;
 import com.alquds.edu.ArchiveSystem.entity.auth.Role;
 import com.alquds.edu.ArchiveSystem.entity.academic.Department;
 import com.alquds.edu.ArchiveSystem.repository.auth.RefreshTokenRepository;
-import com.alquds.edu.ArchiveSystem.repository.submission.DocumentRequestRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.NotificationRepository;
 
 import com.alquds.edu.ArchiveSystem.dto.user.UserCreateRequest;
@@ -55,12 +54,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 @Transactional
-@SuppressWarnings("deprecation")
 public class UserService implements UserDetailsService {
     
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
-    private final DocumentRequestRepository documentRequestRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final FolderRepository folderRepository;
     private final UploadedFileRepository uploadedFileRepository;
@@ -264,12 +261,6 @@ public class UserService implements UserDetailsService {
         var courseAssignments = courseAssignmentRepository.findByProfessorId(userId);
         int courseAssignmentCount = courseAssignments.size();
         
-        // Count document requests created by user
-        long createdRequestCount = documentRequestRepository.countByCreatedBy_Id(userId);
-        
-        // Count document requests assigned to user
-        long assignedRequestCount = documentRequestRepository.countByProfessor_Id(userId);
-        
         // Count notifications for user
         var notifications = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId);
         int notificationCount = notifications.size();
@@ -314,8 +305,6 @@ public class UserService implements UserDetailsService {
                 .submissionCount(submissionCount)
                 .courseAssignmentCount(courseAssignmentCount)
                 .notificationCount(notificationCount)
-                .createdRequestCount((int) createdRequestCount)
-                .assignedRequestCount((int) assignedRequestCount)
                 .canDelete(canDelete)
                 .blockingReason(blockingReason)
                 .warningMessage(warningBuilder.toString().trim())
@@ -772,22 +761,19 @@ public class UserService implements UserDetailsService {
     }
     
     private void checkUserDependencies(Long userId) {
-        // Check if user has created document requests
-        long createdRequestsCount = documentRequestRepository.countByCreatedBy_Id(userId);
-        if (createdRequestsCount > 0) {
+        // Check if user has course assignments
+        var courseAssignments = courseAssignmentRepository.findByProfessorId(userId);
+        if (!courseAssignments.isEmpty()) {
             throw UserException.userHasDependencies(userId, 
-                createdRequestsCount + " created document request(s)");
+                courseAssignments.size() + " course assignment(s)");
         }
         
-        // Check if user is assigned as professor to document requests
-        long assignedRequestsCount = documentRequestRepository.countByProfessor_Id(userId);
-        if (assignedRequestsCount > 0) {
+        // Check if user has document submissions
+        var submissions = documentSubmissionRepository.findByProfessorId(userId);
+        if (!submissions.isEmpty()) {
             throw UserException.userHasDependencies(userId, 
-                assignedRequestsCount + " assigned document request(s)");
+                submissions.size() + " document submission(s)");
         }
-        
-        // Additional dependency checks can be added here
-        // For example: submitted documents, notifications, etc.
     }
     
     private User getCurrentUser() {

@@ -8,7 +8,6 @@ import com.alquds.edu.ArchiveSystem.entity.auth.RefreshToken;
 import com.alquds.edu.ArchiveSystem.entity.file.Folder;
 import com.alquds.edu.ArchiveSystem.entity.file.FolderType;
 import com.alquds.edu.ArchiveSystem.entity.file.UploadedFile;
-import com.alquds.edu.ArchiveSystem.entity.submission.DocumentRequest;
 import com.alquds.edu.ArchiveSystem.dto.user.UserCreateRequest;
 import com.alquds.edu.ArchiveSystem.dto.user.UserUpdateRequest;
 import com.alquds.edu.ArchiveSystem.dto.user.ProfessorDTO;
@@ -20,8 +19,6 @@ import com.alquds.edu.ArchiveSystem.dto.academic.SemesterDTO;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.Arrays;
 
 /**
  * Test data builder utility following the Test Data Builder pattern.
@@ -299,41 +296,6 @@ public class TestDataBuilder {
                 .build();
     }
     
-    // ==================== Document Request Builders ====================
-    
-    /**
-     * Creates a DocumentRequest for legacy tests.
-     * Note: DocumentRequest is deprecated but kept for legacy test support.
-     */
-    @SuppressWarnings("deprecation")
-    public static DocumentRequest createDocumentRequest() {
-        DocumentRequest request = new DocumentRequest();
-        request.setCourseName("Introduction to Computer Science");
-        request.setDocumentType("Syllabus");
-        request.setRequiredFileExtensions(Arrays.asList("pdf", "doc", "docx"));
-        request.setDeadline(LocalDateTime.now().plusDays(30));
-        request.setProfessor(createProfessorUser());
-        request.setCreatedBy(createAdminUser());
-        request.setDescription("Test document request");
-        request.setMaxFileCount(5);
-        request.setMaxTotalSizeMb(50);
-        return request;
-    }
-    
-    /**
-     * Enhanced version that accepts professor and createdBy user.
-     */
-    @SuppressWarnings("deprecation")
-    public static DocumentRequest createDocumentRequest(User professor, User createdBy) {
-        DocumentRequest request = createDocumentRequest();
-        if (professor != null) {
-            request.setProfessor(professor);
-        }
-        if (createdBy != null) {
-            request.setCreatedBy(createdBy);
-        }
-        return request;
-    }
     
     // ==================== Notification Builders ====================
     

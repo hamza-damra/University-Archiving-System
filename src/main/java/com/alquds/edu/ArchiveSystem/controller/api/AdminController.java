@@ -21,9 +21,6 @@ import com.alquds.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alquds.edu.ArchiveSystem.dto.user.UserUpdateRequest;
 import com.alquds.edu.ArchiveSystem.service.academic.CourseService;
 import com.alquds.edu.ArchiveSystem.service.dashboard.DashboardWidgetService;
-import com.alquds.edu.ArchiveSystem.service.core.DataMigrationService;
-import com.alquds.edu.ArchiveSystem.service.core.DataMigrationService.MigrationAnalysis;
-import com.alquds.edu.ArchiveSystem.service.core.DataMigrationService.MigrationResult;
 import com.alquds.edu.ArchiveSystem.service.academic.DepartmentService;
 import com.alquds.edu.ArchiveSystem.service.academic.SemesterReportService;
 import com.alquds.edu.ArchiveSystem.service.user.UserService;
@@ -58,7 +55,6 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminController {
 
-    private final DataMigrationService dataMigrationService;
     private final UserService userService;
     private final DepartmentService departmentService;
     private final CourseService courseService;
@@ -927,37 +923,6 @@ public class AdminController {
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalStateException("Current user not found with email: " + email));
-    }
-
-    // ==================== Migration Operations ====================
-
-    /**
-     * Analyzes existing data to determine migration scope.
-     * GET /api/admin/migration/analyze
-     */
-    @GetMapping("/migration/analyze")
-    public ResponseEntity<MigrationAnalysis> analyzeMigrationData() {
-        log.info("Analyzing migration data...");
-        MigrationAnalysis analysis = dataMigrationService.analyzeExistingData();
-        return ResponseEntity.ok(analysis);
-    }
-
-    /**
-     * Executes the full data migration from old schema to new schema.
-     * POST /api/admin/migration/execute
-     */
-    @PostMapping("/migration/execute")
-    public ResponseEntity<MigrationResult> executeMigration() {
-        log.info("Starting data migration...");
-        MigrationResult result = dataMigrationService.executeFullMigration();
-        
-        if (result.isSuccess()) {
-            log.info("Migration completed successfully");
-            return ResponseEntity.ok(result);
-        } else {
-            log.error("Migration failed: {}", result.getErrorMessage());
-            return ResponseEntity.status(500).body(result);
-        }
     }
 
     /**

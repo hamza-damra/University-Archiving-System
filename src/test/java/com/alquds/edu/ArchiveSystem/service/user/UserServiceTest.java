@@ -13,7 +13,6 @@ import com.alquds.edu.ArchiveSystem.repository.academic.CourseAssignmentReposito
 import com.alquds.edu.ArchiveSystem.repository.auth.RefreshTokenRepository;
 import com.alquds.edu.ArchiveSystem.repository.file.FolderRepository;
 import com.alquds.edu.ArchiveSystem.repository.file.UploadedFileRepository;
-import com.alquds.edu.ArchiveSystem.repository.submission.DocumentRequestRepository;
 import com.alquds.edu.ArchiveSystem.repository.submission.DocumentSubmissionRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.NotificationRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.UserRepository;
@@ -32,6 +31,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,9 +60,6 @@ class UserServiceTest {
     
     @Mock
     private DepartmentRepository departmentRepository;
-    
-    @Mock
-    private DocumentRequestRepository documentRequestRepository;
     
     @Mock
     private RefreshTokenRepository refreshTokenRepository;
@@ -371,8 +368,8 @@ class UserServiceTest {
         userToDelete.setId(userId);
         
         when(userRepository.findById(userId)).thenReturn(Optional.of(userToDelete));
-        when(documentRequestRepository.countByCreatedBy_Id(userId)).thenReturn(0L);
-        when(documentRequestRepository.countByProfessor_Id(userId)).thenReturn(0L);
+        when(courseAssignmentRepository.findByProfessorId(userId)).thenReturn(Collections.emptyList());
+        when(documentSubmissionRepository.findByProfessorId(userId)).thenReturn(Collections.emptyList());
         User admin = TestDataBuilder.createAdminUser();
         admin.setId(999L); // Different ID to avoid self-deletion check
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(admin));
@@ -385,8 +382,8 @@ class UserServiceTest {
         
         // Assert
         verify(userRepository).findById(userId);
-        verify(documentRequestRepository).countByCreatedBy_Id(userId);
-        verify(documentRequestRepository).countByProfessor_Id(userId);
+        verify(courseAssignmentRepository).findByProfessorId(userId);
+        verify(documentSubmissionRepository).findByProfessorId(userId);
         verify(refreshTokenRepository).deleteAllByUserId(userId);
         verify(notificationRepository).findByUserIdOrderByCreatedAtDesc(userId);
         verify(folderRepository).findByOwnerId(userId);
@@ -435,7 +432,7 @@ class UserServiceTest {
     }
     
     @Test
-    @DisplayName("Should throw exception when user has dependencies")
+    @DisplayName("Should throw exception when user has dependencies and deleteAllData is false")
     void shouldThrowExceptionWhenUserHasDependencies() {
         // Arrange
         Long userId = 1L;
@@ -443,13 +440,13 @@ class UserServiceTest {
         userToDelete.setId(userId);
         
         when(userRepository.findById(userId)).thenReturn(Optional.of(userToDelete));
-        when(documentRequestRepository.countByCreatedBy_Id(userId)).thenReturn(5L);
+        when(courseAssignmentRepository.findByProfessorId(userId)).thenReturn(List.of(new com.alquds.edu.ArchiveSystem.entity.academic.CourseAssignment()));
         User admin = TestDataBuilder.createAdminUser();
         admin.setId(999L);
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(admin));
         
-        // Act & Assert
-        assertThatThrownBy(() -> userService.deleteUser(userId))
+        // Act & Assert - deleteUser with deleteAllData=false should check dependencies
+        assertThatThrownBy(() -> userService.deleteUser(userId, false))
                 .isInstanceOf(UserException.class)
                 .hasMessageContaining("existing");
         

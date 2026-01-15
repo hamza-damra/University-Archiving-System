@@ -66,16 +66,6 @@ public class UserDeletionInfo {
     private int notificationCount;
     
     /**
-     * Number of document requests created by the user
-     */
-    private int createdRequestCount;
-    
-    /**
-     * Number of document requests assigned to the user
-     */
-    private int assignedRequestCount;
-    
-    /**
      * Whether the user can be deleted (no blocking dependencies)
      */
     private boolean canDelete;

@@ -1,10 +1,8 @@
 package com.alquds.edu.ArchiveSystem.entity.user;
 
 import com.alquds.edu.ArchiveSystem.entity.academic.CourseAssignment;
-import com.alquds.edu.ArchiveSystem.entity.submission.SubmittedDocument;
 import com.alquds.edu.ArchiveSystem.entity.auth.Role;
 import com.alquds.edu.ArchiveSystem.entity.submission.DocumentSubmission;
-import com.alquds.edu.ArchiveSystem.entity.submission.DocumentRequest;
 import com.alquds.edu.ArchiveSystem.entity.academic.Department;
 import com.alquds.edu.ArchiveSystem.entity.auth.RefreshToken;
 
@@ -30,7 +28,7 @@ import java.util.List;
            @Index(name = "idx_users_department", columnList = "department_id"),
            @Index(name = "idx_users_role", columnList = "role")
        })
-@JsonIgnoreProperties({"documentRequests", "submittedDocuments", "notifications", "password", "hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"notifications", "password", "hibernateLazyInitializer", "handler"})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -81,20 +79,6 @@ public class User implements UserDetails {
     @JsonIgnore
     private List<DocumentSubmission> documentSubmissions;
     
-    // Deprecated: Old request-based relationships (kept for migration)
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @lombok.ToString.Exclude
-    @JsonIgnore
-    private List<DocumentRequest> documentRequests;
-    
-    @Deprecated
-    @SuppressWarnings("deprecation")
-    @OneToMany(mappedBy = "professor", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @lombok.ToString.Exclude
-    @JsonIgnore
-    private List<SubmittedDocument> submittedDocuments;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude

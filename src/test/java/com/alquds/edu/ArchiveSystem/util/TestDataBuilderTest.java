@@ -6,14 +6,12 @@ import com.alquds.edu.ArchiveSystem.entity.academic.SemesterType;
 import com.alquds.edu.ArchiveSystem.entity.auth.RefreshToken;
 import com.alquds.edu.ArchiveSystem.entity.file.Folder;
 import com.alquds.edu.ArchiveSystem.entity.file.UploadedFile;
-import com.alquds.edu.ArchiveSystem.entity.submission.DocumentRequest;
 import com.alquds.edu.ArchiveSystem.entity.user.Notification;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -107,39 +105,6 @@ class TestDataBuilderTest {
         assertEquals(SemesterType.SECOND, semester.getType());
         assertNotNull(semester.getStartDate());
         assertNotNull(semester.getEndDate());
-    }
-
-    @Test
-    @DisplayName("Should create DocumentRequest with default values")
-    @SuppressWarnings("deprecation")
-    void testCreateDocumentRequest() {
-        DocumentRequest request = TestDataBuilder.createDocumentRequest();
-        
-        assertNotNull(request);
-        assertNotNull(request.getCourseName());
-        assertNotNull(request.getDocumentType());
-        assertNotNull(request.getRequiredFileExtensions());
-        assertFalse(request.getRequiredFileExtensions().isEmpty());
-        assertNotNull(request.getDeadline());
-        assertTrue(request.getDeadline().isAfter(LocalDateTime.now()));
-        assertNotNull(request.getProfessor());
-        assertNotNull(request.getCreatedBy());
-        assertNotNull(request.getDescription());
-        assertNotNull(request.getMaxFileCount());
-        assertNotNull(request.getMaxTotalSizeMb());
-    }
-
-    @Test
-    @DisplayName("Should create DocumentRequest with custom professor and creator")
-    @SuppressWarnings("deprecation")
-    void testCreateDocumentRequestWithUsers() {
-        User professor = TestDataBuilder.createProfessorUser();
-        User creator = TestDataBuilder.createAdminUser();
-        DocumentRequest request = TestDataBuilder.createDocumentRequest(professor, creator);
-        
-        assertNotNull(request);
-        assertEquals(professor, request.getProfessor());
-        assertEquals(creator, request.getCreatedBy());
     }
 
     @Test

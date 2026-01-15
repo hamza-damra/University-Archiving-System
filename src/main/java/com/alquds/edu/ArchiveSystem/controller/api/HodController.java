@@ -3,10 +3,8 @@ package com.alquds.edu.ArchiveSystem.controller.api;
 import com.alquds.edu.ArchiveSystem.service.file.FileExplorerService;
 import com.alquds.edu.ArchiveSystem.service.user.UserService;
 import com.alquds.edu.ArchiveSystem.service.report.PdfReportService;
-import com.alquds.edu.ArchiveSystem.service.submission.DocumentRequestService;
 import com.alquds.edu.ArchiveSystem.service.academic.SemesterReportService;
 import com.alquds.edu.ArchiveSystem.service.file.FileAccessService;
-import com.alquds.edu.ArchiveSystem.service.report.ReportService;
 import com.alquds.edu.ArchiveSystem.service.user.NotificationService;
 import com.alquds.edu.ArchiveSystem.service.file.FileService;
 
@@ -19,12 +17,9 @@ import com.alquds.edu.ArchiveSystem.dto.common.ApiResponse;
 import com.alquds.edu.ArchiveSystem.dto.common.NotificationResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 import com.alquds.edu.ArchiveSystem.dto.report.DashboardOverview;
-import com.alquds.edu.ArchiveSystem.dto.report.DepartmentSubmissionReport;
 import com.alquds.edu.ArchiveSystem.dto.report.ProfessorSubmissionReport;
 import com.alquds.edu.ArchiveSystem.dto.report.ReportFilter;
 import com.alquds.edu.ArchiveSystem.dto.report.ReportFilterOptions;
-import com.alquds.edu.ArchiveSystem.dto.request.DocumentRequestCreateRequest;
-import com.alquds.edu.ArchiveSystem.dto.request.DocumentRequestResponse;
 import com.alquds.edu.ArchiveSystem.dto.user.UserCreateRequest;
 import com.alquds.edu.ArchiveSystem.dto.user.UserResponse;
 import com.alquds.edu.ArchiveSystem.dto.user.UserUpdateRequest;
@@ -53,12 +48,9 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 @PreAuthorize("hasRole('HOD')")
-@SuppressWarnings("deprecation")
 public class HodController {
     
     private final UserService userService;
-    private final DocumentRequestService documentRequestService;
-    private final ReportService reportService;
     private final PdfReportService pdfReportService;
     private final UserRepository userRepository;
     private final SemesterReportService semesterReportService;
@@ -89,7 +81,7 @@ public class HodController {
         }
     }
     
-    // User Management Endpoints
+    // ==================== User Management Endpoints ====================
     
     @PostMapping("/professors")
     public ResponseEntity<ApiResponse<UserResponse>> createProfessor(@Valid @RequestBody UserCreateRequest request) {
@@ -176,150 +168,6 @@ public class HodController {
         }
     }
     
-    // Document Request Management Endpoints
-    
-    @PostMapping("/document-requests")
-    public ResponseEntity<ApiResponse<DocumentRequestResponse>> createDocumentRequest(
-            @Valid @RequestBody DocumentRequestCreateRequest request) {
-        
-        log.info("HOD creating document request for professor id: {}", request.getProfessorId());
-        
-        try {
-            DocumentRequestResponse documentRequest = documentRequestService.createDocumentRequest(request);
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(ApiResponse.success("Document request created successfully", documentRequest));
-        } catch (Exception e) {
-            log.error("Error creating document request", e);
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @GetMapping("/document-requests")
-    public ResponseEntity<ApiResponse<Page<DocumentRequestResponse>>> getMyDocumentRequests(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
-        
-        // Get current HOD's department
-        User currentUser = getCurrentUser();
-        if (currentUser.getDepartment() == null) {
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("HOD must be assigned to a department"));
-        }
-        
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
-                Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<DocumentRequestResponse> requests = documentRequestService.getDocumentRequestsByDepartment(currentUser.getDepartment().getId(), pageable);
-        return ResponseEntity.ok(ApiResponse.success("Document requests retrieved successfully", requests));
-    }
-    
-    @GetMapping("/document-requests/department/{departmentId}")
-    public ResponseEntity<ApiResponse<Page<DocumentRequestResponse>>> getDocumentRequestsByDepartment(
-            @PathVariable Long departmentId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "desc") String sortDir) {
-        
-        Sort sort = sortDir.equalsIgnoreCase("desc") ? 
-                Sort.by(sortBy).descending() : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-        
-        Page<DocumentRequestResponse> requests = documentRequestService.getDocumentRequestsByDepartment(departmentId, pageable);
-        return ResponseEntity.ok(ApiResponse.success("Department document requests retrieved successfully", requests));
-    }
-    
-    @GetMapping("/document-requests/{requestId}")
-    public ResponseEntity<ApiResponse<DocumentRequestResponse>> getDocumentRequestById(@PathVariable Long requestId) {
-        try {
-            DocumentRequestResponse request = documentRequestService.getDocumentRequestById(requestId);
-            return ResponseEntity.ok(ApiResponse.success("Document request retrieved successfully", request));
-        } catch (Exception e) {
-            log.error("Error retrieving document request with id: {}", requestId, e);
-            return ResponseEntity.notFound().build();
-        }
-    }
-    
-    @DeleteMapping("/document-requests/{requestId}")
-    public ResponseEntity<ApiResponse<String>> deleteDocumentRequest(@PathVariable Long requestId) {
-        log.info("HOD deleting document request with id: {}", requestId);
-        
-        try {
-            documentRequestService.deleteDocumentRequest(requestId);
-            return ResponseEntity.ok(ApiResponse.success("Document request deleted successfully", "Request removed"));
-        } catch (Exception e) {
-            log.error("Error deleting document request with id: {}", requestId, e);
-            return ResponseEntity.badRequest()
-                    .body(ApiResponse.error(e.getMessage()));
-        }
-    }
-    
-    @GetMapping("/document-requests/overdue")
-    public ResponseEntity<ApiResponse<List<DocumentRequestResponse>>> getOverdueRequests() {
-        List<DocumentRequestResponse> overdueRequests = documentRequestService.getOverdueRequests();
-        return ResponseEntity.ok(ApiResponse.success("Overdue requests retrieved successfully", overdueRequests));
-    }
-    
-    @GetMapping("/document-requests/upcoming-deadline")
-    public ResponseEntity<ApiResponse<List<DocumentRequestResponse>>> getRequestsWithUpcomingDeadline(
-            @RequestParam(defaultValue = "24") int hours) {
-        
-        List<DocumentRequestResponse> upcomingRequests = documentRequestService.getRequestsWithUpcomingDeadline(hours);
-        return ResponseEntity.ok(ApiResponse.success("Upcoming deadline requests retrieved successfully", upcomingRequests));
-    }
-    
-    // Report Endpoints
-    
-    /**
-     * Get department submission summary report
-     * Shows which professors have submitted required documents
-     */
-    @GetMapping("/reports/submission-summary")
-    public ResponseEntity<ApiResponse<DepartmentSubmissionReport>> getDepartmentSubmissionReport() {
-        log.info("HOD requesting department submission summary report");
-        
-        try {
-            DepartmentSubmissionReport report = reportService.generateDepartmentSubmissionReport();
-            return ResponseEntity.ok(ApiResponse.success("Department submission report generated successfully", report));
-        } catch (Exception e) {
-            log.error("Error generating department submission report", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ApiResponse.error("Failed to generate report: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * Download department submission summary report as PDF
-     */
-    @GetMapping("/reports/submission-summary/pdf")
-    public ResponseEntity<byte[]> downloadDepartmentSubmissionReportPdf() {
-        log.info("HOD downloading department submission summary report as PDF");
-        
-        try {
-            DepartmentSubmissionReport report = reportService.generateDepartmentSubmissionReport();
-            byte[] pdfBytes = pdfReportService.generateDepartmentSubmissionReportPdf(report);
-            
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", 
-                    "department-submission-report-" + System.currentTimeMillis() + ".pdf");
-            headers.setContentLength(pdfBytes.length);
-            
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfBytes);
-                    
-        } catch (Exception e) {
-            log.error("Error generating PDF report", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(null);
-        }
-    }
-    
     // ========================================
     // Semester-Based Operations (New System)
     // ========================================
@@ -327,7 +175,6 @@ public class HodController {
     /**
      * Get dashboard overview for a semester
      * Returns total professors, courses, and submission statistics for HOD's department
-     * Task 12.1
      */
     @GetMapping("/dashboard/overview")
     public ResponseEntity<ApiResponse<DashboardOverview>> getDashboardOverview(
@@ -373,7 +220,6 @@ public class HodController {
     /**
      * Get submission status for professors in the department
      * Supports filtering by courseCode, documentType, and status
-     * Task 12.2
      */
     @GetMapping("/submissions/status")
     public ResponseEntity<ApiResponse<ProfessorSubmissionReport>> getSubmissionStatus(
@@ -420,7 +266,6 @@ public class HodController {
     
     /**
      * Get professor submission report for a semester
-     * Task 12.3
      */
     @GetMapping("/reports/professor-submissions")
     public ResponseEntity<ApiResponse<ProfessorSubmissionReport>> getProfessorSubmissionReport(
@@ -451,7 +296,6 @@ public class HodController {
     
     /**
      * Export professor submission report to PDF
-     * Task 12.3
      */
     @GetMapping("/reports/professor-submissions/pdf")
     public ResponseEntity<byte[]> exportReportToPdf(@RequestParam Long semesterId) {
@@ -492,7 +336,6 @@ public class HodController {
     
     /**
      * Get file explorer root for HOD (department-scoped)
-     * Task 12.4
      */
     @GetMapping("/file-explorer/root")
     public ResponseEntity<ApiResponse<FileExplorerNode>> getFileExplorerRoot(
@@ -521,7 +364,6 @@ public class HodController {
     
     /**
      * Get file explorer node (folder or file details)
-     * Task 12.4
      */
     @GetMapping("/file-explorer/node")
     public ResponseEntity<ApiResponse<FileExplorerNode>> getFileExplorerNode(@RequestParam String path) {
@@ -548,8 +390,6 @@ public class HodController {
     /**
      * Download a file (read-only access for HOD)
      * Security: HOD can only access files in their department
-     * Uses centralized FileAccessService for access control
-     * Task 12.4, Requirements: 10.4
      */
     @GetMapping("/files/{fileId}/download")
     @PreAuthorize("hasRole('HOD')")
@@ -567,7 +407,7 @@ public class HodController {
             // Get file metadata
             var uploadedFile = fileService.getFile(fileId);
             
-            // Use centralized FileAccessService for access control (Requirements: 10.4, 13.1)
+            // Use centralized FileAccessService for access control
             if (!fileAccessService.canAccessFile(currentUser, fileId)) {
                 log.error("HOD does not have permission to access file: {}", fileId);
                 fileAccessService.logAccessDenial(currentUser, fileId, 
@@ -585,10 +425,9 @@ public class HodController {
             }
             
             // Build Content-Disposition header with proper filename encoding
-            // Use both filename and filename* (RFC 5987) for better browser compatibility
             String originalFilename = uploadedFile.getOriginalFilename();
             String encodedFilename = java.net.URLEncoder.encode(originalFilename, java.nio.charset.StandardCharsets.UTF_8)
-                    .replace("+", "%20"); // Replace + with %20 for spaces
+                    .replace("+", "%20");
             
             String contentDisposition = String.format(
                     "attachment; filename=\"%s\"; filename*=UTF-8''%s",
@@ -608,11 +447,7 @@ public class HodController {
     }
     
     /**
-     * Get available filter options for report generation.
-     * HOD users cannot filter by department (restricted to own department).
-     * GET /api/hod/reports/filter-options
-     * 
-     * @return Available filter options (excludes department filter for HOD)
+     * Get available filter options for report generation
      */
     @GetMapping("/reports/filter-options")
     public ResponseEntity<ApiResponse<ReportFilterOptions>> getReportFilterOptions() {
@@ -637,11 +472,7 @@ public class HodController {
     // ==================== Notification Management ====================
     
     /**
-     * Get notifications for the current HOD user.
-     * HOD users only see notifications for submissions from their department.
-     * GET /api/hod/notifications
-     * 
-     * @return List of notifications
+     * Get notifications for the current HOD user
      */
     @GetMapping("/notifications")
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getNotifications() {
@@ -658,10 +489,7 @@ public class HodController {
     }
     
     /**
-     * Get unread notification count for the current HOD user.
-     * GET /api/hod/notifications/unread-count
-     * 
-     * @return Unread notification count
+     * Get unread notification count for the current HOD user
      */
     @GetMapping("/notifications/unread-count")
     public ResponseEntity<ApiResponse<Long>> getUnreadNotificationCount() {
@@ -683,11 +511,7 @@ public class HodController {
     }
     
     /**
-     * Mark a notification as read.
-     * PUT /api/hod/notifications/{id}/read
-     * 
-     * @param id Notification ID
-     * @return Success response
+     * Mark a notification as read
      */
     @PutMapping("/notifications/{id}/read")
     public ResponseEntity<ApiResponse<String>> markNotificationAsRead(@PathVariable Long id) {

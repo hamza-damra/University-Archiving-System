@@ -1,0 +1,78 @@
+### HOD API
+
+@host = http://localhost:8080
+@api = /api/hod
+
+### --- PROFESSOR MANAGEMENT ---
+
+### Create Professor
+POST {{host}}{{api}}/professors
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "email": "prof.smith@example.com",
+  "password": "password123",
+  "firstName": "Alice",
+  "lastName": "Smith",
+  "role": "PROFESSOR",
+  "departmentId": 1
+}
+
+### Get All Professors
+GET {{host}}{{api}}/professors?page=0&size=10
+Authorization: Bearer {{auth_token}}
+
+### Get Professor by ID
+GET {{host}}{{api}}/professors/1
+Authorization: Bearer {{auth_token}}
+
+### Update Professor
+PUT {{host}}{{api}}/professors/1
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "firstName": "Alice Updated",
+  "lastName": "Smith Updated",
+  "role": "PROFESSOR",
+  "departmentId": 1,
+  "isActive": true
+}
+
+### Delete Professor
+DELETE {{host}}{{api}}/professors/1
+Authorization: Bearer {{auth_token}}
+
+
+### --- DASHBOARD & REPORTS ---
+
+### Get Dashboard Overview
+GET {{host}}{{api}}/dashboard-overview?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Submission Status Report
+GET {{host}}{{api}}/submission-status?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+
+### --- FILE EXPLORER ---
+
+### Get File Explorer Root
+GET {{host}}{{api}}/file-explorer/root?academicYearId=1&semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get File Explorer Node
+GET {{host}}{{api}}/file-explorer/node?path=some/path/to/folder
+Authorization: Bearer {{auth_token}}
+
+
+### --- NOTIFICATIONS ---
+
+### Get Notifications
+GET {{host}}{{api}}/notifications
+Authorization: Bearer {{auth_token}}
+
+### Mark Notification as Read
+POST {{host}}{{api}}/notifications/1/read
+Authorization: Bearer {{auth_token}}

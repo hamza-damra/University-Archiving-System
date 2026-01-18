@@ -7,6 +7,7 @@ import { showToast, showModal, formatDate } from '../core/ui.js';
 import { FileExplorer } from '../file-explorer/file-explorer.js';
 import { fileExplorerState } from '../file-explorer/file-explorer-state.js';
 import { hodReportsManager } from './hod-reports.js';
+import { initializeHodTasks } from '../task/hod-tasks.js';
 
 // Check authentication with token validation
 (async function initAuth() {
@@ -162,12 +163,13 @@ function getCurrentSemesterType() {
 function initializeDashboard() {
     hodName.textContent = userInfo.fullName;
     loadAcademicYears();
-    loadLegacyRequests();
+    // Note: loadLegacyRequests() removed - endpoint not implemented
     initializeFileExplorer();
     initializeTabSwitching();
     initializeReportButtons();
     initializeSidebar();
     initializeReportsManager();
+    initializeHodTasks();
 
     // Initialize modern dropdowns after a short delay
     setTimeout(initializeModernDropdowns, 100);

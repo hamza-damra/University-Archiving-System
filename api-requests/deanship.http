@@ -1,0 +1,58 @@
+### Deanship API
+
+@host = http://localhost:8080
+@api = /api/deanship
+
+### --- ACADEMIC YEAR MANAGEMENT ---
+
+### Create Academic Year
+POST {{host}}{{api}}/academic-years
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "2025-2026",
+  "startDate": "2025-09-01",
+  "endDate": "2026-06-30"
+}
+
+### Get All Academic Years
+GET {{host}}{{api}}/academic-years
+Authorization: Bearer {{auth_token}}
+
+### Activate Academic Year
+POST {{host}}{{api}}/academic-years/1/activate
+Authorization: Bearer {{auth_token}}
+
+
+### --- SEMESTER MANAGEMENT ---
+
+### Get Semesters by Academic Year
+GET {{host}}{{api}}/academic-years/1/semesters
+Authorization: Bearer {{auth_token}}
+
+
+### --- PROFESSOR MANAGEMENT ---
+
+### Get All Professors
+GET {{host}}{{api}}/professors?departmentId=1
+Authorization: Bearer {{auth_token}}
+
+### Create Professor Folder
+POST {{host}}{{api}}/professors/1/folders?academicYearId=1&semesterId=1
+Authorization: Bearer {{auth_token}}
+
+
+### --- DASHBOARD & REPORTS ---
+
+### Get System Wide Report
+GET {{host}}{{api}}/reports/system-wide?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Dashboard Statistics
+GET {{host}}{{api}}/dashboard/statistics?academicYearId=1&semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Recent Activity
+GET {{host}}{{api}}/recent-activity?limit=10
+Authorization: Bearer {{auth_token}}

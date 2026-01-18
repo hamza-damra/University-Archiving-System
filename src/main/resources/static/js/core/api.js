@@ -727,6 +727,47 @@ export const hod = {
             },
         });
     },
+
+    // Task Management
+    getTasks: (courseId = null, semesterId = null, professorId = null, status = null) => {
+        const params = new URLSearchParams();
+        if (courseId) params.append('courseId', courseId);
+        if (semesterId) params.append('semesterId', semesterId);
+        if (professorId) params.append('professorId', professorId);
+        if (status) params.append('status', status);
+        return apiRequest(`/hod/tasks?${params}`, {
+            method: 'GET',
+        });
+    },
+
+    getTask: (taskId) => apiRequest(`/hod/tasks/${taskId}`, {
+        method: 'GET',
+    }),
+
+    approveTask: (taskId, feedback = null) => apiRequest(`/hod/tasks/${taskId}/approve`, {
+        method: 'PUT',
+        body: JSON.stringify({ feedback }),
+    }),
+
+    rejectTask: (taskId, feedback = null) => apiRequest(`/hod/tasks/${taskId}/reject`, {
+        method: 'PUT',
+        body: JSON.stringify({ feedback }),
+    }),
+
+    getTaskStatistics: (semesterId = null) => {
+        const params = semesterId ? `?semesterId=${semesterId}` : '';
+        return apiRequest(`/hod/tasks/statistics${params}`, {
+            method: 'GET',
+        });
+    },
+
+    getTasksForProfessor: (professorId, semesterId = null) => {
+        const params = new URLSearchParams({ professorId });
+        if (semesterId) params.append('semesterId', semesterId);
+        return apiRequest(`/hod/tasks/professor/${professorId}?${params}`, {
+            method: 'GET',
+        });
+    },
 };
 
 // Professor endpoints
@@ -828,6 +869,40 @@ export const professor = {
 
     getFileExplorerNode: (path) =>
         apiRequest(`/professor/file-explorer/node?path=${encodeURIComponent(path)}`, {
+            method: 'GET',
+        }),
+
+    // Task Management
+    getTasks: (courseId = null, semesterId = null, status = null) => {
+        const params = new URLSearchParams();
+        if (courseId) params.append('courseId', courseId);
+        if (semesterId) params.append('semesterId', semesterId);
+        if (status) params.append('status', status);
+        return apiRequest(`/professor/tasks?${params}`, {
+            method: 'GET',
+        });
+    },
+
+    getTask: (taskId) => apiRequest(`/professor/tasks/${taskId}`, {
+        method: 'GET',
+    }),
+
+    createTask: (data) => apiRequest('/professor/tasks', {
+        method: 'POST',
+        body: JSON.stringify(data),
+    }),
+
+    updateTask: (taskId, data) => apiRequest(`/professor/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+    }),
+
+    deleteTask: (taskId) => apiRequest(`/professor/tasks/${taskId}`, {
+        method: 'DELETE',
+    }),
+
+    getWeightSummary: (courseId, semesterId) =>
+        apiRequest(`/professor/tasks/weight-summary?courseId=${courseId}&semesterId=${semesterId}`, {
             method: 'GET',
         }),
 };

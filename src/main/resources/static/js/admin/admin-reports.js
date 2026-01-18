@@ -208,6 +208,11 @@ class AdminReportsPage {
             exportCsvBtn.addEventListener('click', () => this.exportToCsv());
         }
 
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
+        if (exportExcelBtn) {
+            exportExcelBtn.addEventListener('click', () => this.exportToExcel());
+        }
+
         // Refresh button
         const refreshBtn = document.getElementById('refreshReportBtn');
         if (refreshBtn) {
@@ -547,6 +552,7 @@ class AdminReportsPage {
 
     /**
      * Export report to PDF
+     * Uses client-side PDF generation for professional formatting
      */
     async exportToPdf() {
         if (!this.currentFilters.semesterId) {
@@ -554,13 +560,72 @@ class AdminReportsPage {
             return;
         }
 
+        if (!this.reportData) {
+            showToast('Please generate a report first', 'warning');
+            return;
+        }
+
         try {
-            const url = `${window.location.origin}/api/admin/reports/export/pdf?semesterId=${this.currentFilters.semesterId}`;
-            window.open(url, '_blank');
-            showToast('PDF export started', 'success');
+            // Use the new client-side PDF generation if available
+            if (window.reportExportService && window.executeExportWithProgress) {
+                const exportOptions = {
+                    title: 'System-Wide Submission Report',
+                    filters: {
+                        semester: this.reportData.semesterName,
+                        department: this.currentFilters.departmentId 
+                            ? this.departments.find(d => d.id == this.currentFilters.departmentId)?.name 
+                            : 'All Departments',
+                    },
+                };
+                
+                await window.executeExportWithProgress('pdf', 'systemWide', this.reportData, exportOptions);
+            } else {
+                // Fallback to backend PDF export
+                const url = `${window.location.origin}/api/admin/reports/export/pdf?semesterId=${this.currentFilters.semesterId}`;
+                window.open(url, '_blank');
+                showToast('PDF export started', 'success');
+            }
         } catch (error) {
             console.error('[AdminReports] Error exporting to PDF:', error);
             this.handleError('Failed to export PDF', error);
+        }
+    }
+
+    /**
+     * Export report to Excel
+     * Uses client-side Excel generation for enhanced formatting
+     */
+    async exportToExcel() {
+        if (!this.currentFilters.semesterId) {
+            showToast('Please select a semester', 'warning');
+            return;
+        }
+
+        if (!this.reportData) {
+            showToast('Please generate a report first', 'warning');
+            return;
+        }
+
+        try {
+            if (window.reportExportService && window.executeExportWithProgress) {
+                const exportOptions = {
+                    title: 'System-Wide Submission Report',
+                    filters: {
+                        semester: this.reportData.semesterName,
+                        department: this.currentFilters.departmentId 
+                            ? this.departments.find(d => d.id == this.currentFilters.departmentId)?.name 
+                            : 'All Departments',
+                    },
+                };
+                
+                await window.executeExportWithProgress('excel', 'systemWide', this.reportData, exportOptions);
+            } else {
+                // Fallback to CSV export
+                await this.exportToCsv();
+            }
+        } catch (error) {
+            console.error('[AdminReports] Error exporting to Excel:', error);
+            this.handleError('Failed to export Excel', error);
         }
     }
 

@@ -1,0 +1,42 @@
+### Authentication API
+
+@host = http://localhost:8080
+@api = /api/auth
+
+### Login
+POST {{host}}{{api}}/login
+Content-Type: application/json
+
+{
+  "email": "admin@example.com",
+  "password": "password123"
+}
+
+> {%
+    client.global.set("auth_token", response.body.data.token);
+    client.global.set("refresh_token", response.body.data.refreshToken);
+%}
+
+### Refresh Token
+POST {{host}}{{api}}/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}
+
+### Validate Token
+GET {{host}}{{api}}/validate
+Authorization: Bearer {{auth_token}}
+
+### Get Current User Info
+GET {{host}}{{api}}/me
+Authorization: Bearer {{auth_token}}
+
+### Logout
+POST {{host}}{{api}}/logout
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refresh_token}}"
+}

@@ -3,10 +3,13 @@ package com.alquds.edu.ArchiveSystem.config;
 import com.alquds.edu.ArchiveSystem.entity.academic.*;
 import com.alquds.edu.ArchiveSystem.entity.auth.Role;
 import com.alquds.edu.ArchiveSystem.entity.submission.*;
+import com.alquds.edu.ArchiveSystem.entity.task.Task;
+import com.alquds.edu.ArchiveSystem.entity.task.TaskStatus;
 import com.alquds.edu.ArchiveSystem.entity.user.Notification;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 import com.alquds.edu.ArchiveSystem.repository.academic.*;
 import com.alquds.edu.ArchiveSystem.repository.submission.*;
+import com.alquds.edu.ArchiveSystem.repository.task.TaskRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.NotificationRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,6 +52,7 @@ public class SampleDataInitializer implements CommandLineRunner {
     private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final NotificationRepository notificationRepository;
+    private final TaskRepository taskRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -123,6 +127,10 @@ public class SampleDataInitializer implements CommandLineRunner {
             List<Notification> notifications = createNotifications(
                     deanshipUser, hodUsers, professorUsers);
             log.info("Created {} notifications", notifications.size());
+
+            // 9. Create Tasks
+            List<Task> tasks = createTasks(courseAssignments, professorUsers, semesters);
+            log.info("Created {} tasks", tasks.size());
 
             log.info("============================================");
             log.info("SAMPLE DATA INITIALIZATION COMPLETED");
@@ -704,5 +712,81 @@ public class SampleDataInitializer implements CommandLineRunner {
         }
 
         return notifications;
+    }
+
+    private List<Task> createTasks(
+            List<CourseAssignment> assignments, List<User> professors, List<Semester> semesters) {
+        
+        List<Task> tasks = new ArrayList<>();
+        
+        // Task templates with varied statuses and progress
+        String[][] taskTemplates = {
+            {"Syllabus Preparation", "Prepare and submit course syllabus", "20", "0", "PENDING"},
+            {"Midterm Exam", "Create and submit midterm exam questions", "30", "50", "IN_PROGRESS"},
+            {"Final Exam", "Create and submit final exam questions", "30", "100", "COMPLETED"},
+            {"Project Documentation", "Submit project documentation and guidelines", "20", "75", "IN_PROGRESS"}
+        };
+        
+        int taskCount = 0;
+        
+        // Create tasks for each course assignment
+        for (CourseAssignment assignment : assignments) {
+            // Create 2-4 tasks per course assignment
+            int numTasks = 2 + (taskCount % 3); // 2, 3, or 4 tasks
+            
+            int totalWeight = 0;
+            for (int i = 0; i < numTasks && i < taskTemplates.length; i++) {
+                String[] template = taskTemplates[i];
+                
+                Task task = new Task();
+                task.setTitle(template[0] + " - " + assignment.getCourse().getCourseCode());
+                task.setDescription(template[1]);
+                task.setWeightPercentage(Integer.parseInt(template[2]));
+                task.setProgressPercentage(Integer.parseInt(template[3]));
+                task.setStatus(TaskStatus.valueOf(template[4]));
+                task.setProfessor(assignment.getProfessor());
+                task.setCourse(assignment.getCourse());
+                task.setSemester(assignment.getSemester());
+                
+                // Add deadline for some tasks (30-90 days from now)
+                if (taskCount % 3 == 0) {
+                    task.setDeadline(LocalDate.now().plusDays(30 + (taskCount % 60)));
+                }
+                
+                // Mark some completed tasks as overdue if deadline passed
+                if (task.getStatus() == TaskStatus.COMPLETED && task.getDeadline() != null) {
+                    if (task.getDeadline().isBefore(LocalDate.now().minusDays(10))) {
+                        // Keep as completed (not overdue) since it's already completed
+                    }
+                }
+                
+                tasks.add(taskRepository.save(task));
+                totalWeight += task.getWeightPercentage();
+                taskCount++;
+            }
+            
+            // Adjust last task weight to ensure total is 100%
+            if (tasks.size() > 0 && totalWeight != 100) {
+                Task lastTask = tasks.get(tasks.size() - 1);
+                int adjustment = 100 - totalWeight;
+                lastTask.setWeightPercentage(lastTask.getWeightPercentage() + adjustment);
+                taskRepository.save(lastTask);
+            }
+        }
+        
+        // Create some overdue tasks
+        for (int i = 0; i < Math.min(5, tasks.size()); i++) {
+            Task task = tasks.get(i);
+            if (task.getStatus() != TaskStatus.COMPLETED && task.getStatus() != TaskStatus.APPROVED) {
+                task.setDeadline(LocalDate.now().minusDays(5 + i));
+                if (task.getDeadline().isBefore(LocalDate.now())) {
+                    task.setStatus(TaskStatus.OVERDUE);
+                }
+                taskRepository.save(task);
+            }
+        }
+        
+        log.info("Created {} tasks across {} course assignments", tasks.size(), assignments.size());
+        return tasks;
     }
 }

@@ -75,7 +75,7 @@ public class AdminController {
     @PostMapping("/users")
     public ResponseEntity<ApiResponse<UserResponse>> createUser(@Valid @RequestBody UserCreateRequest request) {
         log.info("Admin creating user with email: {} and role: {}", request.getEmail(), request.getRole());
-        
+
         try {
             UserResponse user = userService.createUser(request);
             return ResponseEntity.status(HttpStatus.CREATED)

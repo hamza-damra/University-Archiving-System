@@ -1,0 +1,44 @@
+### File Operations API
+
+@host = http://localhost:8080
+@api = /api/files
+
+### Upload Files
+POST {{host}}{{api}}/upload
+Authorization: Bearer {{auth_token}}
+Content-Type: multipart/form-data; boundary=boundary
+
+--boundary
+Content-Disposition: form-data; name="files"; filename="test.pdf"
+Content-Type: application/pdf
+
+< ./sample.pdf
+--boundary
+Content-Disposition: form-data; name="folderPath"
+
+courses/CS101/lectures
+--boundary
+Content-Disposition: form-data; name="notes"
+
+Initial upload for CS101
+--boundary--
+
+### Get Files by Folder
+GET {{host}}{{api}}/folder/1
+Authorization: Bearer {{auth_token}}
+
+### --- FILE EXPLORER (General) ---
+
+### Get Root Node
+GET {{host}}/api/file-explorer/root?academicYearId=1&semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Node by Path
+GET {{host}}/api/file-explorer/node?path=some/path
+Authorization: Bearer {{auth_token}}
+
+### --- FILE PREVIEW ---
+
+### Preview File
+GET {{host}}/api/file-preview/1
+Authorization: Bearer {{auth_token}}

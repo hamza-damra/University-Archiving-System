@@ -1,0 +1,44 @@
+### Professor API
+
+@host = http://localhost:8080
+@api = /api/professor
+
+### Get My Courses
+GET {{host}}{{api}}/my-courses?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Dashboard Overview
+GET {{host}}{{api}}/dashboard-overview?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get My Submissions
+GET {{host}}{{api}}/my-submissions?semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get Single Submission
+GET {{host}}{{api}}/submissions/1
+Authorization: Bearer {{auth_token}}
+
+### --- FILE OPERATIONS ---
+
+### Get File Explorer Root
+GET {{host}}{{api}}/file-explorer/root?academicYearId=1&semesterId=1
+Authorization: Bearer {{auth_token}}
+
+### Get File Explorer Node
+GET {{host}}{{api}}/file-explorer/node?path=some/path
+Authorization: Bearer {{auth_token}}
+
+### Download File
+GET {{host}}{{api}}/files/1/download
+Authorization: Bearer {{auth_token}}
+
+### --- NOTIFICATIONS ---
+
+### Get My Notifications
+GET {{host}}{{api}}/notifications
+Authorization: Bearer {{auth_token}}
+
+### Mark Notification as Seen
+POST {{host}}{{api}}/notifications/1/seen
+Authorization: Bearer {{auth_token}}

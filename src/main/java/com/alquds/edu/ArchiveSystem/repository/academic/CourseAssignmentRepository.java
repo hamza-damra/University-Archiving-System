@@ -92,4 +92,16 @@ public interface CourseAssignmentRepository extends JpaRepository<CourseAssignme
         @Transactional
         @Query("DELETE FROM CourseAssignment ca WHERE ca.course.id = :courseId")
         void deleteByCourseId(@Param("courseId") Long courseId);
+        
+        /**
+         * Find all course assignments with eager loading of relationships.
+         * Used for filter options to avoid lazy initialization exceptions.
+         */
+        @Query("SELECT DISTINCT ca FROM CourseAssignment ca " +
+                        "JOIN FETCH ca.course c " +
+                        "JOIN FETCH ca.professor p " +
+                        "LEFT JOIN FETCH p.department " +
+                        "LEFT JOIN FETCH c.department " +
+                        "WHERE ca.isActive = true")
+        List<CourseAssignment> findAllWithEagerLoading();
 }

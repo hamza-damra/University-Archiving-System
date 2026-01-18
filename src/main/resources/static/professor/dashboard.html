@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/css/common.css">
     <link rel="stylesheet" href="/css/prof-dashboard.css">
     <link rel="stylesheet" href="/css/file-preview-modal.css">
+    <link rel="stylesheet" href="/css/tasks.css">
     <script src="/js/core/theme.js"></script>
     <script src="/js/core/modern-dropdown.js"></script>
 
@@ -59,6 +60,13 @@
                         d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                 </svg>
                 File Explorer
+            </div>
+            <div id="tasksTab" class="nav-tab" data-tab="tasks" onclick="switchTab('tasks')">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                Tasks
             </div>
         </nav>
 
@@ -294,6 +302,40 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Tasks Tab -->
+            <div id="tasksTabContent" class="tab-content hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-semibold text-gray-800">Task Management</h2>
+                    <button id="createTaskBtn" class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+                        <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Create Task
+                    </button>
+                </div>
+
+                <!-- Tasks Container -->
+                <div id="tasksContainer">
+                    <!-- Loading skeleton -->
+                    <div class="animate-pulse space-y-4">
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                        <div class="h-32 bg-gray-200 rounded-lg"></div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="tasksEmptyState" class="hidden text-center py-12">
+                    <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                        </path>
+                    </svg>
+                    <h3 class="mt-2 text-sm font-medium text-gray-900">No tasks found</h3>
+                    <p class="mt-1 text-sm text-gray-500">Create your first task to get started.</p>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -381,7 +423,17 @@
     <!-- Toast Notification System - must load before other modules -->
     <script type="module" src="/js/core/toast-notifications.js"></script>
     <script type="module" src="/js/file-explorer/multi-file-upload.js"></script>
+    <script type="module" src="/js/task/professor-tasks.js"></script>
     <script type="module" src="/js/shared/prof.js"></script>
+    <script type="module">
+        import { initializeProfessorTasks } from '/js/task/professor-tasks.js';
+        // Initialize tasks when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeProfessorTasks);
+        } else {
+            initializeProfessorTasks();
+        }
+    </script>
 </body>
 
 </html>

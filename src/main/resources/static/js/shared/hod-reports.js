@@ -539,7 +539,8 @@ export class HodReportsManager {
     }
 
     /**
-     * Export report to PDF
+     * Export report to PDF using client-side generation
+     * Uses the new ReportExportService for professional PDF output
      */
     async exportPdf() {
         const semesterId = window.selectedSemester;
@@ -555,33 +556,83 @@ export class HodReportsManager {
         }
 
         try {
-            showToast('Generating PDF...', 'info');
+            // Check if ReportExportService is available
+            if (window.reportExportService && window.executeExportWithProgress) {
+                // Use the new client-side PDF generation
+                const exportOptions = {
+                    filters: {
+                        semester: this.reportData.semesterName,
+                        department: this.reportData.departmentName,
+                        courseCode: this.getFilterValues().courseCode,
+                        status: this.getFilterValues().status,
+                    },
+                };
+                
+                await window.executeExportWithProgress('pdf', 'professor', this.reportData, exportOptions);
+            } else {
+                // Fallback to backend PDF export
+                showToast('Generating PDF...', 'info');
 
-            // Use the existing PDF export endpoint
-            const response = await hod.exportReportToPdf(semesterId);
+                const response = await hod.exportReportToPdf(semesterId);
 
-            if (!response.ok) {
-                throw new Error('Failed to generate PDF');
+                if (!response.ok) {
+                    throw new Error('Failed to generate PDF');
+                }
+
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+
+                const timestamp = new Date().toISOString().slice(0, 10);
+                a.download = `hod-submission-report-${timestamp}.pdf`;
+
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+
+                showToast('PDF downloaded successfully', 'success');
             }
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-
-            // Generate filename with timestamp
-            const timestamp = new Date().toISOString().slice(0, 10);
-            a.download = `hod-submission-report-${timestamp}.pdf`;
-
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            document.body.removeChild(a);
-
-            showToast('PDF downloaded successfully', 'success');
         } catch (error) {
             console.error('[HodReports] Error exporting PDF:', error);
             showToast('Failed to export PDF: ' + (error.message || 'Unknown error'), 'error');
+        }
+    }
+
+    /**
+     * Export report to Excel using client-side generation
+     */
+    async exportExcel() {
+        const semesterId = window.selectedSemester;
+
+        if (!semesterId) {
+            showToast('Please select a semester first', 'warning');
+            return;
+        }
+
+        if (!this.reportData) {
+            showToast('Please generate a report first', 'warning');
+            return;
+        }
+
+        try {
+            if (window.reportExportService && window.executeExportWithProgress) {
+                const exportOptions = {
+                    title: 'Professor Submission Report',
+                    filters: {
+                        semester: this.reportData.semesterName,
+                        department: this.reportData.departmentName,
+                    },
+                };
+                
+                await window.executeExportWithProgress('excel', 'professor', this.reportData, exportOptions);
+            } else {
+                showToast('Excel export requires additional libraries', 'warning');
+            }
+        } catch (error) {
+            console.error('[HodReports] Error exporting Excel:', error);
+            showToast('Failed to export Excel: ' + (error.message || 'Unknown error'), 'error');
         }
     }
 

@@ -1,18 +1,110 @@
 /**
  * Dean Dashboard - Export Service
  * Handles PDF and Excel export functionality
+ * 
+ * This is a compatibility wrapper that uses the new ReportExportService
+ * for enhanced PDF generation while maintaining backward compatibility.
  */
 
 /**
  * Export Service for generating PDF and Excel reports
+ * @deprecated Use window.reportExportService for new implementations
  */
 class ExportService {
     /**
      * Export data to PDF format
+     * Uses the new ReportExportService if available for enhanced formatting
      * @param {Array} data - Data to export
      * @param {Object} options - Export options
      */
     static async exportToPDF(data, options = {}) {
+        const {
+            title = 'Report',
+            metadata = {},
+            columns = [],
+            view = 'department'
+        } = options;
+
+        // Try to use the new enhanced export service
+        if (window.reportExportService && window.executeExportWithProgress) {
+            try {
+                // Transform data to system-wide report format
+                const reportData = this.transformToReportFormat(data, view, metadata);
+                
+                const exportOptions = {
+                    title: title,
+                    filters: {
+                        semester: metadata.semester || metadata.semesterName,
+                        department: metadata.department,
+                        generatedBy: metadata.generatedBy,
+                    },
+                };
+                
+                await window.executeExportWithProgress('pdf', 'systemWide', reportData, exportOptions);
+                return this.generateFilename(title, 'pdf');
+            } catch (error) {
+                console.warn('[ExportService] Enhanced export failed, falling back to legacy:', error);
+            }
+        }
+
+        // Fallback to legacy implementation
+        return this._legacyExportToPDF(data, options);
+    }
+
+    /**
+     * Transform view data to report format for new export service
+     */
+    static transformToReportFormat(data, view, metadata) {
+        if (view === 'department') {
+            return {
+                semesterName: metadata.semester || 'Current Semester',
+                generatedAt: new Date().toISOString(),
+                generatedBy: metadata.generatedBy || 'Deanship',
+                departmentSummaries: data.map(item => ({
+                    departmentName: item.departmentName || 'N/A',
+                    statistics: {
+                        totalProfessors: item.totalProfessors || 0,
+                        totalCourses: item.totalCourses || 0,
+                        totalRequiredDocuments: (item.uploadedDocuments || 0) + (item.pendingDocuments || 0) + (item.overdueDocuments || 0),
+                        submittedDocuments: item.uploadedDocuments || 0,
+                        missingDocuments: item.pendingDocuments || 0,
+                        overdueDocuments: item.overdueDocuments || 0,
+                    }
+                })),
+                overallStatistics: this.calculateOverallStats(data),
+            };
+        }
+        
+        // For other views, return as-is with wrapper
+        return {
+            semesterName: metadata.semester || 'Current Semester',
+            generatedAt: new Date().toISOString(),
+            generatedBy: metadata.generatedBy || 'Deanship',
+            rows: data,
+        };
+    }
+
+    /**
+     * Calculate overall statistics from department data
+     */
+    static calculateOverallStats(data) {
+        const totals = data.reduce((acc, item) => ({
+            totalProfessors: acc.totalProfessors + (item.totalProfessors || 0),
+            totalCourses: acc.totalCourses + (item.totalCourses || 0),
+            submittedDocuments: acc.submittedDocuments + (item.uploadedDocuments || 0),
+            missingDocuments: acc.missingDocuments + (item.pendingDocuments || 0),
+            overdueDocuments: acc.overdueDocuments + (item.overdueDocuments || 0),
+        }), { totalProfessors: 0, totalCourses: 0, submittedDocuments: 0, missingDocuments: 0, overdueDocuments: 0 });
+        
+        totals.totalRequiredDocuments = totals.submittedDocuments + totals.missingDocuments + totals.overdueDocuments;
+        return totals;
+    }
+
+    /**
+     * Legacy PDF export implementation
+     * @private
+     */
+    static async _legacyExportToPDF(data, options = {}) {
         // Check if jsPDF is available
         if (typeof jspdf === 'undefined' || !jspdf.jsPDF) {
             throw new Error('jsPDF library not loaded');
@@ -89,10 +181,47 @@ class ExportService {
 
     /**
      * Export data to Excel format
+     * Uses the new ReportExportService if available for enhanced formatting
      * @param {Array} data - Data to export
      * @param {Object} options - Export options
      */
     static async exportToExcel(data, options = {}) {
+        const {
+            title = 'Report',
+            metadata = {},
+            columns = [],
+            view = 'department'
+        } = options;
+
+        // Try to use the new enhanced export service
+        if (window.reportExportService && window.executeExportWithProgress) {
+            try {
+                const reportData = this.transformToReportFormat(data, view, metadata);
+                
+                const exportOptions = {
+                    title: title,
+                    filters: {
+                        semester: metadata.semester || metadata.semesterName,
+                        department: metadata.department,
+                    },
+                };
+                
+                await window.executeExportWithProgress('excel', 'systemWide', reportData, exportOptions);
+                return this.generateFilename(title, 'xlsx');
+            } catch (error) {
+                console.warn('[ExportService] Enhanced Excel export failed, falling back to legacy:', error);
+            }
+        }
+
+        // Fallback to legacy implementation
+        return this._legacyExportToExcel(data, options);
+    }
+
+    /**
+     * Legacy Excel export implementation
+     * @private
+     */
+    static async _legacyExportToExcel(data, options = {}) {
         // Check if XLSX is available
         if (typeof XLSX === 'undefined') {
             throw new Error('XLSX library not loaded');

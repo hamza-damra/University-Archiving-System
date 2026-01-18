@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -567,8 +568,12 @@ public class SemesterReportServiceImpl implements SemesterReportService {
     public ReportFilterOptions getFilterOptions(User currentUser) {
         log.info("Getting filter options for user {} with role {}", currentUser.getEmail(), currentUser.getRole());
         
-        boolean canFilterByDepartment = currentUser.getRole() == Role.ROLE_ADMIN || 
-                                        currentUser.getRole() == Role.ROLE_DEANSHIP;
+        // Fetch user fresh from database to avoid LazyInitializationException
+        User freshUser = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + currentUser.getId()));
+        
+        boolean canFilterByDepartment = freshUser.getRole() == Role.ROLE_ADMIN || 
+                                        freshUser.getRole() == Role.ROLE_DEANSHIP;
         
         // Get departments based on role
         List<ReportFilterOptions.DepartmentOption> departmentOptions;
@@ -587,24 +592,30 @@ public class SemesterReportServiceImpl implements SemesterReportService {
         } else {
             // HOD/Professor can only see their own department
             departmentOptions = List.of();
-            if (currentUser.getDepartment() != null) {
-                userDepartmentId = currentUser.getDepartment().getId();
-                userDepartmentName = currentUser.getDepartment().getName();
+            if (freshUser.getDepartment() != null) {
+                userDepartmentId = freshUser.getDepartment().getId();
+                userDepartmentName = freshUser.getDepartment().getName();
             }
         }
         
-        // Get courses based on role
+        // Get courses based on role - use eager loading to avoid lazy initialization
+        List<CourseAssignment> allAssignments = courseAssignmentRepository.findAllWithEagerLoading();
+        
         List<Course> accessibleCourses;
         if (canFilterByDepartment) {
-            accessibleCourses = courseAssignmentRepository.findAll().stream()
+            accessibleCourses = allAssignments.stream()
                     .map(CourseAssignment::getCourse)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
-        } else if (currentUser.getDepartment() != null) {
-            accessibleCourses = courseAssignmentRepository.findAll().stream()
-                    .filter(ca -> ca.getProfessor().getDepartment() != null &&
-                                 ca.getProfessor().getDepartment().getId().equals(currentUser.getDepartment().getId()))
+        } else if (freshUser.getDepartment() != null) {
+            final Long deptId = freshUser.getDepartment().getId();
+            accessibleCourses = allAssignments.stream()
+                    .filter(ca -> ca.getProfessor() != null && 
+                                 ca.getProfessor().getDepartment() != null &&
+                                 ca.getProfessor().getDepartment().getId().equals(deptId))
                     .map(CourseAssignment::getCourse)
+                    .filter(Objects::nonNull)
                     .distinct()
                     .collect(Collectors.toList());
         } else {
@@ -619,14 +630,15 @@ public class SemesterReportServiceImpl implements SemesterReportService {
                         .build())
                 .collect(Collectors.toList());
         
-        // Get professors based on role
+        // Get professors based on role - use eager loading to avoid lazy initialization
         List<User> accessibleProfessors;
         if (canFilterByDepartment) {
-            accessibleProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR);
-        } else if (currentUser.getDepartment() != null) {
-            accessibleProfessors = userRepository.findByRole(Role.ROLE_PROFESSOR).stream()
+            accessibleProfessors = userRepository.findByRoleWithDepartment(Role.ROLE_PROFESSOR);
+        } else if (freshUser.getDepartment() != null) {
+            final Long deptId = freshUser.getDepartment().getId();
+            accessibleProfessors = userRepository.findByRoleWithDepartment(Role.ROLE_PROFESSOR).stream()
                     .filter(prof -> prof.getDepartment() != null &&
-                                   prof.getDepartment().getId().equals(currentUser.getDepartment().getId()))
+                                   prof.getDepartment().getId().equals(deptId))
                     .collect(Collectors.toList());
         } else {
             accessibleProfessors = List.of();

@@ -1,0 +1,140 @@
+### Admin API
+
+@host = http://localhost:8080
+@api = /api/admin
+
+### --- USER MANAGEMENT ---
+
+### Create User
+POST {{host}}{{api}}/users
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "password": "password123",
+  "firstName": "John",
+  "lastName": "Doe",
+  "role": "PROFESSOR",
+  "departmentId": 1
+}
+
+### Get All Users
+GET {{host}}{{api}}/users?page=0&size=10
+Authorization: Bearer {{auth_token}}
+
+### Get User by ID
+GET {{host}}{{api}}/users/1
+Authorization: Bearer {{auth_token}}
+
+### Update User
+PUT {{host}}{{api}}/users/1
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "firstName": "John Updated",
+  "lastName": "Doe Updated",
+  "role": "PROFESSOR",
+  "departmentId": 1,
+  "isActive": true
+}
+
+### Delete User
+DELETE {{host}}{{api}}/users/1?deleteAllData=false
+Authorization: Bearer {{auth_token}}
+
+
+### --- DEPARTMENT MANAGEMENT ---
+
+### Create Department
+POST {{host}}{{api}}/departments
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "Computer Science",
+  "shortcut": "cs",
+  "description": "Department of Computer Science"
+}
+
+### Get All Departments
+GET {{host}}{{api}}/departments
+Authorization: Bearer {{auth_token}}
+
+### Update Department
+PUT {{host}}{{api}}/departments/1
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "name": "Computer Science Updated",
+  "shortcut": "cs",
+  "description": "Updated description"
+}
+
+### Delete Department
+DELETE {{host}}{{api}}/departments/1
+Authorization: Bearer {{auth_token}}
+
+
+### --- COURSE MANAGEMENT ---
+
+### Create Course
+POST {{host}}{{api}}/courses
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "courseCode": "CS101",
+  "courseName": "Introduction to Computer Science",
+  "departmentId": 1,
+  "level": "Undergraduate",
+  "description": "Intro course",
+  "isActive": true
+}
+
+### Get All Courses
+GET {{host}}{{api}}/courses?departmentId=1
+Authorization: Bearer {{auth_token}}
+
+### Update Course
+PUT {{host}}{{api}}/courses/1
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "courseCode": "CS101",
+  "courseName": "Introduction to Computer Science Updated",
+  "departmentId": 1,
+  "level": "Undergraduate",
+  "description": "Updated intro course",
+  "isActive": true
+}
+
+### Delete Course
+DELETE {{host}}{{api}}/courses/1
+Authorization: Bearer {{auth_token}}
+
+
+### --- COURSE ASSIGNMENTS ---
+
+### Assign Course to Professor
+POST {{host}}{{api}}/assignments
+Authorization: Bearer {{auth_token}}
+Content-Type: application/json
+
+{
+  "semesterId": 1,
+  "courseId": 1,
+  "professorId": 1,
+  "isActive": true
+}
+
+### Get Assignments
+GET {{host}}{{api}}/assignments?semesterId=1&professorId=1
+Authorization: Bearer {{auth_token}}
+
+### Unassign Course
+DELETE {{host}}{{api}}/assignments/1
+Authorization: Bearer {{auth_token}}

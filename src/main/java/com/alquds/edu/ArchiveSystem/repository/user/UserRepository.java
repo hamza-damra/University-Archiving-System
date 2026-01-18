@@ -95,6 +95,13 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     List<User> findByRole(Role role);
     
+    /**
+     * Find users by role with department eagerly loaded.
+     * Used for filter options to avoid lazy initialization exceptions.
+     */
+    @Query("SELECT u FROM User u LEFT JOIN FETCH u.department WHERE u.role = :role")
+    List<User> findByRoleWithDepartment(@Param("role") Role role);
+    
     long countByRole(Role role);
     
     // ==================== Dashboard Analytics Queries ====================

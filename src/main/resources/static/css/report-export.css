@@ -1,0 +1,619 @@
+/**
+ * Report Export Styles
+ * Professional styling for PDF/Excel export UI components
+ * Includes loading indicators, progress bars, and modal dialogs
+ */
+
+/* ============================================================================
+   EXPORT BUTTON STYLES
+   ============================================================================ */
+
+.export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+    box-shadow: var(--shadow-sm);
+}
+
+.export-btn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.export-btn:active:not(:disabled) {
+    transform: translateY(0);
+}
+
+.export-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* PDF Export Button - Red theme */
+.export-btn-pdf {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.export-btn-pdf:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+/* Excel Export Button - Green theme */
+.export-btn-excel {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+}
+
+.export-btn-excel:hover:not(:disabled) {
+    background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+}
+
+/* Secondary/Outline Export Buttons */
+.export-btn-outline {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+}
+
+.export-btn-outline:hover:not(:disabled) {
+    background: var(--bg-tertiary);
+    border-color: var(--border-secondary);
+}
+
+/* ============================================================================
+   EXPORT DROPDOWN MENU
+   ============================================================================ */
+
+.export-dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.export-dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    min-width: 200px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 50;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.2s ease;
+}
+
+.export-dropdown.open .export-dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.export-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.export-dropdown-item:first-child {
+    border-radius: 12px 12px 0 0;
+}
+
+.export-dropdown-item:last-child {
+    border-radius: 0 0 12px 12px;
+}
+
+.export-dropdown-item:hover {
+    background: var(--bg-tertiary);
+}
+
+.export-dropdown-item svg {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.export-dropdown-item.pdf svg {
+    color: #ef4444;
+}
+
+.export-dropdown-item.excel svg {
+    color: #22c55e;
+}
+
+.export-dropdown-divider {
+    height: 1px;
+    background: var(--border-primary);
+    margin: 0.25rem 0;
+}
+
+/* ============================================================================
+   EXPORT PROGRESS MODAL
+   ============================================================================ */
+
+.export-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.export-modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.export-modal {
+    background: var(--bg-elevated);
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+    transform: scale(0.9);
+    transition: transform 0.3s ease;
+}
+
+.export-modal-overlay.show .export-modal {
+    transform: scale(1);
+}
+
+.export-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.export-modal-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.export-modal-close {
+    padding: 0.5rem;
+    background: var(--bg-tertiary);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+}
+
+.export-modal-close:hover {
+    background: var(--border-primary);
+    color: var(--text-primary);
+}
+
+.export-modal-body {
+    text-align: center;
+}
+
+/* Progress Animation */
+.export-progress-container {
+    margin: 1.5rem 0;
+}
+
+.export-progress-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1rem;
+    position: relative;
+}
+
+.export-progress-spinner {
+    width: 100%;
+    height: 100%;
+    border: 4px solid var(--border-primary);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: export-spin 1s linear infinite;
+}
+
+.export-progress-icon.success .export-progress-spinner {
+    border-color: var(--accent-green);
+    animation: none;
+}
+
+.export-progress-icon.error .export-progress-spinner {
+    border-color: var(--accent-red);
+    animation: none;
+}
+
+.export-progress-checkmark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: none;
+}
+
+.export-progress-icon.success .export-progress-checkmark {
+    display: block;
+    color: var(--accent-green);
+}
+
+.export-progress-icon.error .export-progress-checkmark {
+    display: block;
+    color: var(--accent-red);
+}
+
+@keyframes export-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Progress Bar */
+.export-progress-bar-container {
+    width: 100%;
+    height: 8px;
+    background: var(--border-primary);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 1rem 0;
+}
+
+.export-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-blue), var(--accent-blue-hover));
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.export-progress-bar::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3),
+        transparent
+    );
+    animation: export-shimmer 1.5s infinite;
+}
+
+@keyframes export-shimmer {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.export-progress-text {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-top: 0.5rem;
+}
+
+.export-progress-percent {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--accent-blue);
+    margin-top: 0.5rem;
+}
+
+/* Success State */
+.export-success-message {
+    color: var(--accent-green);
+    font-weight: 600;
+    font-size: 1.125rem;
+    margin-top: 1rem;
+}
+
+/* Error State */
+.export-error-message {
+    color: var(--accent-red);
+    font-size: 0.875rem;
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: var(--accent-red-light);
+    border-radius: 8px;
+}
+
+/* ============================================================================
+   EXPORT OPTIONS FORM
+   ============================================================================ */
+
+.export-options {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border-primary);
+}
+
+.export-options-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.export-option-group {
+    margin-bottom: 1rem;
+    text-align: left;
+}
+
+.export-option-label {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+.export-option-label:hover {
+    background: var(--bg-tertiary);
+}
+
+.export-option-label input[type="checkbox"],
+.export-option-label input[type="radio"] {
+    width: 1.125rem;
+    height: 1.125rem;
+    accent-color: var(--accent-blue);
+}
+
+.export-option-text {
+    flex: 1;
+}
+
+.export-option-text .title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.export-option-text .description {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 0.125rem;
+}
+
+/* ============================================================================
+   EXPORT BUTTON GROUP
+   ============================================================================ */
+
+.export-btn-group {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.export-btn-group .export-btn {
+    flex: 1;
+    min-width: 120px;
+    justify-content: center;
+}
+
+/* ============================================================================
+   EXPORT TOAST NOTIFICATIONS
+   ============================================================================ */
+
+.export-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: var(--bg-elevated);
+    border-radius: 12px;
+    box-shadow: var(--shadow-lg);
+    z-index: 200;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.export-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.export-toast-icon {
+    width: 1.5rem;
+    height: 1.5rem;
+    flex-shrink: 0;
+}
+
+.export-toast.success .export-toast-icon {
+    color: var(--accent-green);
+}
+
+.export-toast.error .export-toast-icon {
+    color: var(--accent-red);
+}
+
+.export-toast.info .export-toast-icon {
+    color: var(--accent-blue);
+}
+
+.export-toast-content {
+    flex: 1;
+}
+
+.export-toast-title {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 0.875rem;
+}
+
+.export-toast-message {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-top: 0.125rem;
+}
+
+.export-toast-close {
+    padding: 0.25rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-tertiary);
+    transition: color 0.15s ease;
+}
+
+.export-toast-close:hover {
+    color: var(--text-primary);
+}
+
+/* ============================================================================
+   REPORT PREVIEW CARD
+   ============================================================================ */
+
+.export-preview-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.export-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.export-preview-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.export-preview-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.25rem 0.75rem;
+    background: var(--accent-blue-light);
+    color: var(--accent-blue);
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 999px;
+}
+
+.export-preview-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.export-preview-stat {
+    text-align: center;
+    padding: 0.75rem;
+    background: var(--bg-elevated);
+    border-radius: 8px;
+}
+
+.export-preview-stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.export-preview-stat-label {
+    font-size: 0.75rem;
+    color: var(--text-tertiary);
+    margin-top: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ============================================================================
+   DARK MODE ADJUSTMENTS
+   ============================================================================ */
+
+.dark .export-modal-overlay {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.dark .export-progress-bar::after {
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+    );
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================ */
+
+@media (max-width: 640px) {
+    .export-modal {
+        margin: 1rem;
+        max-width: calc(100% - 2rem);
+    }
+    
+    .export-btn-group {
+        flex-direction: column;
+    }
+    
+    .export-btn-group .export-btn {
+        width: 100%;
+    }
+    
+    .export-dropdown-menu {
+        right: auto;
+        left: 0;
+    }
+    
+    .export-toast {
+        left: 1rem;
+        right: 1rem;
+        bottom: 1rem;
+    }
+}
+
+/* ============================================================================
+   PRINT STYLES (for PDF preview)
+   ============================================================================ */
+
+@media print {
+    .export-btn,
+    .export-dropdown,
+    .export-modal-overlay,
+    .export-toast {
+        display: none !important;
+    }
+}

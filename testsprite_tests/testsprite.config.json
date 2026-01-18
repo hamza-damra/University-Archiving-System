@@ -1,0 +1,33 @@
+{
+  "projectName": "University-Archiving-System",
+  "projectPath": "c:\\Users\\Hamza Damra\\Documents\\University-Archiving-System",
+  "testType": "backend",
+  "framework": "spring-boot",
+  "baseUrl": "http://localhost:8080",
+  "apiPrefix": "/api/admin",
+  "authentication": {
+    "type": "jwt",
+    "tokenLocation": "header",
+    "headerName": "Authorization",
+    "tokenPrefix": "Bearer "
+  },
+  "database": {
+    "type": "mysql",
+    "host": "localhost",
+    "port": 3306,
+    "name": "archive_system",
+    "username": "root",
+    "password": ""
+  },
+  "testScope": {
+    "endpoints": [
+      "/api/admin/users",
+      "/api/admin/departments",
+      "/api/admin/courses",
+      "/api/admin/course-assignments",
+      "/api/admin/dashboard/statistics",
+      "/api/admin/reports/filter-options",
+      "/api/admin/health"
+    ]
+  }
+}

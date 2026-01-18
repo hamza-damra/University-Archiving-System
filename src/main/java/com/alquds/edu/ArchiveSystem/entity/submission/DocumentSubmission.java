@@ -58,7 +58,6 @@ public class DocumentSubmission implements Serializable {
     @lombok.ToString.Exclude
     private List<UploadedFile> uploadedFiles = new ArrayList<>();
     
-    @NotNull(message = "Submitted at is required")
     @Column(name = "submitted_at", nullable = false)
     private LocalDateTime submittedAt;
     
@@ -86,4 +85,11 @@ public class DocumentSubmission implements Serializable {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+    
+    @PrePersist
+    protected void onCreate() {
+        if (submittedAt == null) {
+            submittedAt = LocalDateTime.now();
+        }
+    }
 }

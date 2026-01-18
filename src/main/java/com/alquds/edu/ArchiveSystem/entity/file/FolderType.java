@@ -27,5 +27,10 @@ public enum FolderType {
     /**
      * Standard subfolder within a course (e.g., Syllabus, Exams, Course Notes, Assignments)
      */
-    SUBFOLDER
+    SUBFOLDER,
+    
+    /**
+     * Custom folder created by professors for organizing their files
+     */
+    CUSTOM
 }

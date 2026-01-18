@@ -436,6 +436,9 @@ public class SampleDataInitializer implements CommandLineRunner {
         
         List<CourseAssignment> assignments = new ArrayList<>();
         
+        // Fetch professors with departments eagerly loaded to avoid LazyInitializationException
+        List<User> professorsWithDept = userRepository.findByRoleWithDepartment(Role.ROLE_PROFESSOR);
+        
         // Get active semesters (FIRST and SECOND of current year, and previous year's semesters)
         List<Semester> activeSemesters = semesters.stream()
                 .filter(s -> s.getIsActive() || 
@@ -452,7 +455,7 @@ public class SampleDataInitializer implements CommandLineRunner {
                 .filter(c -> c.getCourseCode().startsWith("CS"))
                 .toList();
         
-        List<User> csProfessors = professors.stream()
+        List<User> csProfessors = professorsWithDept.stream()
                 .filter(p -> p.getDepartment() != null && 
                             p.getDepartment().getShortcut().equals("cs"))
                 .toList();
@@ -474,7 +477,7 @@ public class SampleDataInitializer implements CommandLineRunner {
                 .filter(c -> c.getCourseCode().startsWith("MATH"))
                 .toList();
         
-        List<User> mathProfessors = professors.stream()
+        List<User> mathProfessors = professorsWithDept.stream()
                 .filter(p -> p.getDepartment() != null && 
                             p.getDepartment().getShortcut().equals("math"))
                 .toList();
@@ -496,7 +499,7 @@ public class SampleDataInitializer implements CommandLineRunner {
                 .toList();
         
         if (!physicsCourses.isEmpty()) {
-            List<User> physicsProfessors = professors.stream()
+            List<User> physicsProfessors = professorsWithDept.stream()
                     .filter(p -> p.getDepartment() != null && 
                                 p.getDepartment().getShortcut().equals("physics"))
                     .toList();

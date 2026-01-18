@@ -1,0 +1,730 @@
+[
+  {
+    "id": "TC001",
+    "title": "Admin Login with Valid Credentials",
+    "description": "Verify successful login with valid ROLE_ADMIN credentials and receipt of JWT token.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter valid admin username and password."
+      },
+      {
+        "type": "action",
+        "description": "Click login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is successful."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify JWT token is issued and stored."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to Dashboard tab."
+      }
+    ]
+  },
+  {
+    "id": "TC002",
+    "title": "Admin Login with Invalid Credentials",
+    "description": "Verify login attempt with invalid credentials is rejected and error message is displayed.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to login page."
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid username or password."
+      },
+      {
+        "type": "action",
+        "description": "Click login button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify login is rejected."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify appropriate error message is displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user remains on the login page."
+      }
+    ]
+  },
+  {
+    "id": "TC003",
+    "title": "Admin Access Forbidden for Non-Admin Roles",
+    "description": "Verify users without ROLE_ADMIN cannot access admin functionalities.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login with user having non-ADMIN role."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to access Dashboard or other admin tabs."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify access is denied by backend API."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to an unauthorized or login page."
+      }
+    ]
+  },
+  {
+    "id": "TC004",
+    "title": "JWT Token Expiry and Refresh Handling",
+    "description": "Verify that expired JWT tokens reject requests and user is prompted to re-login.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and obtain valid JWT token."
+      },
+      {
+        "type": "action",
+        "description": "Wait for token expiry or simulate expired token."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to perform authenticated API request."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify request is rejected due to expired token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is redirected to login page with message."
+      }
+    ]
+  },
+  {
+    "id": "TC005",
+    "title": "View Dashboard Statistics and Charts",
+    "description": "Verify dashboard displays correct statistics and visual summaries for current academic year and semester.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login as admin and navigate to Dashboard tab."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify key statistics for professors, courses, submissions, missing and overdue documents are displayed."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify charts are rendered correctly."
+      },
+      {
+        "type": "action",
+        "description": "Change semester or academic year filter."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dashboard data dynamically updates to reflect selected filters."
+      }
+    ]
+  },
+  {
+    "id": "TC006",
+    "title": "Create New User with Valid Data",
+    "description": "Verify admin can create a new user with all required valid fields including role assignment.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Users tab."
+      },
+      {
+        "type": "action",
+        "description": "Click add new user button and fill user form with valid fields."
+      },
+      {
+        "type": "action",
+        "description": "Submit the user creation form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is created and visible in the users list."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify success notification is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC007",
+    "title": "User Creation Validation Errors",
+    "description": "Verify form validation prevents user creation with missing required fields or invalid input such as incorrect email format or duplicate username/email.",
+    "category": "error handling",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Users tab and open new user form."
+      },
+      {
+        "type": "action",
+        "description": "Leave required fields empty and attempt to submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are shown for required fields."
+      },
+      {
+        "type": "action",
+        "description": "Enter invalid email format and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify email format validation error is shown."
+      },
+      {
+        "type": "action",
+        "description": "Enter duplicate username or email and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify duplication error is shown preventing submission."
+      }
+    ]
+  },
+  {
+    "id": "TC008",
+    "title": "Edit Existing User Data",
+    "description": "Verify admin can update user information and role, and changes are reflected in the listing.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Users tab."
+      },
+      {
+        "type": "action",
+        "description": "Select an existing user and open edit form."
+      },
+      {
+        "type": "action",
+        "description": "Modify user details including role and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify changes are saved and visible in the users list."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify edit success notification is displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC009",
+    "title": "Soft Delete User and Verify Deactivation",
+    "description": "Verify admin can soft delete user which deactivates the user but retains data and removes user from active listings.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Users tab."
+      },
+      {
+        "type": "action",
+        "description": "Select a user and click delete (soft delete)."
+      },
+      {
+        "type": "action",
+        "description": "Confirm deletion in confirmation dialog."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user is removed from active user lists."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify user data is retained in backend."
+      }
+    ]
+  },
+  {
+    "id": "TC010",
+    "title": "Pagination and Filtering in Users List",
+    "description": "Verify pagination controls work correctly and user list can be filtered using various criteria.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Users tab with a large user dataset."
+      },
+      {
+        "type": "action",
+        "description": "Use pagination controls to navigate through pages."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify correct user subset is displayed per page."
+      },
+      {
+        "type": "action",
+        "description": "Apply filters such as by role, name, or status."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify filtered user results are shown and pagination adjusts accordingly."
+      }
+    ]
+  },
+  {
+    "id": "TC011",
+    "title": "Create and Manage Departments with Valid Data",
+    "description": "Verify admin can create, edit, and safely delete academic departments, enforcing dependency rules.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Departments tab."
+      },
+      {
+        "type": "action",
+        "description": "Add a new department with all required information."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new department appears in the listing."
+      },
+      {
+        "type": "action",
+        "description": "Edit existing department data and save changes."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify edits update the department record."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to delete a department without dependencies."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify department is deleted after confirmation."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to delete a department with associated users or courses."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify deletion is blocked with appropriate error notification."
+      }
+    ]
+  },
+  {
+    "id": "TC012",
+    "title": "Department Creation Validation Errors",
+    "description": "Verify form validation prevents submission of departments with missing required fields or duplicate department names.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Departments tab and open add department form."
+      },
+      {
+        "type": "action",
+        "description": "Leave required fields empty and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation errors are shown."
+      },
+      {
+        "type": "action",
+        "description": "Enter duplicate department name and submit."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify duplication error prevents submission."
+      }
+    ]
+  },
+  {
+    "id": "TC013",
+    "title": "Course CRUD Operations with Dependency Checks",
+    "description": "Verify admin can create, read, update, and delete courses with enforcement of dependency constraints against deleting courses with active assignments.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Courses tab."
+      },
+      {
+        "type": "action",
+        "description": "Add a new course with valid data including department association."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify new course appears in list with correct details."
+      },
+      {
+        "type": "action",
+        "description": "Edit existing course details and save."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify course data is updated."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to delete a course with no active professor assignments."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify course is deleted after confirmation."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to delete a course currently assigned to professors."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify deletion is blocked and error notification is shown."
+      }
+    ]
+  },
+  {
+    "id": "TC014",
+    "title": "Course Filtering and Search Functionality",
+    "description": "Verify courses can be filtered by department and searched by name or code within the UI.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Courses tab."
+      },
+      {
+        "type": "action",
+        "description": "Apply department filter."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify displayed courses belong only to selected department."
+      },
+      {
+        "type": "action",
+        "description": "Use search input to filter courses by name or code."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only matching courses are displayed."
+      }
+    ]
+  },
+  {
+    "id": "TC015",
+    "title": "Assign Course to Professor for Specific Semester",
+    "description": "Verify admin can assign a course to a professor for a selected academic year and semester with validation of inputs.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Course Assignments section."
+      },
+      {
+        "type": "action",
+        "description": "Select professor, course, academic year, and semester."
+      },
+      {
+        "type": "action",
+        "description": "Submit assignment form."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify course is assigned to professor successfully."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assignment appears in listing filtered by semester."
+      }
+    ]
+  },
+  {
+    "id": "TC016",
+    "title": "Prevent Duplicate Course Assignments",
+    "description": "Verify system prevents assigning the same course multiple times to the same professor within the same semester.",
+    "category": "error handling",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Assign course to professor for semester as per normal flow."
+      },
+      {
+        "type": "action",
+        "description": "Attempt to assign same course again to same professor for the same semester."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify validation error is displayed preventing duplicate assignment."
+      }
+    ]
+  },
+  {
+    "id": "TC017",
+    "title": "Unassign Course from Professor",
+    "description": "Verify admin can unassign a previously assigned course from a professor for a specific semester.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Course Assignments list filtered by semester."
+      },
+      {
+        "type": "action",
+        "description": "Select assigned course entry and click unassign/delete."
+      },
+      {
+        "type": "action",
+        "description": "Confirm unassignment action."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify assignment is removed from list."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify unassignment success notification is shown."
+      }
+    ]
+  },
+  {
+    "id": "TC018",
+    "title": "Generate Reports with Filter Combinations",
+    "description": "Verify reports can be generated based on selected academic year, semester, and department filters displaying appropriate data.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to Reports tab."
+      },
+      {
+        "type": "action",
+        "description": "Select filters for academic year, semester, and department."
+      },
+      {
+        "type": "action",
+        "description": "Click generate report button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report data corresponds to selected filters."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify report view is rendered correctly with data summaries."
+      }
+    ]
+  },
+  {
+    "id": "TC019",
+    "title": "Export Report as PDF",
+    "description": "Verify report export functionality generates valid PDF documents consistent with displayed report data.",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Generate report with filters applied."
+      },
+      {
+        "type": "action",
+        "description": "Click export to PDF button."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify PDF file is generated and downloaded."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify PDF content matches report data."
+      }
+    ]
+  },
+  {
+    "id": "TC020",
+    "title": "UI Responsiveness Across Devices",
+    "description": "Verify the admin panel UI adjusts layout and elements appropriately on different screen sizes (desktop, tablet, mobile).",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Open admin panel on desktop screen size."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify all tabs, forms, and dashboards render correctly."
+      },
+      {
+        "type": "action",
+        "description": "Resize window or use device emulator for tablet size."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI elements rearrange suitably, remain accessible and readable."
+      },
+      {
+        "type": "action",
+        "description": "Resize window or use device emulator for mobile size."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify navigation tabs collapse or stack properly, modals function and UI is usable."
+      }
+    ]
+  },
+  {
+    "id": "TC021",
+    "title": "Theme Toggle and Persistence",
+    "description": "Verify toggling between light and dark modes updates UI theme and preference is saved in localStorage for persistence across sessions.",
+    "category": "ui",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Login to admin panel."
+      },
+      {
+        "type": "action",
+        "description": "Toggle theme switch from light to dark mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI updates styling to dark mode."
+      },
+      {
+        "type": "action",
+        "description": "Logout and login again."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify dark mode preference persists on reload."
+      },
+      {
+        "type": "action",
+        "description": "Toggle back to light mode."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify styling updates and preference persists again."
+      }
+    ]
+  },
+  {
+    "id": "TC022",
+    "title": "Modal Forms and Confirmation Dialogs Workflow",
+    "description": "Verify all CRUD actions are performed through modals with proper validation, confirmation dialogs and user feedback.",
+    "category": "functional",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Trigger add/edit/delete actions from various tabs (Users, Departments, Courses, Assignments)."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify modal form opens with relevant fields and validation."
+      },
+      {
+        "type": "action",
+        "description": "Try invalid form submission to check front-end validation messages."
+      },
+      {
+        "type": "action",
+        "description": "Submit valid form and confirm deletion dialogs as applicable."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify actions complete successfully with toast notifications."
+      }
+    ]
+  },
+  {
+    "id": "TC023",
+    "title": "API Unauthorized Access Handling",
+    "description": "Verify backend API endpoints reject requests with invalid, expired, or missing JWT tokens returning appropriate HTTP error codes.",
+    "category": "security",
+    "priority": "High",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Make API requests to protected endpoints without JWT token."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify HTTP 401 Unauthorized status is returned."
+      },
+      {
+        "type": "action",
+        "description": "Make API requests with expired or malformed JWT tokens."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify HTTP 401 Unauthorized status and error messages."
+      }
+    ]
+  },
+  {
+    "id": "TC024",
+    "title": "Performance Under Large Dataset Scenario",
+    "description": "Verify pagination and filtering performs acceptably with large number of entries (users, courses, departments).",
+    "category": "functional",
+    "priority": "Medium",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Load users, courses, and departments lists with thousands of records each."
+      },
+      {
+        "type": "action",
+        "description": "Perform filtering and pagination actions rapidly."
+      },
+      {
+        "type": "assertion",
+        "description": "Verify UI remains responsive and data updates without lag or error."
+      }
+    ]
+  }
+]

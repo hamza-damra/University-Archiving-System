@@ -108,4 +108,23 @@ public interface FolderRepository extends JpaRepository<Folder, Long> {
      * @return list of folders owned by the user
      */
     List<Folder> findByOwnerId(Long ownerId);
+    
+    /**
+     * Find a child folder by name and parent ID.
+     * Used to check for duplicate folder names within the same parent.
+     *
+     * @param name the folder name
+     * @param parentId the parent folder ID
+     * @return Optional containing the folder if found
+     */
+    Optional<Folder> findByNameAndParentId(String name, Long parentId);
+    
+    /**
+     * Check if a folder with the given name exists under the specified parent.
+     *
+     * @param name the folder name
+     * @param parentId the parent folder ID
+     * @return true if folder exists
+     */
+    boolean existsByNameAndParentId(String name, Long parentId);
 }

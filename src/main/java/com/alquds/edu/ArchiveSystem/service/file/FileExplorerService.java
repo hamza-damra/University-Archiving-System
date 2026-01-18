@@ -3,6 +3,8 @@ package com.alquds.edu.ArchiveSystem.service.file;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.BreadcrumbItem;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderRequest;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 
 import java.util.List;
@@ -86,4 +88,17 @@ public interface FileExplorerService {
      * @return list of breadcrumb items
      */
     List<BreadcrumbItem> generateBreadcrumbs(String nodePath);
+    
+    /**
+     * Create a new folder at the specified path.
+     * Only professors can create folders within their own namespace.
+     *
+     * @param request the folder creation request containing path and folder name
+     * @param currentUser the authenticated user (must be a professor)
+     * @return response containing the created folder details
+     * @throws com.alquds.edu.ArchiveSystem.exception.file.InvalidFolderNameException if folder name is invalid
+     * @throws com.alquds.edu.ArchiveSystem.exception.file.FolderAlreadyExistsException if folder already exists
+     * @throws com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException if user lacks permission
+     */
+    CreateFolderResponse createFolder(CreateFolderRequest request, User currentUser);
 }

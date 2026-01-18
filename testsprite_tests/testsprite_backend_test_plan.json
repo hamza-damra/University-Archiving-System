@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "verify_jwt_authentication_and_hod_role_validation",
+    "description": "Test that all API endpoints require valid JWT tokens and verify that the user has the HOD role with proper department scoping. Unauthorized or invalid tokens should be rejected."
+  },
+  {
+    "id": "TC002",
+    "title": "test_hod_dashboard_statistics_and_filters",
+    "description": "Verify that the HOD dashboard API returns accurate statistics for professors, courses, submissions, missing, and overdue documents for the selected academic year and semester, and that filters update the data dynamically."
+  },
+  {
+    "id": "TC003",
+    "title": "test_professor_crud_operations_within_department",
+    "description": "Validate CRUD operations for managing professors within the HOD's department, ensuring data integrity, proper validation, and that operations are scoped to the department and semester."
+  },
+  {
+    "id": "TC004",
+    "title": "test_submission_status_filtering_and_retrieval",
+    "description": "Check that submission status API correctly filters and returns data based on course, document type, and submission status for professors in the department."
+  },
+  {
+    "id": "TC005",
+    "title": "test_document_request_creation_view_and_deletion",
+    "description": "Verify the creation, viewing, and deletion of document requests for professors in the HOD's department, ensuring proper validation and department scoping."
+  },
+  {
+    "id": "TC006",
+    "title": "test_report_generation_and_pdf_export",
+    "description": "Test the report generation API for professor submissions with various filter combinations and verify that the exported PDF report is correctly generated and downloadable."
+  },
+  {
+    "id": "TC007",
+    "title": "test_file_explorer_department_scoped_access",
+    "description": "Ensure that the file explorer API allows browsing and downloading files only within the HOD's department archive and enforces department-scoped access control."
+  },
+  {
+    "id": "TC008",
+    "title": "test_notification_retrieval_and_management",
+    "description": "Validate that notifications related to department submissions are correctly retrieved and can be managed (e.g., marked as read) through the API."
+  },
+  {
+    "id": "TC009",
+    "title": "test_semester_based_operation_scoping",
+    "description": "Verify that all operations and data retrievals are correctly scoped to the selected academic year and semester, and that changing these parameters updates the data accordingly."
+  },
+  {
+    "id": "TC010",
+    "title": "test_error_handling_and_user_feedback",
+    "description": "Check that API endpoints provide appropriate error messages and status codes for invalid inputs, unauthorized access, and other failure scenarios, supporting frontend user feedback mechanisms."
+  }
+]

@@ -213,29 +213,90 @@ CREATE TABLE IF NOT EXISTS document_submissions (
 COMMENT='Document submissions replacing submitted_documents with semester context';
 
 -- =====================================================
--- 8. UPLOADED_FILES TABLE
+-- 8. ADD FOREIGN KEYS TO FOLDERS TABLE
 -- =====================================================
-CREATE TABLE IF NOT EXISTS uploaded_files (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    document_submission_id BIGINT NOT NULL,
-    file_url VARCHAR(500) NOT NULL COMMENT 'Physical path or URL',
-    original_filename VARCHAR(255) NOT NULL,
-    file_size BIGINT COMMENT 'Size in bytes',
-    file_type VARCHAR(100) COMMENT 'MIME type',
-    file_order INT DEFAULT 0 COMMENT 'Order of files in submission',
-    description VARCHAR(500),
-    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    
-    CONSTRAINT fk_uploaded_files_document_submission 
-        FOREIGN KEY (document_submission_id) 
-        REFERENCES document_submissions(id) 
-        ON DELETE CASCADE,
-    
-    INDEX idx_uploaded_files_document_submission (document_submission_id),
-    INDEX idx_uploaded_files_file_order (document_submission_id, file_order)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-COMMENT='Files uploaded for document submissions with enhanced metadata';
+-- The folders table was created in V0 without academic FKs
+-- Now we add the foreign keys to academic_years, semesters, and courses
+
+-- Add FK to academic_years (if not exists)
+SET @fk_exists_folder_year = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'folders' 
+    AND CONSTRAINT_NAME = 'fk_folders_academic_year'
+);
+
+SET @sql_add_fk_folder_year = IF(
+    @fk_exists_folder_year = 0, 
+    'ALTER TABLE folders ADD CONSTRAINT fk_folders_academic_year FOREIGN KEY (academic_year_id) REFERENCES academic_years(id) ON DELETE SET NULL', 
+    'SELECT ''FK fk_folders_academic_year already exists'' AS message'
+);
+
+PREPARE stmt_add_fk_folder_year FROM @sql_add_fk_folder_year;
+EXECUTE stmt_add_fk_folder_year;
+DEALLOCATE PREPARE stmt_add_fk_folder_year;
+
+-- Add FK to semesters (if not exists)
+SET @fk_exists_folder_semester = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'folders' 
+    AND CONSTRAINT_NAME = 'fk_folders_semester'
+);
+
+SET @sql_add_fk_folder_semester = IF(
+    @fk_exists_folder_semester = 0, 
+    'ALTER TABLE folders ADD CONSTRAINT fk_folders_semester FOREIGN KEY (semester_id) REFERENCES semesters(id) ON DELETE SET NULL', 
+    'SELECT ''FK fk_folders_semester already exists'' AS message'
+);
+
+PREPARE stmt_add_fk_folder_semester FROM @sql_add_fk_folder_semester;
+EXECUTE stmt_add_fk_folder_semester;
+DEALLOCATE PREPARE stmt_add_fk_folder_semester;
+
+-- Add FK to courses (if not exists)
+SET @fk_exists_folder_course = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'folders' 
+    AND CONSTRAINT_NAME = 'fk_folders_course'
+);
+
+SET @sql_add_fk_folder_course = IF(
+    @fk_exists_folder_course = 0, 
+    'ALTER TABLE folders ADD CONSTRAINT fk_folders_course FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE SET NULL', 
+    'SELECT ''FK fk_folders_course already exists'' AS message'
+);
+
+PREPARE stmt_add_fk_folder_course FROM @sql_add_fk_folder_course;
+EXECUTE stmt_add_fk_folder_course;
+DEALLOCATE PREPARE stmt_add_fk_folder_course;
+
+-- =====================================================
+-- 9. ADD FK TO UPLOADED_FILES FOR DOCUMENT_SUBMISSION
+-- =====================================================
+-- Add document_submission_id FK to existing uploaded_files table
+
+SET @fk_exists_uf_submission = (
+    SELECT COUNT(*) 
+    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS 
+    WHERE TABLE_SCHEMA = DATABASE() 
+    AND TABLE_NAME = 'uploaded_files' 
+    AND CONSTRAINT_NAME = 'fk_uploaded_files_document_submission'
+);
+
+SET @sql_add_fk_uf_submission = IF(
+    @fk_exists_uf_submission = 0, 
+    'ALTER TABLE uploaded_files ADD CONSTRAINT fk_uploaded_files_document_submission FOREIGN KEY (document_submission_id) REFERENCES document_submissions(id) ON DELETE SET NULL', 
+    'SELECT ''FK fk_uploaded_files_document_submission already exists'' AS message'
+);
+
+PREPARE stmt_add_fk_uf_submission FROM @sql_add_fk_uf_submission;
+EXECUTE stmt_add_fk_uf_submission;
+DEALLOCATE PREPARE stmt_add_fk_uf_submission;
 
 -- =====================================================
 -- MIGRATION NOTES

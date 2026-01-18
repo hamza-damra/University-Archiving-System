@@ -1063,6 +1063,44 @@ export const fileExplorer = {
                 'Authorization': `Bearer ${getToken()}`,
             },
         }),
+    
+    /**
+     * Create a new folder in the file explorer.
+     * Only professors can create folders within their own namespace.
+     * 
+     * @param {string} path - The parent path where the folder will be created
+     * @param {string} folderName - The name of the new folder
+     * @returns {Promise<Object>} The created folder response
+     */
+    createFolder: (path, folderName) =>
+        apiRequest('/file-explorer/folder', {
+            method: 'POST',
+            body: JSON.stringify({ path, folderName }),
+        }),
+    
+    /**
+     * Delete a file from the file explorer.
+     * Only professors can delete their own files.
+     * 
+     * @param {number} fileId - The ID of the file to delete
+     * @returns {Promise<Object>} The delete response
+     */
+    deleteFile: (fileId) =>
+        apiRequest(`/file-explorer/files/${fileId}`, {
+            method: 'DELETE',
+        }),
+    
+    /**
+     * Replace a file with a new version.
+     * Only professors can replace their own files.
+     * 
+     * @param {number} fileId - The ID of the file to replace
+     * @param {FormData} formData - FormData containing the new file and optional notes
+     * @param {function} onProgress - Optional progress callback
+     * @returns {Promise<Object>} The replace response with new file info
+     */
+    replaceFile: (fileId, formData, onProgress) =>
+        uploadFile(`/file-explorer/files/${fileId}/replace`, formData, onProgress),
 };
 
 export default {

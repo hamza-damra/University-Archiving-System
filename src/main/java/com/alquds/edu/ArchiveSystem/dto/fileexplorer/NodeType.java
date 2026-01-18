@@ -6,5 +6,6 @@ public enum NodeType {
     PROFESSOR,
     COURSE,
     DOCUMENT_TYPE,
+    CUSTOM,      // Custom folders created by professors
     FILE
 }

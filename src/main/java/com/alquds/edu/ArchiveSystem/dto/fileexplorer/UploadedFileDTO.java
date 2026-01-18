@@ -61,4 +61,19 @@ public class UploadedFileDTO {
      * Name of the user who uploaded the file
      */
     private String uploaderName;
+    
+    /**
+     * ID of the user who uploaded the file
+     */
+    private Long uploaderId;
+    
+    /**
+     * Whether the current user can delete this file
+     */
+    private Boolean canDelete;
+    
+    /**
+     * Whether the current user can replace this file
+     */
+    private Boolean canReplace;
 }

@@ -1,0 +1,18 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8080/api/hod",
+  "loginUser": "hod.ce@hod.alquds.edu",
+  "loginPassword": "Hh@#2021",
+  "executionArgs": {
+    "projectName": "University-Archiving-System",
+    "projectPath": "C:\\Users\\Hamza Damra\\Documents\\University-Archiving-System",
+    "testIds": [],
+    "additionalInstruction": "Test HOD dashboard frontend UI. Use HOD credentials: hod.ce@hod.alquds.edu with password Hh@#2021. Test all UI features including dashboard overview, submission status tab, reports tab, file explorer, academic year/semester selection, professor management, filters, and navigation.",
+    "envs": {
+      "API_KEY": "sk-user-x2d_Xb3tK7NXF3APiTFX_5ZdlUl8HkAezFTIYThGlECpBn7g6k2l58N9NRtNW6cJBUZFwq-5FrdCjFRSeLJ6f034XmNbSvu3kBx0PxpQJqaYKAdGU9NGREhtcpGLsMmip9M"
+    }
+  },
+  "proxy": "http://c5f6c225-daab-4201-8d6f-3466a12a4a58:IsFnk6sHx0Q69yFtn0elfkdn2wYpxBts@tun.testsprite.com:8080"
+}

@@ -17,17 +17,21 @@ import com.alquds.edu.ArchiveSystem.repository.academic.SemesterRepository;
 
 import com.alquds.edu.ArchiveSystem.dto.common.ApiResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.BreadcrumbItem;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderRequest;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 
 
 import com.alquds.edu.ArchiveSystem.service.auth.AuthService;
 import com.alquds.edu.ArchiveSystem.service.file.FileExplorerService;
 import com.alquds.edu.ArchiveSystem.service.file.FileService;
+import com.alquds.edu.ArchiveSystem.service.file.FolderFileUploadService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
-
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,6 +52,7 @@ public class FileExplorerController {
 
     private final FileExplorerService fileExplorerService;
     private final FileService fileService;
+    private final FolderFileUploadService folderFileUploadService;
     private final AuthService authService;
     private final UserRepository userRepository;
     private final AcademicYearRepository academicYearRepository;
@@ -128,6 +133,45 @@ public class FileExplorerController {
         List<BreadcrumbItem> breadcrumbs = fileExplorerService.generateBreadcrumbs(path);
 
         return ResponseEntity.ok(ApiResponse.success("Breadcrumbs generated successfully", breadcrumbs));
+    }
+
+    /**
+     * Create a new folder in the file explorer.
+     * Only professors can create folders within their own namespace.
+     * 
+     * Request body:
+     * {
+     *     "path": "/2025-2026/first/John Doe/CS101/lecture_notes",
+     *     "folderName": "Week 1"
+     * }
+     * 
+     * Responses:
+     * - 201 Created: Folder successfully created
+     * - 400 Bad Request: Invalid folder name
+     * - 403 Forbidden: User does not have permission
+     * - 409 Conflict: Folder already exists
+     *
+     * @param request the folder creation request containing path and folder name
+     * @param authentication the authenticated user
+     * @return response containing the created folder details
+     */
+    @PostMapping("/folder")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<CreateFolderResponse>> createFolder(
+            @Valid @RequestBody CreateFolderRequest request,
+            Authentication authentication) {
+
+        log.info("Create folder request - path: {}, folderName: {}", 
+                request.getPath(), request.getFolderName());
+
+        User currentUser = authService.getCurrentUser();
+        
+        CreateFolderResponse response = fileExplorerService.createFolder(request, currentUser);
+
+        log.info("Folder created successfully: {}", response.getFullPath());
+
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Folder created successfully", response));
     }
 
     /**
@@ -215,10 +259,10 @@ public class FileExplorerController {
             // Parse path to extract components
             PathInfo pathInfo = parsePath(path);
 
-            // Validate path is at document type level
+            // Validate path is at document type or custom folder level (5 parts)
             if (!path.matches(".+/.+/.+/.+/.+")) {
                 return ResponseEntity.badRequest()
-                        .body(ApiResponse.error("Invalid path format. Must specify document type folder."));
+                        .body(ApiResponse.error("Invalid path format. Must specify document type or custom folder."));
             }
 
             // Find professor - handle name format, professorId, and legacy "prof_<id>" format
@@ -233,22 +277,45 @@ public class FileExplorerController {
             Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
                     .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
 
-            // Find course assignment
-            CourseAssignment assignment = courseAssignmentRepository
-                    .findBySemesterIdAndCourseCodeAndProfessorId(semester.getId(), pathInfo.courseCode,
-                            professor.getId())
-                    .orElseThrow(() -> new EntityNotFoundException("Course assignment not found"));
+            List<UploadedFile> uploadedFiles;
+            
+            // Check if this is a known document type or a custom folder
+            if (isKnownDocumentType(pathInfo.documentType)) {
+                // Standard document type upload (Syllabus, Exams, etc.)
+                // Find course assignment
+                CourseAssignment assignment = courseAssignmentRepository
+                        .findBySemesterIdAndCourseCodeAndProfessorId(semester.getId(), pathInfo.courseCode,
+                                professor.getId())
+                        .orElseThrow(() -> new EntityNotFoundException("Course assignment not found"));
 
-            // Parse document type
-            DocumentTypeEnum documentType = DocumentTypeEnum.valueOf(pathInfo.documentType.toUpperCase());
+                // Parse document type
+                DocumentTypeEnum documentType = DocumentTypeEnum.valueOf(pathInfo.documentType.toUpperCase());
 
-            // Upload files using existing service
-            List<UploadedFile> uploadedFiles = fileService.uploadFiles(
-                    assignment.getId(),
-                    documentType,
-                    files,
-                    notes,
-                    currentUser.getId());
+                // Upload files using existing service
+                uploadedFiles = fileService.uploadFiles(
+                        assignment.getId(),
+                        documentType,
+                        files,
+                        notes,
+                        currentUser.getId());
+            } else {
+                // Custom folder upload - use FolderFileUploadService
+                log.info("Uploading to custom folder: {}", pathInfo.documentType);
+                
+                // Normalize path for folder lookup
+                String normalizedPath = path.replaceAll("^/+|/+$", "");
+                
+                // Convert List<MultipartFile> to array
+                MultipartFile[] filesArray = files.toArray(new MultipartFile[0]);
+                
+                // Upload files to custom folder using folder path
+                uploadedFiles = folderFileUploadService.uploadFiles(
+                        filesArray,
+                        null,  // folderId - will be resolved from path
+                        normalizedPath,  // folderPath
+                        notes,
+                        currentUser.getId());
+            }
 
             log.info("Successfully uploaded {} files to path: {}", uploadedFiles.size(), path);
 
@@ -271,6 +338,105 @@ public class FileExplorerController {
             log.error("Error uploading files: {}", e.getMessage(), e);
             return ResponseEntity.status(500)
                     .body(ApiResponse.error("Error uploading files: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Delete a file from the file explorer.
+     * Only professors can delete their own files.
+     *
+     * @param fileId         the ID of the file to delete
+     * @param authentication the authenticated user
+     * @return success response or error
+     */
+    @DeleteMapping("/files/{fileId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Void>> deleteFile(
+            @PathVariable Long fileId,
+            Authentication authentication) {
+
+        log.info("File explorer delete request for file ID: {}", fileId);
+
+        User currentUser = authService.getCurrentUser();
+
+        try {
+            // Get the file to check ownership
+            UploadedFile file = fileService.getFile(fileId);
+            
+            // Check if user owns the file
+            if (file.getUploader() == null || !file.getUploader().getId().equals(currentUser.getId())) {
+                log.error("User {} does not own file {}", currentUser.getEmail(), fileId);
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("You can only delete your own files"));
+            }
+
+            // Delete the file
+            fileService.deleteFile(fileId);
+
+            log.info("Successfully deleted file ID: {} by user {}", fileId, currentUser.getEmail());
+            return ResponseEntity.ok(ApiResponse.success("File deleted successfully", null));
+
+        } catch (EntityNotFoundException e) {
+            log.error("File not found: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error deleting file: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Error deleting file: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Replace a file with a new version.
+     * Only professors can replace their own files.
+     * The old file is deleted and replaced with the new one.
+     *
+     * @param fileId         the ID of the file to replace
+     * @param file           the new file to upload
+     * @param notes          optional notes for the new file
+     * @param authentication the authenticated user
+     * @return updated file information
+     */
+    @PostMapping("/files/{fileId}/replace")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<UploadedFile>> replaceFile(
+            @PathVariable Long fileId,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(required = false) String notes,
+            Authentication authentication) {
+
+        log.info("File explorer replace request for file ID: {} with new file: {}", fileId, file.getOriginalFilename());
+
+        User currentUser = authService.getCurrentUser();
+
+        try {
+            // Get the existing file to check ownership
+            UploadedFile existingFile = fileService.getFile(fileId);
+            
+            // Check if user owns the file
+            if (existingFile.getUploader() == null || !existingFile.getUploader().getId().equals(currentUser.getId())) {
+                log.error("User {} does not own file {}", currentUser.getEmail(), fileId);
+                return ResponseEntity.status(403)
+                        .body(ApiResponse.error("You can only replace your own files"));
+            }
+
+            // Replace the file using the service
+            UploadedFile newFile = fileService.replaceFile(fileId, file, notes, currentUser.getId());
+
+            log.info("Successfully replaced file ID: {} with new file ID: {} by user {}", 
+                    fileId, newFile.getId(), currentUser.getEmail());
+            
+            return ResponseEntity.ok(ApiResponse.success("File replaced successfully", newFile));
+
+        } catch (EntityNotFoundException e) {
+            log.error("File not found: {}", e.getMessage());
+            return ResponseEntity.status(404)
+                    .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            log.error("Error replacing file: {}", e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(ApiResponse.error("Error replacing file: " + e.getMessage()));
         }
     }
 
@@ -301,6 +467,19 @@ public class FileExplorerController {
             info.documentType = parts[4];
 
         return info;
+    }
+
+    /**
+     * Check if a string is a known document type (Syllabus, Exams, etc.)
+     */
+    private boolean isKnownDocumentType(String type) {
+        if (type == null) return false;
+        try {
+            DocumentTypeEnum.valueOf(type.toUpperCase());
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**

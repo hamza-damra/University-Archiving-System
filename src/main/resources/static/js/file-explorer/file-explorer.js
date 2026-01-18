@@ -1136,7 +1136,11 @@ export class FileExplorer {
                         ` : ''}
                     </div>
                 `;
-            } else if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
+            } else if (node.canWrite && node.type === 'COURSE') {
+                // Empty course folder - professor can create subfolders here
+                container.innerHTML = this.renderCourseEmptyState(node);
+            } else if (node.canWrite && (node.type === 'DOCUMENT_TYPE' || node.type === 'CUSTOM')) {
+                // Empty document type or custom folder - show upload state
                 container.innerHTML = this.renderWritableEmptyState(node);
                 this.initializeDragDrop(node);
             } else {
@@ -1147,8 +1151,13 @@ export class FileExplorer {
 
         let html = '';
 
-        // Add upload button for writable document type folders (appears above file list)
-        if (node.canWrite && node.type === 'DOCUMENT_TYPE') {
+        // Add "New Folder" button for writable COURSE folders (professors can create subfolders)
+        if (node.canWrite && node.type === 'COURSE') {
+            html += this.renderNewFolderButton(node);
+        }
+
+        // Add upload button for writable document type or custom folders (appears above file list)
+        if (node.canWrite && (node.type === 'DOCUMENT_TYPE' || node.type === 'CUSTOM')) {
             html += this.renderUploadButton(node);
             this.initializeDragDrop(node);
         }
@@ -1335,6 +1344,28 @@ export class FileExplorer {
                             >
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${file.canReplace && fileId ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleFileReplace(${fileId}, '${this.escapeHtml(fileName)}')"
+                                class="text-white bg-amber-500 hover:bg-amber-600 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
+                                title="Replace file"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${file.canDelete && fileId ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleFileDelete(${fileId}, '${this.escapeHtml(fileName)}')"
+                                class="text-white bg-red-500 hover:bg-red-600 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
+                                title="Delete file"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                                 </svg>
                             </button>
                         ` : ''}
@@ -1562,6 +1593,352 @@ export class FileExplorer {
     }
 
     /**
+     * Handle file delete - show confirmation modal and delete if confirmed
+     * 
+     * @param {number} fileId - The ID of the file to delete
+     * @param {string} fileName - The name of the file (for display)
+     * @returns {Promise<void>}
+     */
+    async handleFileDelete(fileId, fileName) {
+        // Show confirmation modal
+        const confirmed = await this.showDeleteConfirmationModal(fileName);
+        if (!confirmed) return;
+
+        try {
+            const response = await fileExplorer.deleteFile(fileId);
+
+            if (response.success || response.status === 'success') {
+                // Remove the file row from UI
+                const fileRow = document.querySelector(`tr[data-file-id="${fileId}"]`);
+                if (fileRow) {
+                    fileRow.remove();
+                }
+
+                // Refresh the current node to update file counts
+                if (this.currentNode && this.currentNode.path) {
+                    await this.loadNode(this.currentNode.path);
+                }
+
+                showToast('File deleted successfully', 'success');
+            } else {
+                throw new Error(response.message || 'Failed to delete file');
+            }
+
+        } catch (error) {
+            console.error('Error deleting file:', error);
+            
+            if (error.status === 403) {
+                showToast('You do not have permission to delete this file', 'error');
+            } else if (error.status === 404) {
+                showToast('File not found', 'error');
+            } else {
+                showToast(error.message || 'Failed to delete file', 'error');
+            }
+        }
+    }
+
+    /**
+     * Show delete confirmation modal
+     * 
+     * @param {string} fileName - The name of the file to delete
+     * @returns {Promise<boolean>} - True if confirmed, false otherwise
+     */
+    showDeleteConfirmationModal(fileName) {
+        return new Promise((resolve) => {
+            const modalId = 'delete-file-modal';
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById(modalId);
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div class="flex items-center mb-4">
+                            <div class="flex-shrink-0 bg-red-100 dark:bg-red-900 rounded-full p-3">
+                                <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="ml-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Delete File</h3>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-300 mb-2">Are you sure you want to delete this file?</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-6 font-medium">"${this.escapeHtml(fileName)}"</p>
+                        <p class="text-sm text-red-600 dark:text-red-400 mb-6">This action cannot be undone.</p>
+                        <div class="flex justify-end space-x-3">
+                            <button id="delete-cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                Cancel
+                            </button>
+                            <button id="delete-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.getElementById(modalId);
+
+            const cleanup = (result) => {
+                modal.remove();
+                resolve(result);
+            };
+
+            // Event listeners
+            document.getElementById('delete-cancel-btn').addEventListener('click', () => cleanup(false));
+            document.getElementById('delete-confirm-btn').addEventListener('click', () => cleanup(true));
+            
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) cleanup(false);
+            });
+
+            // Close on escape key
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    document.removeEventListener('keydown', escHandler);
+                    cleanup(false);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+        });
+    }
+
+    /**
+     * Handle file replace - show file picker modal and replace the file
+     * 
+     * @param {number} fileId - The ID of the file to replace
+     * @param {string} fileName - The current name of the file (for display)
+     * @returns {Promise<void>}
+     */
+    async handleFileReplace(fileId, fileName) {
+        // Show replace modal with file picker
+        const result = await this.showReplaceFileModal(fileName);
+        if (!result || !result.file) return;
+
+        try {
+            // Create FormData with the new file
+            const formData = new FormData();
+            formData.append('file', result.file);
+            if (result.notes) {
+                formData.append('notes', result.notes);
+            }
+
+            // Show loading state
+            const fileRow = document.querySelector(`tr[data-file-id="${fileId}"]`);
+            if (fileRow) {
+                fileRow.classList.add('opacity-50');
+            }
+
+            const response = await fileExplorer.replaceFile(fileId, formData);
+
+            // The API returns the new file data directly (extracted from ApiResponse wrapper)
+            // If we get here without an exception, the replacement was successful
+            // The response is the new UploadedFile object with an 'id' property
+            if (response && (response.id || response.success || response.status === 'success')) {
+                // Refresh the current node to show updated file
+                if (this.currentNode && this.currentNode.path) {
+                    await this.loadNode(this.currentNode.path);
+                }
+
+                showToast('File replaced successfully', 'success');
+            } else {
+                throw new Error(response?.message || 'Failed to replace file');
+            }
+
+        } catch (error) {
+            console.error('Error replacing file:', error);
+            
+            // Remove loading state
+            const fileRow = document.querySelector(`tr[data-file-id="${fileId}"]`);
+            if (fileRow) {
+                fileRow.classList.remove('opacity-50');
+            }
+            
+            if (error.status === 403) {
+                showToast('You do not have permission to replace this file', 'error');
+            } else if (error.status === 404) {
+                showToast('File not found', 'error');
+            } else {
+                showToast(error.message || 'Failed to replace file', 'error');
+            }
+        }
+    }
+
+    /**
+     * Show replace file modal with file picker
+     * 
+     * @param {string} currentFileName - The current name of the file being replaced
+     * @returns {Promise<{file: File, notes: string}|null>} - Selected file and notes, or null if cancelled
+     */
+    showReplaceFileModal(currentFileName) {
+        return new Promise((resolve) => {
+            const modalId = 'replace-file-modal';
+            
+            // Remove existing modal if any
+            const existingModal = document.getElementById(modalId);
+            if (existingModal) existingModal.remove();
+
+            const modalHtml = `
+                <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="flex-shrink-0 bg-amber-100 dark:bg-amber-900 rounded-full p-3">
+                                    <svg class="w-6 h-6 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                    </svg>
+                                </div>
+                                <h3 class="ml-4 text-lg font-semibold text-gray-900 dark:text-gray-100">Replace File</h3>
+                            </div>
+                            <button id="replace-close-btn" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                        
+                        <p class="text-gray-600 dark:text-gray-300 mb-2">Replace the current file:</p>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 font-medium">"${this.escapeHtml(currentFileName)}"</p>
+                        
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select new file</label>
+                            <div id="replace-drop-zone" class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-blue-500 dark:hover:border-blue-400 transition-colors cursor-pointer">
+                                <input type="file" id="replace-file-input" class="hidden" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.jpg,.jpeg,.png,.gif">
+                                <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                                </svg>
+                                <p class="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <span class="text-blue-600 dark:text-blue-400 font-medium">Click to select</span> or drag and drop
+                                </p>
+                                <p class="mt-1 text-xs text-gray-500 dark:text-gray-500">PDF, DOC, PPT, XLS, or images (max 100MB)</p>
+                            </div>
+                            <div id="replace-selected-file" class="hidden mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex items-center space-x-2">
+                                        <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                        <span id="replace-file-name" class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]"></span>
+                                    </div>
+                                    <button id="replace-remove-file" class="text-red-500 hover:text-red-600">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-6">
+                            <label for="replace-notes" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes (optional)</label>
+                            <textarea id="replace-notes" rows="2" class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="Add notes about this replacement..."></textarea>
+                        </div>
+                        
+                        <div class="flex justify-end space-x-3">
+                            <button id="replace-cancel-btn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors">
+                                Cancel
+                            </button>
+                            <button id="replace-confirm-btn" class="px-4 py-2 text-sm font-medium text-white bg-amber-500 hover:bg-amber-600 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Replace File
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = document.getElementById(modalId);
+            const fileInput = document.getElementById('replace-file-input');
+            const dropZone = document.getElementById('replace-drop-zone');
+            const selectedFileDiv = document.getElementById('replace-selected-file');
+            const fileNameSpan = document.getElementById('replace-file-name');
+            const confirmBtn = document.getElementById('replace-confirm-btn');
+            const notesInput = document.getElementById('replace-notes');
+
+            let selectedFile = null;
+
+            const updateFileSelection = (file) => {
+                selectedFile = file;
+                if (file) {
+                    fileNameSpan.textContent = file.name;
+                    selectedFileDiv.classList.remove('hidden');
+                    dropZone.classList.add('hidden');
+                    confirmBtn.disabled = false;
+                } else {
+                    selectedFileDiv.classList.add('hidden');
+                    dropZone.classList.remove('hidden');
+                    confirmBtn.disabled = true;
+                }
+            };
+
+            const cleanup = (result) => {
+                modal.remove();
+                resolve(result);
+            };
+
+            // File input change handler
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    updateFileSelection(e.target.files[0]);
+                }
+            });
+
+            // Drop zone click
+            dropZone.addEventListener('click', () => fileInput.click());
+
+            // Drag and drop handlers
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            });
+
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+            });
+
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('border-blue-500', 'bg-blue-50', 'dark:bg-blue-900/20');
+                if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                    updateFileSelection(e.dataTransfer.files[0]);
+                }
+            });
+
+            // Remove file button
+            document.getElementById('replace-remove-file').addEventListener('click', () => {
+                updateFileSelection(null);
+                fileInput.value = '';
+            });
+
+            // Button handlers
+            document.getElementById('replace-close-btn').addEventListener('click', () => cleanup(null));
+            document.getElementById('replace-cancel-btn').addEventListener('click', () => cleanup(null));
+            confirmBtn.addEventListener('click', () => {
+                cleanup({
+                    file: selectedFile,
+                    notes: notesInput.value.trim()
+                });
+            });
+
+            // Close on backdrop click
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) cleanup(null);
+            });
+
+            // Close on escape key
+            const escHandler = (e) => {
+                if (e.key === 'Escape') {
+                    document.removeEventListener('keydown', escHandler);
+                    cleanup(null);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+        });
+    }
+
+    /**
      * Handle a file that was deleted from the server
      * Removes it from the UI and updates state
      * @param {number} fileId - ID of the deleted file
@@ -1750,6 +2127,7 @@ export class FileExplorer {
             'PROFESSOR': 'Professor',
             'COURSE': 'Course',
             'DOCUMENT_TYPE': 'Document Type',
+            'CUSTOM': 'Custom Folder',
             'FILE': 'File'
         };
         return types[type] || type;
@@ -1826,6 +2204,18 @@ export class FileExplorer {
      */
     generateRoleSpecificLabels(folder) {
         let labels = '';
+
+        // Show "Custom Folder" badge for user-created folders
+        if (folder.type === 'CUSTOM' || folder.metadata?.isCustomFolder === true) {
+            labels += `
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 ml-2">
+                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                    Custom Folder
+                </span>
+            `;
+        }
 
         // Professor role: Show "Your Folder" label for owned folders
         if (this.options.role === 'PROFESSOR' && this.options.showOwnershipLabels) {
@@ -2228,7 +2618,33 @@ export class FileExplorer {
     }
 
     /**
-     * Render upload button for writable folders
+     * Render "New Folder" button for course folders
+     * Allows professors to create custom subfolders within their course
+     * 
+     * @param {Object} node - The current course folder node
+     * @returns {string} HTML for new folder button
+     */
+    renderNewFolderButton(node) {
+        if (!node || !node.canWrite) {
+            return '';
+        }
+
+        return `
+            <div class="mb-4">
+                <button 
+                    onclick="window.fileExplorerInstance.handleNewFolderClick('${this.escapeHtml(node.path)}')"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                    New Folder
+                </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render upload button for writable document type folders
      * Shows a prominent upload button when user has write permission
      * 
      * @param {Object} node - The current folder node
@@ -2252,6 +2668,38 @@ export class FileExplorer {
                     </svg>
                     Upload ${formattedType}
                 </button>
+            </div>
+        `;
+    }
+
+    /**
+     * Render empty state for course folders with "New Folder" button
+     * Shown when a professor's course folder is empty - encourages creating subfolders
+     * 
+     * @param {Object} node - The current course folder node  
+     * @returns {string} HTML for course empty state
+     */
+    renderCourseEmptyState(node) {
+        const courseName = node.name || 'this course';
+
+        return `
+            <div class="text-center py-12">
+                <div class="inline-flex items-center justify-center w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full mb-4">
+                    <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No folders created yet</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Create your first folder to organize your course materials</p>
+                <button 
+                    onclick="window.fileExplorerInstance.handleNewFolderClick('${this.escapeHtml(node.path)}')"
+                    class="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                    </svg>
+                    New Folder
+                </button>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-4">Create folders to organize exams, assignments, lectures, and more</p>
             </div>
         `;
     }
@@ -2375,6 +2823,301 @@ export class FileExplorer {
     }
 
     /**
+     * Handle "New Folder" button click
+     * Opens modal dialog for folder name input
+     * 
+     * @param {string} path - The parent folder path where new folder will be created
+     */
+    handleNewFolderClick(path) {
+        // Store the current path for later use
+        this.newFolderParentPath = path;
+        
+        // Show the create folder modal
+        this.showCreateFolderModal(path);
+    }
+
+    /**
+     * Show create folder modal dialog
+     * Displays modal with input for folder name and validation
+     * 
+     * @param {string} parentPath - The parent folder path
+     */
+    showCreateFolderModal(parentPath) {
+        const modalId = 'createFolderModal';
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById(modalId);
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // Create modal HTML
+        const modalHtml = `
+            <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+                    <!-- Modal Header -->
+                    <div class="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                            <svg class="w-6 h-6 inline mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"></path>
+                            </svg>
+                            Create New Folder
+                        </h3>
+                        <button onclick="window.fileExplorerInstance.closeCreateFolderModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="p-6 space-y-4">
+                        <!-- Folder Name Input -->
+                        <div>
+                            <label for="newFolderName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                Folder Name
+                            </label>
+                            <input 
+                                type="text" 
+                                id="newFolderName" 
+                                placeholder="Enter folder name..."
+                                maxlength="128"
+                                class="block w-full px-3 py-2 text-sm text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                onkeyup="window.fileExplorerInstance.validateFolderName(this.value)"
+                                onkeydown="if(event.key === 'Enter') window.fileExplorerInstance.submitCreateFolder()"
+                            />
+                            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                                Max 128 characters. Cannot contain: / \\ ? * : &lt; &gt; | "
+                            </p>
+                        </div>
+
+                        <!-- Validation Error Message -->
+                        <div id="folderNameError" class="hidden p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <p id="folderNameErrorMessage" class="text-sm text-red-800 dark:text-red-300"></p>
+                            </div>
+                        </div>
+
+                        <!-- Parent Path Info -->
+                        <div class="p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                            <p class="text-xs text-gray-500 dark:text-gray-400">
+                                <span class="font-medium">Creating in:</span><br/>
+                                <span class="text-gray-700 dark:text-gray-300">${this.escapeHtml(parentPath)}</span>
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200 dark:border-gray-700">
+                        <button 
+                            onclick="window.fileExplorerInstance.closeCreateFolderModal()" 
+                            class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button 
+                            id="createFolderBtn"
+                            onclick="window.fileExplorerInstance.submitCreateFolder()" 
+                            class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <span id="createFolderBtnText">Create Folder</span>
+                            <span id="createFolderSpinner" class="hidden">
+                                <svg class="animate-spin h-4 w-4 inline ml-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                            </span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Append modal to body
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+        // Focus on input
+        setTimeout(() => {
+            const input = document.getElementById('newFolderName');
+            if (input) input.focus();
+        }, 100);
+    }
+
+    /**
+     * Validate folder name and show/hide error message
+     * 
+     * @param {string} folderName - The folder name to validate
+     * @returns {boolean} True if valid, false otherwise
+     */
+    validateFolderName(folderName) {
+        const errorContainer = document.getElementById('folderNameError');
+        const errorMessage = document.getElementById('folderNameErrorMessage');
+        const createBtn = document.getElementById('createFolderBtn');
+
+        // Reset state
+        errorContainer?.classList.add('hidden');
+        createBtn?.removeAttribute('disabled');
+
+        // Validate
+        if (!folderName || folderName.trim() === '') {
+            return false; // Empty is not an error, just can't submit
+        }
+
+        folderName = folderName.trim();
+
+        // Check max length
+        if (folderName.length > 128) {
+            this.showFolderNameError('Folder name must not exceed 128 characters');
+            return false;
+        }
+
+        // Check for invalid characters: / \ ? * : < > | "
+        if (/[/\\?*:<>|"]/.test(folderName)) {
+            this.showFolderNameError('Folder name cannot contain: / \\ ? * : < > | "');
+            return false;
+        }
+
+        // Check for reserved names (Windows)
+        const reservedNames = ['CON', 'PRN', 'AUX', 'NUL', 
+            'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+            'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9'];
+        if (reservedNames.includes(folderName.toUpperCase())) {
+            this.showFolderNameError(`"${folderName}" is a reserved name`);
+            return false;
+        }
+
+        // Check for dots only or spaces only
+        if (/^[.\s]+$/.test(folderName)) {
+            this.showFolderNameError('Folder name cannot consist of only dots or spaces');
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Show folder name validation error
+     * 
+     * @param {string} message - Error message to display
+     */
+    showFolderNameError(message) {
+        const errorContainer = document.getElementById('folderNameError');
+        const errorMessage = document.getElementById('folderNameErrorMessage');
+        const createBtn = document.getElementById('createFolderBtn');
+
+        if (errorContainer && errorMessage) {
+            errorMessage.textContent = message;
+            errorContainer.classList.remove('hidden');
+        }
+        
+        if (createBtn) {
+            createBtn.setAttribute('disabled', 'true');
+        }
+    }
+
+    /**
+     * Submit create folder request
+     * Validates input and calls API to create folder
+     */
+    async submitCreateFolder() {
+        const input = document.getElementById('newFolderName');
+        const folderName = input?.value?.trim();
+
+        // Validate
+        if (!folderName) {
+            this.showFolderNameError('Please enter a folder name');
+            return;
+        }
+
+        if (!this.validateFolderName(folderName)) {
+            return;
+        }
+
+        const parentPath = this.newFolderParentPath;
+        if (!parentPath) {
+            this.showFolderNameError('Parent path not found. Please try again.');
+            return;
+        }
+
+        // Show loading state
+        this.setCreateFolderLoading(true);
+
+        try {
+            // Call API to create folder
+            const response = await fileExplorer.createFolder(parentPath, folderName);
+
+            // Success!
+            this.closeCreateFolderModal();
+
+            // Show success toast
+            if (typeof window.Toast !== 'undefined') {
+                window.Toast.success(`Folder "${folderName}" created successfully`, 'Folder Created');
+            }
+
+            // Refresh the current node to show new folder
+            await this.loadNode(parentPath);
+
+        } catch (error) {
+            console.error('Error creating folder:', error);
+
+            // Parse error response
+            const errorMessage = error.message || 'Failed to create folder';
+            const errorCode = error.errorCode;
+
+            // Show appropriate error message
+            if (errorCode === 'FOLDER_ALREADY_EXISTS') {
+                this.showFolderNameError(`A folder named "${folderName}" already exists`);
+            } else if (errorCode === 'INVALID_FOLDER_NAME') {
+                this.showFolderNameError(errorMessage);
+            } else if (error.status === 403) {
+                this.showFolderNameError('You do not have permission to create folders here');
+            } else {
+                this.showFolderNameError(errorMessage);
+            }
+
+            this.setCreateFolderLoading(false);
+        }
+    }
+
+    /**
+     * Set loading state on create folder button
+     * 
+     * @param {boolean} loading - Whether to show loading state
+     */
+    setCreateFolderLoading(loading) {
+        const btn = document.getElementById('createFolderBtn');
+        const btnText = document.getElementById('createFolderBtnText');
+        const spinner = document.getElementById('createFolderSpinner');
+        const input = document.getElementById('newFolderName');
+
+        if (loading) {
+            btn?.setAttribute('disabled', 'true');
+            btnText?.classList.add('hidden');
+            spinner?.classList.remove('hidden');
+            input?.setAttribute('disabled', 'true');
+        } else {
+            btn?.removeAttribute('disabled');
+            btnText?.classList.remove('hidden');
+            spinner?.classList.add('hidden');
+            input?.removeAttribute('disabled');
+        }
+    }
+
+    /**
+     * Close create folder modal
+     */
+    closeCreateFolderModal() {
+        const modal = document.getElementById('createFolderModal');
+        if (modal) {
+            modal.remove();
+        }
+        this.newFolderParentPath = null;
+    }
+
+    /**
      * Format document type name for display
      * Converts enum values to human-readable names
      * 
@@ -2420,71 +3163,6 @@ export class FileExplorer {
     showLoading() {
         this.showTreeLoading();
         this.showFileListLoading();
-    }
-
-    /**
-     * Render upload button for writable folders
-     * 
-     * @param {Object} node - The current folder node
-     * @returns {string} HTML for the upload button area
-     */
-    renderUploadButton(node) {
-        return `
-            <div class="flex justify-end mb-4">
-                <button 
-                    onclick="window.dispatchEvent(new CustomEvent('fileExplorerUpload', { detail: { path: '${this.escapeHtml(node.path)}', documentType: '${node.name}', files: null } }))"
-                    class="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
-                >
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                    </svg>
-                    Upload Files
-                </button>
-            </div>
-        `;
-    }
-
-    /**
-     * Render writable empty state
-     * Shows a call-to-action to upload files when a folder is empty but writable
-     * 
-     * @param {Object} node - The current folder node
-     * @returns {string} HTML for the empty state
-     */
-    renderWritableEmptyState(node) {
-        return `
-            <div class="text-center py-12 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg hover:border-blue-400 dark:hover:border-blue-500 transition-colors cursor-pointer"
-                 onclick="window.dispatchEvent(new CustomEvent('fileExplorerUpload', { detail: { path: '${this.escapeHtml(node.path)}', documentType: '${node.name}', files: null } }))">
-                <svg class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-                </svg>
-                <h3 class="mt-2 text-sm font-medium text-gray-900 dark:text-gray-100">No files yet</h3>
-                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Upload a file or drag and drop</p>
-                <div class="mt-6">
-                    <button type="button" class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                        <svg class="-ml-1 mr-2 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                        </svg>
-                        Upload Files
-                    </button>
-                </div>
-            </div>
-        `;
-    }
-
-    /**
-     * Handle upload button click
-     * Opens upload modal for the specified path by dispatching custom event
-     * 
-     * @param {string} path - The folder path to upload to
-     * @param {string} documentType - The document type
-     */
-    handleUploadClick(path, documentType) {
-        // Dispatch custom event that prof.js will listen to
-        const event = new CustomEvent('fileExplorerUpload', {
-            detail: { path, documentType }
-        });
-        window.dispatchEvent(event);
     }
 
     /**

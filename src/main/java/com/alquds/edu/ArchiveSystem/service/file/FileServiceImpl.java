@@ -12,6 +12,7 @@ import com.alquds.edu.ArchiveSystem.entity.submission.DocumentSubmission;
 import com.alquds.edu.ArchiveSystem.entity.academic.Course;
 import com.alquds.edu.ArchiveSystem.entity.academic.Semester;
 import com.alquds.edu.ArchiveSystem.entity.file.UploadedFile;
+import com.alquds.edu.ArchiveSystem.entity.file.Folder;
 import com.alquds.edu.ArchiveSystem.repository.submission.RequiredDocumentTypeRepository;
 import com.alquds.edu.ArchiveSystem.repository.file.UploadedFileRepository;
 import com.alquds.edu.ArchiveSystem.exception.core.EntityNotFoundException;
@@ -246,6 +247,82 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
+    @Transactional
+    public UploadedFile replaceFile(Long fileId, MultipartFile newFile, String notes, Long userId) {
+        log.info("Replacing file ID: {} with new file: {}", fileId, newFile.getOriginalFilename());
+
+        // Find the existing file with folder eagerly loaded
+        UploadedFile existingFile = uploadedFileRepository.findByIdWithUploaderAndFolder(fileId)
+                .orElseThrow(() -> FileUploadException.fileNotFound(fileId));
+
+        // Get the uploader/owner for permission check
+        User uploader = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found: " + userId));
+
+        // Check ownership
+        if (existingFile.getUploader() == null || !existingFile.getUploader().getId().equals(userId)) {
+            throw new com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException(
+                    "User does not have permission to replace this file");
+        }
+
+        // Validate the new file
+        if (newFile == null || newFile.isEmpty()) {
+            throw new IllegalArgumentException("No file provided for replacement");
+        }
+
+        // Get the folder and path info from existing file
+        Folder folder = existingFile.getFolder();
+        String oldFileUrl = existingFile.getFileUrl();
+        
+        // Delete the old physical file
+        deletePhysicalFile(oldFileUrl);
+
+        // Generate new filename and save the new file
+        String sanitizedFilename = sanitizeFilename(newFile.getOriginalFilename());
+        String newFileUrl;
+        
+        if (folder != null) {
+            // Folder-based file storage
+            newFileUrl = folder.getPath() + "/" + sanitizedFilename;
+        } else if (oldFileUrl != null && !oldFileUrl.isEmpty()) {
+            // Use existing file path structure - replace just the filename
+            int lastSlash = oldFileUrl.lastIndexOf('/');
+            if (lastSlash > 0) {
+                newFileUrl = oldFileUrl.substring(0, lastSlash + 1) + sanitizedFilename;
+            } else {
+                newFileUrl = sanitizedFilename;
+            }
+        } else {
+            throw new IllegalStateException("Cannot determine storage location for file");
+        }
+
+        // Save the new file to disk
+        Path targetPath = Paths.get(uploadDirectory, newFileUrl);
+        try {
+            Files.createDirectories(targetPath.getParent());
+            Files.copy(newFile.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            log.error("Failed to save replacement file: {}", e.getMessage(), e);
+            throw FileUploadException.storageError("Failed to save replacement file: " + e.getMessage());
+        }
+
+        // Update the file entity
+        existingFile.setOriginalFilename(newFile.getOriginalFilename());
+        existingFile.setStoredFilename(sanitizedFilename);
+        existingFile.setFileUrl(newFileUrl);
+        existingFile.setFileSize(newFile.getSize());
+        existingFile.setFileType(newFile.getContentType());
+        existingFile.setNotes(notes);
+        existingFile.setUploader(uploader);
+
+        // Save and return
+        UploadedFile savedFile = uploadedFileRepository.save(existingFile);
+        log.info("Successfully replaced file ID: {} with new file at: {}", fileId, newFileUrl);
+
+        return savedFile;
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public UploadedFile getFile(Long fileId) {
         log.debug("Fetching file with ID: {}", fileId);
@@ -381,13 +458,15 @@ public class FileServiceImpl implements FileService {
         // Delete database record
         uploadedFileRepository.delete(file);
 
-        // Update submission metadata
-        List<UploadedFile> remainingFiles = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
-        submission.setFileCount(remainingFiles.size());
-        submission.setTotalFileSize(remainingFiles.stream()
-                .mapToLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L)
-                .sum());
-        documentSubmissionRepository.save(submission);
+        // Update submission metadata only if file was part of a submission
+        if (submission != null) {
+            List<UploadedFile> remainingFiles = uploadedFileRepository.findByDocumentSubmissionId(submission.getId());
+            submission.setFileCount(remainingFiles.size());
+            submission.setTotalFileSize(remainingFiles.stream()
+                    .mapToLong(f -> f.getFileSize() != null ? f.getFileSize() : 0L)
+                    .sum());
+            documentSubmissionRepository.save(submission);
+        }
 
         log.info("Successfully deleted file ID: {}", fileId);
     }
@@ -631,9 +710,18 @@ public class FileServiceImpl implements FileService {
             return true;
         }
 
-        // Get the professor who owns the file
-        DocumentSubmission submission = file.getDocumentSubmission();
-        User fileOwner = submission.getProfessor();
+        // Determine file owner
+        User fileOwner = null;
+        if (file.getUploader() != null) {
+            fileOwner = file.getUploader();
+        } else if (file.getDocumentSubmission() != null) {
+            fileOwner = file.getDocumentSubmission().getProfessor();
+        }
+
+        if (fileOwner == null) {
+            log.warn("Cannot determine owner for file {}", file.getId());
+            return false;
+        }
 
         // Check if user is in the same department
         if (user.getDepartment() != null && fileOwner.getDepartment() != null) {
@@ -700,9 +788,18 @@ public class FileServiceImpl implements FileService {
             return false;
         }
 
-        // Get the professor who owns the file
-        DocumentSubmission submission = file.getDocumentSubmission();
-        User fileOwner = submission.getProfessor();
+        // Determine file owner
+        User fileOwner = null;
+        if (file.getUploader() != null) {
+            fileOwner = file.getUploader();
+        } else if (file.getDocumentSubmission() != null) {
+            fileOwner = file.getDocumentSubmission().getProfessor();
+        }
+
+        if (fileOwner == null) {
+            log.warn("Cannot determine owner for file {}", file.getId());
+            return false;
+        }
 
         // Professor can only delete their own files
         boolean isOwnFile = fileOwner.getId().equals(user.getId());

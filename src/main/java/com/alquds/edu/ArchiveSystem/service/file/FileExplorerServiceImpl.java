@@ -1,9 +1,11 @@
 package com.alquds.edu.ArchiveSystem.service.file;
 
 import com.alquds.edu.ArchiveSystem.repository.academic.CourseAssignmentRepository;
+import com.alquds.edu.ArchiveSystem.repository.academic.CourseRepository;
 import com.alquds.edu.ArchiveSystem.repository.submission.DocumentSubmissionRepository;
 import com.alquds.edu.ArchiveSystem.entity.submission.DocumentTypeEnum;
 import com.alquds.edu.ArchiveSystem.entity.academic.AcademicYear;
+import com.alquds.edu.ArchiveSystem.entity.academic.Course;
 import com.alquds.edu.ArchiveSystem.repository.file.FolderRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.UserRepository;
 import com.alquds.edu.ArchiveSystem.entity.academic.CourseAssignment;
@@ -21,17 +23,26 @@ import com.alquds.edu.ArchiveSystem.repository.academic.SemesterRepository;
 import com.alquds.edu.ArchiveSystem.entity.file.Folder;
 
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.BreadcrumbItem;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderRequest;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.NodeType;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.UploadedFileDTO;
 
 import com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException;
+import com.alquds.edu.ArchiveSystem.exception.file.FolderAlreadyExistsException;
+import com.alquds.edu.ArchiveSystem.exception.file.InvalidFolderNameException;
 
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -46,10 +57,14 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     private final SemesterRepository semesterRepository;
     private final UserRepository userRepository;
     private final CourseAssignmentRepository courseAssignmentRepository;
+    private final CourseRepository courseRepository;
     private final DocumentSubmissionRepository documentSubmissionRepository;
     private final UploadedFileRepository uploadedFileRepository;
     private final FolderRepository folderRepository;
     private final FileAccessService fileAccessService;
+    
+    @Value("${app.upload.base-path:uploads/}")
+    private String uploadBasePath;
 
     @Override
     public FileExplorerNode getRootNode(Long academicYearId, Long semesterId, User currentUser) {
@@ -334,6 +349,9 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             case DOCUMENT_TYPE:
                 node = buildDocumentTypeNode(pathInfo, currentUser);
                 break;
+            case CUSTOM:
+                node = buildCustomFolderNode(pathInfo, currentUser);
+                break;
             default:
                 throw new IllegalArgumentException("Invalid node path: " + nodePath);
         }
@@ -366,14 +384,112 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 return getDocumentTypeChildren(pathInfo, currentUser);
             case DOCUMENT_TYPE:
                 return getFileChildren(pathInfo, currentUser);
+            case CUSTOM:
+                return getCustomFolderChildren(pathInfo, currentUser);
             default:
                 return new ArrayList<>();
         }
+    }
+    
+    /**
+     * Get children of a custom folder (only sub-folders, not files).
+     * Files are included separately in the node.files property via buildCustomFolderNode().
+     * This prevents duplicate file display in the frontend.
+     */
+    private List<FileExplorerNode> getCustomFolderChildren(PathInfo pathInfo, User currentUser) {
+        // Find professor
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
+        
+        // Find academic context
+        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
+                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+        SemesterType semesterType = SemesterType.valueOf(pathInfo.getSemesterType().toUpperCase());
+        Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
+                .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
+        
+        // Find course
+        Course course = courseRepository.findByCourseCode(pathInfo.getCourseCode())
+                .orElseThrow(() -> new EntityNotFoundException("Course not found: " + pathInfo.getCourseCode()));
+        
+        // Find the custom folder - prefer ID-based lookup
+        Optional<Folder> customFolderOpt = Optional.empty();
+        
+        // Try to find by ID first (new format: custom-{id})
+        if (pathInfo.getCustomFolderId() != null) {
+            customFolderOpt = folderRepository.findById(pathInfo.getCustomFolderId());
+        }
+        
+        // Fallback to name-based lookup
+        if (!customFolderOpt.isPresent()) {
+            Optional<Folder> courseFolderOpt = folderRepository.findCourseFolder(
+                    professor.getId(), course.getId(), academicYear.getId(), semester.getId(), FolderType.COURSE);
+            
+            if (!courseFolderOpt.isPresent()) {
+                log.warn("Course folder not found for path: {}", pathInfo.getPath());
+                return new ArrayList<>();
+            }
+            
+            Folder courseFolder = courseFolderOpt.get();
+            String customFolderName = pathInfo.getCustomFolderName();
+            customFolderOpt = folderRepository.findByNameAndParentId(customFolderName, courseFolder.getId());
+            
+            if (!customFolderOpt.isPresent()) {
+                // Try URL-decoded name
+                try {
+                    String decodedName = java.net.URLDecoder.decode(customFolderName, "UTF-8").replace("-", " ");
+                    customFolderOpt = folderRepository.findByNameAndParentId(decodedName, courseFolder.getId());
+                } catch (Exception e) {
+                    log.warn("Failed to decode folder name: {}", customFolderName);
+                }
+            }
+        }
+        
+        if (!customFolderOpt.isPresent()) {
+            log.warn("Custom folder not found: {} (ID: {})", pathInfo.getCustomFolderName(), pathInfo.getCustomFolderId());
+            return new ArrayList<>();
+        }
+        
+        Folder customFolder = customFolderOpt.get();
+        
+        // Use ID-based path for consistency
+        String parentPath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
+                "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
+                "/custom-" + customFolder.getId();
+        
+        boolean isOwnFolder = professor.getId().equals(currentUser.getId());
+        
+        // Get only sub-folders (not files) - files are already in node.files
+        List<Folder> childFolders = folderRepository.findByParentId(customFolder.getId());
+        
+        return childFolders.stream()
+                .map(childFolder -> {
+                    // Use ID-based path for child folders too
+                    String folderPath = parentPath + "/custom-" + childFolder.getId();
+                    
+                    FileExplorerNode node = FileExplorerNode.builder()
+                            .path(folderPath)
+                            .name(childFolder.getName())
+                            .type(NodeType.CUSTOM)
+                            .entityId(childFolder.getId())
+                            .canRead(true)
+                            .canWrite(isOwnFolder && currentUser.getRole() == Role.ROLE_PROFESSOR)
+                            .canDelete(isOwnFolder && currentUser.getRole() == Role.ROLE_PROFESSOR)
+                            .build();
+                    
+                    node.getMetadata().put("folderId", childFolder.getId());
+                    node.getMetadata().put("folderName", childFolder.getName());
+                    node.getMetadata().put("isOwnFolder", isOwnFolder);
+                    node.getMetadata().put("isCustomFolder", true);
+                    
+                    return node;
+                })
+                .collect(Collectors.toList());
     }
 
     /**
      * Parse path to extract components and determine node type
      * Path format: /yearCode/semesterType/professorId/courseCode/documentType
+     * Custom folders at level 5 are detected by checking if the segment matches a known document type
      */
     private PathInfo parsePath(String path) {
         if (path == null || path.isEmpty() || path.equals("/")) {
@@ -409,8 +525,29 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         }
 
         if (parts.length >= 5) {
-            info.setDocumentType(parts[4]);
-            info.setType(NodeType.DOCUMENT_TYPE);
+            String fifthPart = parts[4];
+            info.setDocumentType(fifthPart);
+            
+            // Check if this is a custom folder (format: custom-{id}) or a known document type
+            if (fifthPart.startsWith("custom-")) {
+                // Custom folder identified by ID
+                info.setType(NodeType.CUSTOM);
+                info.setCustomFolderName(fifthPart);
+                // Extract folder ID for lookup
+                try {
+                    String idStr = fifthPart.substring(7); // Remove "custom-" prefix
+                    info.setCustomFolderId(Long.parseLong(idStr));
+                } catch (NumberFormatException e) {
+                    // Fall back to name-based lookup
+                    log.warn("Invalid custom folder ID format: {}", fifthPart);
+                }
+            } else if (isKnownDocumentType(fifthPart)) {
+                info.setType(NodeType.DOCUMENT_TYPE);
+            } else {
+                // Legacy: custom folder identified by name (for backward compatibility)
+                info.setType(NodeType.CUSTOM);
+                info.setCustomFolderName(fifthPart);
+            }
         }
 
         if (parts.length >= 6) {
@@ -419,6 +556,36 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         }
 
         return info;
+    }
+    
+    /**
+     * Check if a path segment corresponds to a known document type
+     */
+    private boolean isKnownDocumentType(String segment) {
+        if (segment == null) return false;
+        
+        // Check direct enum match
+        try {
+            DocumentTypeEnum.valueOf(segment.toUpperCase().replace("-", "_"));
+            return true;
+        } catch (IllegalArgumentException e) {
+            // Not a direct enum match, check mapped names
+        }
+        
+        // Check mapped folder names
+        String normalized = segment.toLowerCase().replace("-", " ");
+        switch (normalized) {
+            case "syllabus":
+            case "exams":
+            case "exam":
+            case "course notes":
+            case "lecture notes":
+            case "assignments":
+            case "assignment":
+                return true;
+            default:
+                return false;
+        }
     }
 
     /**
@@ -595,6 +762,105 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 return null;
         }
     }
+    
+    /**
+     * Build custom folder node from path info
+     * Custom folders are created by professors inside their course folders
+     */
+    private FileExplorerNode buildCustomFolderNode(PathInfo pathInfo, User currentUser) {
+        // Find professor
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
+        
+        // Find academic context
+        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
+                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+        SemesterType semesterType = SemesterType.valueOf(pathInfo.getSemesterType().toUpperCase());
+        Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
+                .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
+        
+        // Find course
+        Course course = courseRepository.findByCourseCode(pathInfo.getCourseCode())
+                .orElseThrow(() -> new EntityNotFoundException("Course not found: " + pathInfo.getCourseCode()));
+        
+        // Find the custom folder - prefer ID-based lookup for uniqueness
+        Optional<Folder> customFolderOpt = Optional.empty();
+        
+        // Try to find by ID first (new format: custom-{id})
+        if (pathInfo.getCustomFolderId() != null) {
+            customFolderOpt = folderRepository.findById(pathInfo.getCustomFolderId());
+            // Verify the folder belongs to this course context
+            if (customFolderOpt.isPresent()) {
+                Folder folder = customFolderOpt.get();
+                if (folder.getCourse() == null || !folder.getCourse().getId().equals(course.getId())) {
+                    customFolderOpt = Optional.empty();
+                    log.warn("Folder ID {} does not belong to course {}", pathInfo.getCustomFolderId(), course.getCourseCode());
+                }
+            }
+        }
+        
+        // Fallback to name-based lookup for backward compatibility
+        if (!customFolderOpt.isPresent()) {
+            // Find course folder first
+            Optional<Folder> courseFolderOpt = folderRepository.findCourseFolder(
+                    professor.getId(), course.getId(), academicYear.getId(), semester.getId(), FolderType.COURSE);
+            
+            if (!courseFolderOpt.isPresent()) {
+                throw new EntityNotFoundException("Course folder not found");
+            }
+            
+            Folder courseFolder = courseFolderOpt.get();
+            String customFolderName = pathInfo.getCustomFolderName();
+            customFolderOpt = folderRepository.findByNameAndParentId(customFolderName, courseFolder.getId());
+            
+            if (!customFolderOpt.isPresent()) {
+                // Try URL-decoded name with spaces instead of dashes
+                try {
+                    String decodedName = java.net.URLDecoder.decode(customFolderName, "UTF-8").replace("-", " ");
+                    customFolderOpt = folderRepository.findByNameAndParentId(decodedName, courseFolder.getId());
+                } catch (Exception e) {
+                    log.warn("Failed to decode folder name: {}", customFolderName);
+                }
+            }
+        }
+        
+        if (!customFolderOpt.isPresent()) {
+            throw new EntityNotFoundException("Custom folder not found: " + pathInfo.getCustomFolderName());
+        }
+        
+        Folder customFolder = customFolderOpt.get();
+        
+        // Use the ID-based path format for consistency
+        String nodePath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
+                "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
+                "/custom-" + customFolder.getId();
+        
+        boolean isOwnFolder = professor.getId().equals(currentUser.getId());
+        
+        FileExplorerNode node = FileExplorerNode.builder()
+                .path(nodePath)
+                .name(customFolder.getName())
+                .type(NodeType.CUSTOM)
+                .entityId(customFolder.getId())
+                .canRead(true)
+                .canWrite(isOwnFolder && currentUser.getRole() == Role.ROLE_PROFESSOR)
+                .canDelete(isOwnFolder && currentUser.getRole() == Role.ROLE_PROFESSOR)
+                .build();
+        
+        node.getMetadata().put("folderId", customFolder.getId());
+        node.getMetadata().put("folderName", customFolder.getName());
+        node.getMetadata().put("isOwnFolder", isOwnFolder);
+        node.getMetadata().put("isCustomFolder", true);
+        
+        // Get files in this custom folder
+        List<UploadedFile> files = uploadedFileRepository.findByFolderIdWithUploader(customFolder.getId());
+        final User finalUser = currentUser;
+        List<UploadedFileDTO> fileDTOs = files.stream()
+                .map(f -> convertToUploadedFileDTO(f, finalUser))
+                .collect(Collectors.toList());
+        node.setFiles(fileDTOs);
+        
+        return node;
+    }
 
     /**
      * Get professor children for a semester node
@@ -731,26 +997,43 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
         return subfolders.stream()
                 .map(subfolder -> {
-                    // Map folder name to document type enum for URL-safe path
-                    DocumentTypeEnum docType = mapFolderNameToDocumentType(subfolder.getName());
-                    String pathSegment = docType != null ? docType.name().toLowerCase()
-                            : subfolder.getName().toLowerCase().replace(" ", "-");
+                    // Check if this is a custom folder (created by professor)
+                    boolean isCustomFolder = subfolder.getType() == FolderType.CUSTOM;
+                    
+                    // Map folder name to document type enum for URL-safe path (only for document type folders)
+                    DocumentTypeEnum docType = isCustomFolder ? null : mapFolderNameToDocumentType(subfolder.getName());
+                    
+                    // For custom folders, use folder ID in path to ensure uniqueness
+                    // For document type folders, use the enum name
+                    String pathSegment;
+                    if (docType != null) {
+                        pathSegment = docType.name().toLowerCase();
+                    } else if (isCustomFolder) {
+                        // Use "custom-{id}" format for unique identification
+                        pathSegment = "custom-" + subfolder.getId();
+                    } else {
+                        pathSegment = subfolder.getName().toLowerCase().replace(" ", "-");
+                    }
                     String docTypePath = parentPath + "/" + pathSegment;
 
+                    // Use CUSTOM node type for custom folders, DOCUMENT_TYPE for standard folders
+                    NodeType nodeType = isCustomFolder ? NodeType.CUSTOM : NodeType.DOCUMENT_TYPE;
+                    
                     FileExplorerNode node = FileExplorerNode.builder()
                             .path(docTypePath)
                             .name(subfolder.getName())
-                            .type(NodeType.DOCUMENT_TYPE)
+                            .type(nodeType)
                             .entityId(subfolder.getId())
                             .canRead(true)
                             .canWrite(isOwnCourse && currentUser.getRole() == Role.ROLE_PROFESSOR)
-                            .canDelete(false)
+                            .canDelete(isCustomFolder && isOwnCourse && currentUser.getRole() == Role.ROLE_PROFESSOR)
                             .build();
 
                     node.getMetadata().put("folderId", subfolder.getId());
                     node.getMetadata().put("folderName", subfolder.getName());
                     node.getMetadata().put("assignmentId", assignment.getId());
                     node.getMetadata().put("isOwnCourse", isOwnCourse);
+                    node.getMetadata().put("isCustomFolder", isCustomFolder);
 
                     // Count files in this subfolder
                     if (docType != null) {
@@ -761,7 +1044,9 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                         node.getMetadata().put("fileCount", fileCount);
                         node.getMetadata().put("documentType", docType.name());
                     } else {
-                        node.getMetadata().put("fileCount", 0L);
+                        // For custom folders, count files uploaded to this folder (if any)
+                        List<UploadedFile> customFolderFiles = uploadedFileRepository.findByFolderId(subfolder.getId());
+                        node.getMetadata().put("fileCount", (long) customFolderFiles.size());
                     }
 
                     return node;
@@ -796,82 +1081,14 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     }
 
     /**
-     * Get file children for a document type node
+     * Get file children for a document type node.
+     * Returns an empty list because files are already included in node.files via buildDocumentTypeNode().
+     * This prevents duplicate file display in the frontend.
      */
     private List<FileExplorerNode> getFileChildren(PathInfo pathInfo, User currentUser) {
-        // Find professor
-        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
-
-        // Find semester
-        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
-                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
-        SemesterType semesterType = SemesterType.valueOf(pathInfo.getSemesterType().toUpperCase());
-        Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
-                .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
-
-        // Find course assignment
-        CourseAssignment assignment = courseAssignmentRepository
-                .findBySemesterIdAndCourseCodeAndProfessorId(semester.getId(), pathInfo.getCourseCode(),
-                        professor.getId())
-                .orElseThrow(() -> new EntityNotFoundException("Course assignment not found"));
-
-        DocumentTypeEnum docType = DocumentTypeEnum.valueOf(pathInfo.getDocumentType().toUpperCase());
-
-        // Find submission for this document type
-        Optional<DocumentSubmission> submissionOpt = documentSubmissionRepository
-                .findByCourseAssignmentIdAndDocumentType(assignment.getId(), docType);
-
-        if (!submissionOpt.isPresent()) {
-            return new ArrayList<>();
-        }
-
-        DocumentSubmission submission = submissionOpt.get();
-
-        // Get uploaded files with uploader data
-        List<UploadedFile> files = uploadedFileRepository
-                .findByDocumentSubmissionIdWithUploaderOrderByFileOrderAsc(submission.getId());
-
-        String parentPath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
-                "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
-                "/" + pathInfo.getDocumentType();
-
-        boolean isOwnCourse = professor.getId().equals(currentUser.getId());
-
-        return files.stream()
-                .map(file -> {
-                    String filePath = parentPath + "/" + file.getId();
-
-                    FileExplorerNode node = FileExplorerNode.builder()
-                            .path(filePath)
-                            .name(file.getOriginalFilename())
-                            .type(NodeType.FILE)
-                            .entityId(file.getId())
-                            .canRead(true)
-                            .canWrite(false)
-                            .canDelete(isOwnCourse && currentUser.getRole() == Role.ROLE_PROFESSOR)
-                            .build();
-
-                    node.getMetadata().put("fileId", file.getId());
-                    node.getMetadata().put("fileName", file.getOriginalFilename());
-                    node.getMetadata().put("fileSize", file.getFileSize());
-                    node.getMetadata().put("fileType", file.getFileType());
-                    node.getMetadata().put("fileUrl", file.getFileUrl());
-                    node.getMetadata().put("uploadedAt", file.getCreatedAt());
-                    node.getMetadata().put("submissionId", submission.getId());
-                    node.getMetadata().put("isOwnFile", isOwnCourse);
-                    
-                    // Include uploader name
-                    if (file.getUploader() != null) {
-                        String uploaderName = file.getUploader().getFirstName() + " " + file.getUploader().getLastName();
-                        node.getMetadata().put("uploaderName", uploaderName);
-                    } else {
-                        String fallbackUploaderName = professor.getFirstName() + " " + professor.getLastName();
-                        node.getMetadata().put("uploaderName", fallbackUploaderName);
-                    }
-
-                    return node;
-                })
-                .collect(Collectors.toList());
+        // Files are now included in node.files via buildDocumentTypeNode()
+        // Return empty list to prevent duplicate file display
+        return new ArrayList<>();
     }
 
     /**
@@ -1042,8 +1259,10 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         try {
             PathInfo pathInfo = parsePath(nodePath);
 
-            // Must be at course or document type level
-            if (pathInfo.getType() != NodeType.COURSE && pathInfo.getType() != NodeType.DOCUMENT_TYPE) {
+            // Must be at course, document type, or custom folder level
+            if (pathInfo.getType() != NodeType.COURSE 
+                && pathInfo.getType() != NodeType.DOCUMENT_TYPE
+                && pathInfo.getType() != NodeType.CUSTOM) {
                 return false;
             }
 
@@ -1238,11 +1457,12 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             List<UploadedFile> files = uploadedFileRepository.findByFolderIdWithUploader(documentTypeFolder.getId());
 
             final String fallbackUploaderName = professor.getFirstName() + " " + professor.getLastName();
+            final User finalCurrentUser = currentUser;
 
             // Convert to DTOs ensuring uploader name is always populated
             return files.stream()
                     .map(file -> {
-                        UploadedFileDTO dto = convertToUploadedFileDTO(file);
+                        UploadedFileDTO dto = convertToUploadedFileDTO(file, finalCurrentUser);
                         if (dto.getUploaderName() == null) {
                             dto.setUploaderName(fallbackUploaderName);
                         }
@@ -1260,6 +1480,15 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      * Convert UploadedFile entity to UploadedFileDTO
      */
     private UploadedFileDTO convertToUploadedFileDTO(UploadedFile file) {
+        return convertToUploadedFileDTO(file, null);
+    }
+    
+    /**
+     * Convert UploadedFile entity to UploadedFileDTO with permission checking
+     * @param file the uploaded file entity
+     * @param currentUser the current user for permission checking (can be null)
+     */
+    private UploadedFileDTO convertToUploadedFileDTO(UploadedFile file, User currentUser) {
         UploadedFileDTO.UploadedFileDTOBuilder builder = UploadedFileDTO.builder()
                 .id(file.getId())
                 .originalFilename(file.getOriginalFilename())
@@ -1270,13 +1499,257 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 .notes(file.getNotes())
                 .fileUrl(file.getFileUrl());
 
-        // Add uploader name if available
+        // Add uploader info if available
         if (file.getUploader() != null) {
             String uploaderName = file.getUploader().getFirstName() + " " + file.getUploader().getLastName();
             builder.uploaderName(uploaderName);
+            builder.uploaderId(file.getUploader().getId());
+        }
+        
+        // Set permission flags based on current user
+        if (currentUser != null && file.getUploader() != null) {
+            boolean isOwner = file.getUploader().getId().equals(currentUser.getId());
+            boolean isProfessor = currentUser.getRole() == Role.ROLE_PROFESSOR;
+            // Professors can only delete/replace their own files
+            builder.canDelete(isOwner && isProfessor);
+            builder.canReplace(isOwner && isProfessor);
+        } else {
+            builder.canDelete(false);
+            builder.canReplace(false);
         }
 
         return builder.build();
+    }
+    
+    /**
+     * Create a new folder at the specified path.
+     * Only professors can create folders within their own course folders.
+     * 
+     * @param request the folder creation request containing path and folder name
+     * @param currentUser the authenticated user (must be a professor)
+     * @return response containing the created folder details
+     */
+    @Override
+    @Transactional
+    public CreateFolderResponse createFolder(CreateFolderRequest request, User currentUser) {
+        log.info("Creating folder '{}' at path '{}' for user {}", 
+                request.getFolderName(), request.getPath(), currentUser.getEmail());
+        
+        // 1. Validate user role - only professors can create folders
+        if (currentUser.getRole() != Role.ROLE_PROFESSOR) {
+            log.warn("User {} with role {} attempted to create folder - access denied", 
+                    currentUser.getEmail(), currentUser.getRole());
+            throw new UnauthorizedOperationException("Only professors can create folders");
+        }
+        
+        // 2. Validate folder name
+        String folderName = validateAndSanitizeFolderName(request.getFolderName());
+        
+        // 3. Parse and validate path
+        String path = request.getPath();
+        if (path == null || path.isEmpty()) {
+            throw new InvalidFolderNameException("Path cannot be empty");
+        }
+        
+        // Normalize path - remove leading/trailing slashes
+        path = path.replaceAll("^/+|/+$", "");
+        
+        // 4. Check write permission for the path
+        if (!canWrite("/" + path, currentUser)) {
+            log.warn("User {} does not have write permission for path: {}", 
+                    currentUser.getEmail(), path);
+            throw new UnauthorizedOperationException(
+                "You do not have permission to create folders at this location");
+        }
+        
+        // 5. Parse path to extract context (yearCode/semesterType/professorId/courseCode)
+        PathInfo pathInfo = parsePath("/" + path);
+        
+        // 6. Validate path has required components for COURSE level
+        if (pathInfo.getType() != NodeType.COURSE) {
+            log.warn("Invalid path type for folder creation: {}. Expected COURSE level path.", pathInfo.getType());
+            throw new InvalidFolderNameException("Folders can only be created inside course folders");
+        }
+        
+        // 7. Verify the professor owns this path
+        User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
+        if (!professor.getId().equals(currentUser.getId())) {
+            throw new UnauthorizedOperationException(
+                "You can only create folders in your own directory");
+        }
+        
+        // 8. Find academic year and semester
+        AcademicYear academicYear = academicYearRepository.findByYearCode(pathInfo.getYearCode())
+                .orElseThrow(() -> new EntityNotFoundException("Academic year not found: " + pathInfo.getYearCode()));
+        
+        SemesterType semesterType = SemesterType.valueOf(pathInfo.getSemesterType().toUpperCase());
+        Semester semester = semesterRepository.findByAcademicYearIdAndType(academicYear.getId(), semesterType)
+                .orElseThrow(() -> new EntityNotFoundException("Semester not found"));
+        
+        // 9. Find course from course code
+        Course course = courseRepository.findByCourseCode(pathInfo.getCourseCode())
+                .orElseThrow(() -> new EntityNotFoundException("Course not found: " + pathInfo.getCourseCode()));
+        
+        // 10. Find or create the course folder in database
+        Folder parentFolder = folderRepository.findCourseFolder(
+                currentUser.getId(), course.getId(), academicYear.getId(), semester.getId(), FolderType.COURSE)
+                .orElseGet(() -> {
+                    // Course folder doesn't exist in DB yet - create it via FolderService
+                    log.info("Course folder not found in database, creating it...");
+                    return createCourseFolderForUser(currentUser, course, academicYear, semester);
+                });
+        
+        // 11. Check if folder already exists
+        if (folderRepository.existsByNameAndParentId(folderName, parentFolder.getId())) {
+            throw new FolderAlreadyExistsException(folderName, parentFolder.getPath());
+        }
+        
+        // 12. Construct full path for new folder
+        String fullPath = parentFolder.getPath() + "/" + folderName;
+        
+        // 13. Check if path already exists in database
+        if (folderRepository.existsByPath(fullPath)) {
+            throw new FolderAlreadyExistsException(folderName, parentFolder.getPath());
+        }
+        
+        // 14. Create folder entity
+        Folder newFolder = Folder.builder()
+                .path(fullPath)
+                .name(folderName)
+                .type(FolderType.CUSTOM)
+                .parent(parentFolder)
+                .owner(currentUser)
+                .academicYear(academicYear)
+                .semester(semester)
+                .course(course)
+                .build();
+        
+        // 15. Create physical directory on filesystem
+        createPhysicalFolder(fullPath);
+        
+        // 16. Save folder to database
+        Folder savedFolder = folderRepository.save(newFolder);
+        log.info("Folder '{}' created successfully with ID {} at path: {}", 
+                folderName, savedFolder.getId(), fullPath);
+        
+        // 17. Return success response
+        return CreateFolderResponse.success("/" + fullPath, folderName, savedFolder.getId());
+    }
+    
+    /**
+     * Create a course folder for the user if it doesn't exist.
+     * This ensures the course folder hierarchy exists in the database.
+     */
+    private Folder createCourseFolderForUser(User professor, Course course, AcademicYear academicYear, Semester semester) {
+        // First ensure professor root folder exists
+        Folder professorFolder = folderRepository.findProfessorRootFolder(
+                professor.getId(), academicYear.getId(), semester.getId(), FolderType.PROFESSOR_ROOT)
+                .orElseGet(() -> {
+                    // Create professor root folder
+                    String yearCode = academicYear.getYearCode();
+                    String semesterTypeName = semester.getType().name().toLowerCase();
+                    String professorFolderName = professor.getFirstName() + " " + professor.getLastName();
+                    String profPath = yearCode + "/" + semesterTypeName + "/" + professorFolderName;
+                    
+                    createPhysicalFolder(profPath);
+                    
+                    Folder profFolder = Folder.builder()
+                            .path(profPath)
+                            .name(professorFolderName)
+                            .type(FolderType.PROFESSOR_ROOT)
+                            .parent(null)
+                            .owner(professor)
+                            .academicYear(academicYear)
+                            .semester(semester)
+                            .course(null)
+                            .build();
+                    
+                    return folderRepository.save(profFolder);
+                });
+        
+        // Now create the course folder
+        String courseFolderName = course.getCourseCode() + " - " + course.getCourseName();
+        String courseFolderPath = professorFolder.getPath() + "/" + courseFolderName;
+        
+        createPhysicalFolder(courseFolderPath);
+        
+        Folder courseFolder = Folder.builder()
+                .path(courseFolderPath)
+                .name(courseFolderName)
+                .type(FolderType.COURSE)
+                .parent(professorFolder)
+                .owner(professor)
+                .academicYear(academicYear)
+                .semester(semester)
+                .course(course)
+                .build();
+        
+        return folderRepository.save(courseFolder);
+    }
+    
+    /**
+     * Validate and sanitize folder name according to validation rules.
+     * 
+     * @param folderName the folder name to validate
+     * @return sanitized folder name
+     * @throws InvalidFolderNameException if validation fails
+     */
+    private String validateAndSanitizeFolderName(String folderName) {
+        // Check for null or empty
+        if (folderName == null || folderName.trim().isEmpty()) {
+            throw InvalidFolderNameException.empty();
+        }
+        
+        // Trim whitespace
+        folderName = folderName.trim();
+        
+        // Check max length
+        if (folderName.length() > 128) {
+            throw InvalidFolderNameException.tooLong(folderName);
+        }
+        
+        // Check for invalid filesystem characters: / \ ? * : < > | "
+        if (folderName.matches(".*[/\\\\?*:<>|\"].*")) {
+            throw InvalidFolderNameException.invalidCharacters(folderName);
+        }
+        
+        // Check for reserved names (Windows)
+        String[] reservedNames = {"CON", "PRN", "AUX", "NUL", 
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"};
+        for (String reserved : reservedNames) {
+            if (folderName.equalsIgnoreCase(reserved)) {
+                throw new InvalidFolderNameException(folderName, "'" + reserved + "' is a reserved name");
+            }
+        }
+        
+        // Check for dots only or spaces only
+        if (folderName.matches("^[\\.\\s]+$")) {
+            throw new InvalidFolderNameException(folderName, "Folder name cannot consist of only dots or spaces");
+        }
+        
+        return folderName;
+    }
+    
+    /**
+     * Create physical folder on the filesystem.
+     * 
+     * @param folderPath the logical folder path
+     * @throws RuntimeException if folder creation fails
+     */
+    private void createPhysicalFolder(String folderPath) {
+        try {
+            // Construct physical path: uploads/{folderPath}
+            Path physicalPath = Paths.get(uploadBasePath, folderPath);
+            
+            // Create directory including all parent directories
+            Files.createDirectories(physicalPath);
+            
+            log.debug("Physical folder created at: {}", physicalPath.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("Failed to create physical folder at path: {}", folderPath, e);
+            throw new RuntimeException("Failed to create folder on filesystem: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -1290,6 +1763,8 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         private String professorId;
         private String courseCode;
         private String documentType;
+        private String customFolderName;  // For custom folders created by professors
+        private Long customFolderId;      // For custom folders identified by ID
         private NodeType type;
     }
 }

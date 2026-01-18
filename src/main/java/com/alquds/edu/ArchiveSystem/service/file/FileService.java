@@ -20,6 +20,18 @@ public interface FileService {
     // File Replacement
     void replaceFiles(Long submissionId, List<MultipartFile> files, String notes);
     
+    /**
+     * Replace a single file with a new version.
+     * The old file is deleted and replaced with the new one.
+     * 
+     * @param fileId the ID of the file to replace
+     * @param newFile the new file to upload
+     * @param notes optional notes for the new file
+     * @param userId the ID of the user performing the replacement
+     * @return the newly uploaded file
+     */
+    UploadedFile replaceFile(Long fileId, MultipartFile newFile, String notes, Long userId);
+    
     // File Retrieval
     UploadedFile getFile(Long fileId);
     

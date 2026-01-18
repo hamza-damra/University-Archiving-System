@@ -1,0 +1,102 @@
+{
+  "tech_stack": [
+    "Java",
+    "Spring Boot",
+    "MySQL",
+    "Vanilla JavaScript",
+    "Tailwind CSS",
+    "JWT",
+    "Spring Security"
+  ],
+  "features": [
+    {
+      "name": "HOD Dashboard Overview",
+      "description": "Dashboard showing statistics for professors, courses, submissions, missing, and overdue documents for a selected semester",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/hod/dashboard.html",
+        "src/main/resources/static/js/shared/hod.js"
+      ]
+    },
+    {
+      "name": "Academic Year Management",
+      "description": "Read-only access to academic years for semester selection",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/shared/hod.js",
+        "src/main/resources/static/js/shared/academic-years.js"
+      ]
+    },
+    {
+      "name": "Professor Management",
+      "description": "CRUD operations for professors within HOD's department",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/shared/hod.js",
+        "src/main/resources/static/js/shared/professors.js"
+      ]
+    },
+    {
+      "name": "Submission Status Tracking",
+      "description": "View submission status for professors with filtering by course, document type, and status",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/hod/dashboard.html",
+        "src/main/resources/static/js/shared/hod.js"
+      ]
+    },
+    {
+      "name": "Document Request Management",
+      "description": "Create, view, and delete document requests for professors in the department",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/shared/hod.js"
+      ]
+    },
+    {
+      "name": "Report Generation",
+      "description": "Generate and export professor submission reports as PDF with filtering options",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/shared/hod-reports.js",
+        "src/main/resources/static/hod/dashboard.html"
+      ]
+    },
+    {
+      "name": "File Explorer",
+      "description": "Browse and download files from department's archive with department-scoped access",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/file-explorer/file-explorer.js",
+        "src/main/resources/static/hod/dashboard.html"
+      ]
+    },
+    {
+      "name": "Notification System",
+      "description": "View and manage notifications for department submissions",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/core/notifications.js",
+        "src/main/resources/static/hod/dashboard.html"
+      ]
+    },
+    {
+      "name": "Authentication and Authorization",
+      "description": "JWT-based authentication with HOD role validation and department scoping",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/auth/auth-guard.js",
+        "src/main/resources/static/js/core/api.js"
+      ]
+    },
+    {
+      "name": "Semester-Based Operations",
+      "description": "All operations are scoped to specific academic year and semester",
+      "files": [
+        "src/main/java/com/alquds/edu/ArchiveSystem/controller/api/HodController.java",
+        "src/main/resources/static/js/shared/hod.js",
+        "src/main/resources/static/hod/dashboard.html"
+      ]
+    }
+  ]
+}

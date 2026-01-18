@@ -87,6 +87,7 @@ async function loadTasks() {
         }
 
         renderTasks(tasks);
+        renderProgressWidget(tasks);
 
         if (tasks.length === 0) {
             container.classList.add('hidden');
@@ -279,4 +280,134 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Render the progress widget professionally
+ */
+function renderProgressWidget(tasksList) {
+    const widget = document.getElementById('tasksProgressWidget');
+    if (!widget) return;
+
+    if (!tasksList || tasksList.length === 0) {
+        widget.classList.add('hidden');
+        return;
+    }
+
+    widget.classList.remove('hidden');
+
+    // Calculate stats
+    const totalTasks = tasksList.length;
+    const completedTasks = tasksList.filter(t => t.status === 'COMPLETED').length;
+    const inProgressTasks = tasksList.filter(t => t.status === 'IN_PROGRESS').length;
+    const pendingTasks = tasksList.filter(t => t.status === 'PENDING').length;
+    const overdueTasks = tasksList.filter(t => t.status === 'OVERDUE').length; // Assuming OVERDUE is a status
+
+    // Calculate weighted progress
+    let totalWeight = 0;
+    let weightedProgressSum = 0;
+
+    tasksList.forEach(task => {
+        const weight = task.weightPercentage || 0;
+        const progress = task.progressPercentage || 0;
+        totalWeight += weight;
+        weightedProgressSum += (progress * weight);
+    });
+
+    // If total weight is 0 (or very small), use simple average
+    let overallProgress = 0;
+    if (totalWeight > 0) {
+        overallProgress = Math.round(weightedProgressSum / Math.max(totalWeight, 100)); // Normalize to 100% max weight
+    } else {
+        // Fallback to simple average of progress
+        const totalProgressSum = tasksList.reduce((acc, t) => acc + (t.progressPercentage || 0), 0);
+        overallProgress = Math.round(totalProgressSum / totalTasks);
+    }
+    
+    // Cap at 100
+    overallProgress = Math.min(100, overallProgress);
+
+    // Color for the circular progress based on value
+    let progressColor = 'blue';
+    if (overallProgress >= 100) progressColor = 'emerald';
+    else if (overallProgress >= 75) progressColor = 'blue';
+    else if (overallProgress >= 40) progressColor = 'indigo';
+    else progressColor = 'amber';
+
+    const circumference = 2 * Math.PI * 36; // r=36
+    const dashOffset = circumference - (overallProgress / 100) * circumference;
+
+    widget.innerHTML = `
+        <div class="flex flex-col md:flex-row items-center justify-between gap-8">
+            <!-- Left: Circular Progress -->
+            <div class="flex items-center gap-6 md:border-r md:border-gray-200 dark:md:border-gray-700 md:pr-8 md:mr-4 min-w-[280px]">
+                <div class="relative w-24 h-24 flex-shrink-0">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                        <!-- Background Circle -->
+                        <circle cx="40" cy="40" r="36" fill="transparent" stroke="currentColor" stroke-width="8" class="text-gray-100 dark:text-gray-700"></circle>
+                        <!-- Progress Circle -->
+                        <circle cx="40" cy="40" r="36" fill="transparent" stroke="currentColor" stroke-width="8" 
+                            stroke-dasharray="${circumference}" stroke-dashoffset="${dashOffset}" 
+                            stroke-linecap="round"
+                            class="text-${progressColor}-600 transition-all duration-1000 ease-out"></circle>
+                    </svg>
+                    <div class="absolute inset-0 flex items-center justify-center flex-col">
+                        <span class="text-xl font-bold text-gray-900 dark:text-white">${overallProgress}%</span>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Semester Progress</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Based on task weights</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                            ${totalTasks} Tasks Total
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Detailed Stats Grid -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 transition-colors">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">In Progress</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white pl-1">${inProgressTasks}</div>
+                </div>
+
+                <div class="bg-emerald-50 dark:bg-emerald-900/10 p-4 rounded-lg border border-emerald-100 dark:border-emerald-800/30 hover:border-emerald-200 dark:hover:border-emerald-700 transition-colors">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="p-2 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Completed</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white pl-1">${completedTasks}</div>
+                </div>
+
+                <div class="bg-gray-50 dark:bg-gray-700/30 p-4 rounded-lg border border-gray-100 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 transition-colors">
+                    <div class="flex items-center gap-3 mb-2">
+                         <div class="p-2 bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-300 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Pending</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white pl-1">${pendingTasks}</div>
+                </div>
+
+                <div class="bg-red-50 dark:bg-red-900/10 p-4 rounded-lg border border-red-100 dark:border-red-800/30 hover:border-red-200 dark:hover:border-red-700 transition-colors">
+                    <div class="flex items-center gap-3 mb-2">
+                         <div class="p-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                        </div>
+                        <span class="text-sm font-medium text-gray-600 dark:text-gray-400">Overdue</span>
+                    </div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white pl-1">${overdueTasks}</div>
+                </div>
+            </div>
+        </div>
+    `;
 }

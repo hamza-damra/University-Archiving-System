@@ -390,6 +390,7 @@ export async function apiRequest(endpoint, options = {}, retryOnExpire = true) {
             // Handle general errors - check all possible message locations
             const errorMessage = responseData.error?.message || responseData.message || responseData.error || `Request failed with status ${response.status}`;
             const error = new Error(errorMessage);
+            error.status = response.status; // Include status code for error handling
             if (responseData.error?.code) {
                 error.code = responseData.error.code;
             }
@@ -1079,6 +1080,20 @@ export const fileExplorer = {
         }),
     
     /**
+     * Delete a folder and all its contents (files and subfolders).
+     * Only professors can delete folders within their own namespace.
+     * This operation also deletes all physical files and folders from the uploads directory.
+     * 
+     * @param {string} folderPath - The full path of the folder to delete
+     * @returns {Promise<Object>} The delete response with statistics
+     */
+    deleteFolder: (folderPath) =>
+        apiRequest('/file-explorer/folder', {
+            method: 'DELETE',
+            body: JSON.stringify({ folderPath }),
+        }),
+    
+    /**
      * Delete a file from the file explorer.
      * Only professors can delete their own files.
      * 
@@ -1101,6 +1116,165 @@ export const fileExplorer = {
      */
     replaceFile: (fileId, formData, onProgress) =>
         uploadFile(`/file-explorer/files/${fileId}/replace`, formData, onProgress),
+    
+    // ==================== New Filesystem-Based API Endpoints ====================
+    
+    /**
+     * List directory contents from filesystem.
+     * This is the primary endpoint for browsing the file system.
+     * Supports pagination, sorting, and ETag caching.
+     * 
+     * @param {string} path - Relative path from uploads root (empty for root)
+     * @param {Object} options - Query options
+     * @param {number} [options.page=1] - Page number (1-indexed)
+     * @param {number} [options.pageSize=50] - Items per page
+     * @param {string} [options.sortBy='name'] - Sort field: 'name', 'modifiedAt', 'size'
+     * @param {string} [options.sortOrder='asc'] - Sort order: 'asc' or 'desc'
+     * @param {string} [options.etag] - ETag from previous request for 304 handling
+     * @returns {Promise<Object>} DirectoryListingDTO with folders and files
+     */
+    listDirectory: async (path = '', options = {}) => {
+        const {
+            page = 1,
+            pageSize = 50,
+            sortBy = 'name',
+            sortOrder = 'asc',
+            etag = null
+        } = options;
+        
+        const params = new URLSearchParams({
+            path: path,
+            page: page.toString(),
+            pageSize: pageSize.toString(),
+            sortBy: sortBy,
+            sortOrder: sortOrder
+        });
+        
+        const headers = {};
+        if (etag) {
+            headers['If-None-Match'] = etag;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/file-explorer/list?${params}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    ...headers
+                }
+            });
+            
+            // Handle 304 Not Modified
+            if (response.status === 304) {
+                return { notModified: true, etag: etag };
+            }
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error?.message || data.message || 'Failed to list directory');
+            }
+            
+            // Extract new ETag from response
+            const newEtag = response.headers.get('ETag');
+            
+            return {
+                notModified: false,
+                etag: newEtag,
+                data: data.data || data
+            };
+        } catch (error) {
+            console.error('Error listing directory:', error);
+            throw error;
+        }
+    },
+    
+    /**
+     * Get directory tree with lazy loading support.
+     * 
+     * @param {string} path - Relative path from uploads root
+     * @param {number} [depth=1] - Levels to load (1-3)
+     * @param {string} [etag] - ETag from previous request
+     * @returns {Promise<Object>} DirectoryTreeDTO with children
+     */
+    getDirectoryTree: async (path = '', depth = 1, etag = null) => {
+        const params = new URLSearchParams({
+            path: path,
+            depth: depth.toString()
+        });
+        
+        const headers = {};
+        if (etag) {
+            headers['If-None-Match'] = etag;
+        }
+        
+        try {
+            const response = await fetch(`${API_BASE_URL}/file-explorer/tree?${params}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${getToken()}`,
+                    ...headers
+                }
+            });
+            
+            if (response.status === 304) {
+                return { notModified: true, etag: etag };
+            }
+            
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(data.error?.message || data.message || 'Failed to get directory tree');
+            }
+            
+            const newEtag = response.headers.get('ETag');
+            
+            return {
+                notModified: false,
+                etag: newEtag,
+                data: data.data || data
+            };
+        } catch (error) {
+            console.error('Error getting directory tree:', error);
+            throw error;
+        }
+    },
+    
+    /**
+     * Check if a path exists on the filesystem.
+     * 
+     * @param {string} path - Relative path to check
+     * @returns {Promise<boolean>} True if path exists
+     */
+    checkPathExists: (path) =>
+        apiRequest(`/file-explorer/exists?path=${encodeURIComponent(path)}`, {
+            method: 'GET',
+        }),
+    
+    /**
+     * Refresh cache for a directory path.
+     * Call after write operations if automatic refresh isn't sufficient.
+     * 
+     * @param {string} path - Relative path to refresh
+     * @param {boolean} [recursive=true] - Whether to invalidate parent caches
+     * @returns {Promise<void>}
+     */
+    refreshCache: (path = '', recursive = true) =>
+        apiRequest(`/file-explorer/refresh-cache?path=${encodeURIComponent(path)}&recursive=${recursive}`, {
+            method: 'POST',
+        }),
+    
+    /**
+     * Get current ETag for a directory.
+     * Useful for checking if a refresh is needed.
+     * 
+     * @param {string} path - Relative path
+     * @returns {Promise<string>} Current ETag
+     */
+    getDirectoryETag: (path = '') =>
+        apiRequest(`/file-explorer/etag?path=${encodeURIComponent(path)}`, {
+            method: 'GET',
+        }),
 };
 
 export default {

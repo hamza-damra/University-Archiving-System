@@ -13,8 +13,10 @@ import com.alquds.edu.ArchiveSystem.entity.academic.Course;
 import com.alquds.edu.ArchiveSystem.entity.academic.Semester;
 import com.alquds.edu.ArchiveSystem.entity.file.UploadedFile;
 import com.alquds.edu.ArchiveSystem.entity.file.Folder;
+import com.alquds.edu.ArchiveSystem.entity.file.FolderType;
 import com.alquds.edu.ArchiveSystem.repository.submission.RequiredDocumentTypeRepository;
 import com.alquds.edu.ArchiveSystem.repository.file.UploadedFileRepository;
+import com.alquds.edu.ArchiveSystem.repository.file.FolderRepository;
 import com.alquds.edu.ArchiveSystem.exception.core.EntityNotFoundException;
 import com.alquds.edu.ArchiveSystem.entity.submission.RequiredDocumentType;
 import com.alquds.edu.ArchiveSystem.entity.submission.SubmissionStatus;
@@ -53,6 +55,7 @@ public class FileServiceImpl implements FileService {
     private final UploadedFileRepository uploadedFileRepository;
     private final UserRepository userRepository;
     private final RequiredDocumentTypeRepository requiredDocumentTypeRepository;
+    private final FolderRepository folderRepository;
 
     @Value("${file.upload.directory:uploads/}")
     private String uploadDirectory;
@@ -514,13 +517,16 @@ public class FileServiceImpl implements FileService {
         // {year}/{semester}/{professorId}/{courseCode}/{documentType}/{filename}
         String sanitizedFilename = sanitizeFilename(filename);
         String uniqueFilename = generateUniqueFilename(sanitizedFilename);
+        
+        // Use the formatted folder name to match standard subfolder names
+        String folderName = formatDocumentTypeForFolder(documentType);
 
         return String.format("%s/%s/%s/%s/%s/%s",
                 yearCode,
                 semesterType.toLowerCase(),
                 professorId,
                 courseCode,
-                documentType.name().toLowerCase(),
+                folderName,
                 uniqueFilename);
     }
 
@@ -612,19 +618,28 @@ public class FileServiceImpl implements FileService {
 
             // Save physical file
             savePhysicalFile(file, filePath);
+            
+            // Find the document type subfolder to link the file properly
+            // This ensures files appear in the File Explorer
+            Folder documentTypeFolder = findOrCreateDocumentTypeFolder(
+                    professor, course, academicYear, semester, submission.getDocumentType());
 
             // Create database record
             UploadedFile uploadedFile = new UploadedFile();
             uploadedFile.setDocumentSubmission(submission);
             uploadedFile.setFileUrl(filePath);
             uploadedFile.setOriginalFilename(file.getOriginalFilename());
+            uploadedFile.setStoredFilename(sanitizeFilenameForStorage(file.getOriginalFilename()));
             uploadedFile.setFileSize(file.getSize());
             uploadedFile.setFileType(file.getContentType());
             uploadedFile.setFileOrder(order);
             uploadedFile.setUploader(uploader); // Set the uploader for permission checking
+            uploadedFile.setFolder(documentTypeFolder); // Link to folder for File Explorer visibility
 
             uploadedFile = uploadedFileRepository.save(uploadedFile);
-            log.debug("Saved file: {} with ID: {}", file.getOriginalFilename(), uploadedFile.getId());
+            log.debug("Saved file: {} with ID: {} linked to folder ID: {}", 
+                    file.getOriginalFilename(), uploadedFile.getId(), 
+                    documentTypeFolder != null ? documentTypeFolder.getId() : "null");
 
             return uploadedFile;
 
@@ -645,6 +660,110 @@ public class FileServiceImpl implements FileService {
         Files.copy(file.getInputStream(), fullPath, StandardCopyOption.REPLACE_EXISTING);
 
         log.debug("Saved physical file to: {}", fullPath);
+    }
+    
+    /**
+     * Find or create the document type folder for linking uploaded files.
+     * This ensures files appear in the File Explorer by having a proper folder linkage.
+     * 
+     * @param professor the professor who owns the folder
+     * @param course the course
+     * @param academicYear the academic year
+     * @param semester the semester
+     * @param documentType the document type
+     * @return the folder entity, or null if not found/created
+     */
+    private Folder findOrCreateDocumentTypeFolder(User professor, Course course, 
+            AcademicYear academicYear, Semester semester, DocumentTypeEnum documentType) {
+        try {
+            // First, find the course folder
+            java.util.Optional<Folder> courseFolderOpt = folderRepository.findCourseFolder(
+                    professor.getId(), course.getId(), academicYear.getId(), semester.getId(), FolderType.COURSE);
+            
+            if (!courseFolderOpt.isPresent()) {
+                log.warn("Course folder not found for professor {} and course {}", 
+                        professor.getEmail(), course.getCourseCode());
+                return null;
+            }
+            
+            Folder courseFolder = courseFolderOpt.get();
+            
+            // Get the display name for this document type
+            String folderName = formatDocumentTypeForFolder(documentType);
+            
+            // Find the subfolder for this document type
+            java.util.List<Folder> subfolders = folderRepository.findByParentId(courseFolder.getId());
+            java.util.Optional<Folder> documentTypeFolderOpt = subfolders.stream()
+                    .filter(f -> f.getName().equalsIgnoreCase(folderName))
+                    .findFirst();
+            
+            if (documentTypeFolderOpt.isPresent()) {
+                return documentTypeFolderOpt.get();
+            }
+            
+            // If not found, create the subfolder
+            log.info("Creating document type folder: {} under course folder ID: {}", folderName, courseFolder.getId());
+            
+            String professorFolderName = generateProfessorFolderName(professor);
+            String folderPath = academicYear.getYearCode() + "/" + semester.getType().name().toLowerCase() + 
+                    "/" + professorFolderName + "/" + course.getCourseCode() + "/" + folderName;
+            
+            Folder newFolder = new Folder();
+            newFolder.setName(folderName);
+            newFolder.setPath(folderPath);
+            newFolder.setType(FolderType.SUBFOLDER);
+            newFolder.setOwner(professor);
+            newFolder.setCourse(course);
+            newFolder.setAcademicYear(academicYear);
+            newFolder.setSemester(semester);
+            newFolder.setParent(courseFolder);
+            
+            // Create physical directory
+            Path physicalPath = Paths.get(uploadDirectory, folderPath);
+            Files.createDirectories(physicalPath);
+            
+            newFolder = folderRepository.save(newFolder);
+            log.info("Created document type folder with ID: {}", newFolder.getId());
+            
+            return newFolder;
+            
+        } catch (Exception e) {
+            log.error("Error finding/creating document type folder: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+    
+    /**
+     * Format document type enum to display name for folder
+     */
+    private String formatDocumentTypeForFolder(DocumentTypeEnum type) {
+        switch (type) {
+            case SYLLABUS:
+                return "Syllabus";
+            case EXAM:
+                return "Exams";
+            case ASSIGNMENT:
+                return "Assignments";
+            case PROJECT_DOCS:
+                return "Project Documents";
+            case LECTURE_NOTES:
+                return "Course Notes";
+            case OTHER:
+                return "Other";
+            default:
+                return type.name();
+        }
+    }
+    
+    /**
+     * Sanitize filename for storage (more permissive than sanitizeFilename)
+     */
+    private String sanitizeFilenameForStorage(String filename) {
+        if (filename == null || filename.isEmpty()) {
+            return "file";
+        }
+        // Keep most characters, just replace dangerous ones
+        return filename.replaceAll("[<>:\"/\\\\|?*]", "_");
     }
 
     private void deletePhysicalFile(String relativePath) {

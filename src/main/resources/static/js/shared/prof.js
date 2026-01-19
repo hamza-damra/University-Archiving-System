@@ -869,6 +869,9 @@ function isOverdue(dateStringOrDate) {
 window.openFileExplorerUploadModal = function() {
     console.log('=== OPEN FILE EXPLORER UPLOAD MODAL CALLED ===');
     console.log('Timestamp:', new Date().toISOString());
+
+    // Clear any explicit upload target from previous file explorer events
+    window.fileExplorerUploadTarget = { folderId: null, path: null };
     
     // Get current node from FileExplorerState
     console.log('Getting current node from FileExplorerState...');
@@ -1038,30 +1041,36 @@ window.handleUpload = async function() {
     console.log('Getting current node from FileExplorerState...');
     const currentNode = fileExplorerState.getCurrentNode();
     console.log('Current node:', currentNode);
+
+    // Prefer explicit upload target if provided by file explorer event
+    const uploadTarget = window.fileExplorerUploadTarget || {};
+    const folderId = uploadTarget.folderId
+        || currentNode?.id
+        || currentNode?.entityId
+        || currentNode?.metadata?.folderId;
+    const folderPath = uploadTarget.path || currentNode?.path;
     
-    // Validate current node exists
-    if (!currentNode) {
-        console.error('Validation failed: No current node');
+    // Validate we have a target (either explicit or current node)
+    if (!currentNode && !folderId && !folderPath) {
+        console.error('Validation failed: No current node and no upload target');
         showError('No folder selected. Please select a folder first.');
         return;
     }
-    console.log('✓ Current node exists');
-    
-    // Get folder ID or path from current node
-    const folderId = currentNode.id || currentNode.entityId;
-    const folderPath = currentNode.path;
+    if (currentNode) {
+        console.log('✓ Current node exists');
+    }
     
     // Validate we have either folderId or folderPath
     if (!folderId && !folderPath) {
-        console.error('Validation failed: Current node has no ID, entityId, or path');
+        console.error('Validation failed: No folderId or folderPath available');
         showError('Invalid folder selected. Please try again.');
         return;
     }
     
     if (folderId) {
-        console.log('✓ Current node has ID:', folderId);
+        console.log('✓ Upload target has ID:', folderId);
     } else {
-        console.log('✓ Current node has path (will auto-create folder):', folderPath);
+        console.log('✓ Upload target has path (will auto-create folder):', folderPath);
     }
     
     // Get selected files from file input
@@ -2212,8 +2221,8 @@ window.downloadFileFromExplorer = async (fileId, fallbackName) => {
   * or drops files on a writable folder
  */
 window.addEventListener('fileExplorerUpload', (e) => {
-    const { path, documentType, files } = e.detail;
-    showFileExplorerUploadModal(path, documentType, files);
+    const { path, documentType, files, folderId } = e.detail;
+    showFileExplorerUploadModal(path, documentType, files, folderId);
 });
 
 /**
@@ -2224,11 +2233,17 @@ window.addEventListener('fileExplorerUpload', (e) => {
  * @param {string} documentType - The document type
  * @param {FileList} preselectedFiles - Optional files from drag-drop
  */
-function showFileExplorerUploadModal(path, documentType, preselectedFiles = null) {
+function showFileExplorerUploadModal(path, documentType, preselectedFiles = null, explicitFolderId = null) {
     const formattedType = formatDocumentTypeName(documentType);
     
     // Store selected files in closure scope
     let selectedFiles = null;
+
+    // Store upload target so handleUpload can use it
+    window.fileExplorerUploadTarget = {
+        folderId: explicitFolderId || null,
+        path: path || null
+    };
 
     const modalHtml = `
         <div>

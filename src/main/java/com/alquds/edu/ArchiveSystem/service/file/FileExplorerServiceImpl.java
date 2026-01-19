@@ -25,6 +25,8 @@ import com.alquds.edu.ArchiveSystem.entity.file.Folder;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.BreadcrumbItem;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderRequest;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderResponse;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.DeleteFolderRequest;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.DeleteFolderResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.NodeType;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.UploadedFileDTO;
@@ -43,6 +45,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -62,6 +66,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     private final UploadedFileRepository uploadedFileRepository;
     private final FolderRepository folderRepository;
     private final FileAccessService fileAccessService;
+    private final com.alquds.edu.ArchiveSystem.util.SafePathResolver safePathResolver;
     
     @Value("${app.upload.base-path:uploads/}")
     private String uploadBasePath;
@@ -395,7 +400,11 @@ public class FileExplorerServiceImpl implements FileExplorerService {
      * Get children of a custom folder (only sub-folders, not files).
      * Files are included separately in the node.files property via buildCustomFolderNode().
      * This prevents duplicate file display in the frontend.
+     * 
+     * Also scans the filesystem for physical folders that don't have DB records
+     * and creates DB records for them automatically.
      */
+    @Transactional
     private List<FileExplorerNode> getCustomFolderChildren(PathInfo pathInfo, User currentUser) {
         // Find professor
         User professor = findProfessorByIdentifier(pathInfo.getProfessorId());
@@ -444,12 +453,26 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             }
         }
         
+        Folder customFolder;
         if (!customFolderOpt.isPresent()) {
-            log.warn("Custom folder not found: {} (ID: {})", pathInfo.getCustomFolderName(), pathInfo.getCustomFolderId());
-            return new ArrayList<>();
+            // Check if folder exists physically but not in DB
+            String expectedPath = pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
+                    "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
+                    "/" + pathInfo.getCustomFolderName();
+            
+            Path physicalPath = Paths.get(uploadBasePath, expectedPath);
+            if (Files.exists(physicalPath) && Files.isDirectory(physicalPath)) {
+                // Physical folder exists but no DB record - create it
+                log.info("Physical folder found without DB record, creating: {}", expectedPath);
+                customFolder = createFolderRecordForPhysicalFolder(
+                        expectedPath, pathInfo.getCustomFolderName(), professor, course, academicYear, semester);
+            } else {
+                log.warn("Custom folder not found: {} (ID: {})", pathInfo.getCustomFolderName(), pathInfo.getCustomFolderId());
+                return new ArrayList<>();
+            }
+        } else {
+            customFolder = customFolderOpt.get();
         }
-        
-        Folder customFolder = customFolderOpt.get();
         
         // Use ID-based path for consistency
         String parentPath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
@@ -458,8 +481,42 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         
         boolean isOwnFolder = professor.getId().equals(currentUser.getId());
         
-        // Get only sub-folders (not files) - files are already in node.files
+        // Get sub-folders from database
         List<Folder> childFolders = folderRepository.findByParentId(customFolder.getId());
+        
+        // Scan filesystem for physical folders that don't have DB records
+        String customFolderPath = customFolder.getPath();
+        Path physicalCustomFolderPath = Paths.get(uploadBasePath, customFolderPath);
+        
+        Set<String> dbFolderNames = childFolders.stream()
+                .map(Folder::getName)
+                .collect(Collectors.toSet());
+        
+        if (Files.exists(physicalCustomFolderPath) && Files.isDirectory(physicalCustomFolderPath)) {
+            try (var folderStream = Files.list(physicalCustomFolderPath)) {
+                List<Path> directories = folderStream
+                        .filter(Files::isDirectory)
+                        .collect(Collectors.toList());
+                
+                for (Path entry : directories) {
+                    String folderName = entry.getFileName().toString();
+                    
+                    // Skip if already in database
+                    if (!dbFolderNames.contains(folderName)) {
+                        // Physical folder exists but no DB record - create it
+                        log.info("Physical subfolder found without DB record, creating: {}/{}", customFolderPath, folderName);
+                        String subfolderPath = customFolderPath + "/" + folderName;
+                        createFolderRecordForPhysicalFolder(
+                                subfolderPath, folderName, professor, course, academicYear, semester, customFolder);
+                    }
+                }
+                
+                // Refresh the list after creating new records
+                childFolders = folderRepository.findByParentId(customFolder.getId());
+            } catch (IOException e) {
+                log.warn("Error scanning physical folder for subfolders: {}", customFolderPath, e);
+            }
+        }
         
         return childFolders.stream()
                 .map(childFolder -> {
@@ -484,6 +541,53 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                     return node;
                 })
                 .collect(Collectors.toList());
+    }
+    
+    /**
+     * Create a database record for a physical folder that exists on disk but not in DB.
+     * This handles the case when an admin adds folders directly to the filesystem.
+     */
+    @Transactional
+    private Folder createFolderRecordForPhysicalFolder(
+            String folderPath, String folderName, User professor, Course course,
+            AcademicYear academicYear, Semester semester) {
+        return createFolderRecordForPhysicalFolder(folderPath, folderName, professor, course, academicYear, semester, null);
+    }
+    
+    /**
+     * Create a database record for a physical folder that exists on disk but not in DB.
+     * This handles the case when an admin adds folders directly to the filesystem.
+     */
+    @Transactional
+    private Folder createFolderRecordForPhysicalFolder(
+            String folderPath, String folderName, User professor, Course course,
+            AcademicYear academicYear, Semester semester, Folder parentFolder) {
+        
+        // Find parent folder if not provided
+        if (parentFolder == null) {
+            // Extract parent path
+            int lastSlash = folderPath.lastIndexOf('/');
+            if (lastSlash > 0) {
+                String parentPath = folderPath.substring(0, lastSlash);
+                parentFolder = folderRepository.findByPath(parentPath).orElse(null);
+            }
+        }
+        
+        Folder folder = Folder.builder()
+                .path(folderPath)
+                .name(folderName)
+                .type(FolderType.CUSTOM)
+                .parent(parentFolder)
+                .owner(professor)
+                .academicYear(academicYear)
+                .semester(semester)
+                .course(course)
+                .build();
+        
+        folder = folderRepository.save(folder);
+        log.info("Created DB record for physical folder: {} (ID: {})", folderPath, folder.getId());
+        
+        return folder;
     }
 
     /**
@@ -823,11 +927,25 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             }
         }
         
+        Folder customFolder;
         if (!customFolderOpt.isPresent()) {
-            throw new EntityNotFoundException("Custom folder not found: " + pathInfo.getCustomFolderName());
+            // Check if folder exists physically but not in DB
+            String expectedPath = pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
+                    "/" + pathInfo.getProfessorId() + "/" + pathInfo.getCourseCode() +
+                    "/" + pathInfo.getCustomFolderName();
+            
+            Path physicalPath = Paths.get(uploadBasePath, expectedPath);
+            if (Files.exists(physicalPath) && Files.isDirectory(physicalPath)) {
+                // Physical folder exists but no DB record - create it
+                log.info("Physical folder found without DB record in buildCustomFolderNode, creating: {}", expectedPath);
+                customFolder = createFolderRecordForPhysicalFolder(
+                        expectedPath, pathInfo.getCustomFolderName(), professor, course, academicYear, semester);
+            } else {
+                throw new EntityNotFoundException("Custom folder not found: " + pathInfo.getCustomFolderName());
+            }
+        } else {
+            customFolder = customFolderOpt.get();
         }
-        
-        Folder customFolder = customFolderOpt.get();
         
         // Use the ID-based path format for consistency
         String nodePath = "/" + pathInfo.getYearCode() + "/" + pathInfo.getSemesterType() +
@@ -851,12 +969,73 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         node.getMetadata().put("isOwnFolder", isOwnFolder);
         node.getMetadata().put("isCustomFolder", true);
         
-        // Get files in this custom folder
-        List<UploadedFile> files = uploadedFileRepository.findByFolderIdWithUploader(customFolder.getId());
+        // Get files in this custom folder from database
+        List<UploadedFile> dbFiles = uploadedFileRepository.findByFolderIdWithUploader(customFolder.getId());
         final User finalUser = currentUser;
-        List<UploadedFileDTO> fileDTOs = files.stream()
+        List<UploadedFileDTO> fileDTOs = dbFiles.stream()
                 .map(f -> convertToUploadedFileDTO(f, finalUser))
                 .collect(Collectors.toList());
+        
+        // Also scan filesystem for physical files that don't have DB records
+        String customFolderPath = customFolder.getPath();
+        Path physicalCustomFolderPath = Paths.get(uploadBasePath, customFolderPath);
+        
+        Set<String> dbFilePaths = dbFiles.stream()
+                .map(UploadedFile::getFileUrl)
+                .filter(url -> url != null)
+                .collect(Collectors.toSet());
+        
+        if (Files.exists(physicalCustomFolderPath) && Files.isDirectory(physicalCustomFolderPath)) {
+            try (var fileStream = Files.list(physicalCustomFolderPath)) {
+                fileStream.forEach(entry -> {
+                    if (Files.isRegularFile(entry)) {
+                        String relativePath = customFolderPath + "/" + entry.getFileName().toString();
+                        
+                        // Skip if already in database
+                        if (!dbFilePaths.contains(relativePath)) {
+                            // Physical file exists but no DB record - create a basic DTO for it
+                            try {
+                                long fileSize = Files.size(entry);
+                                java.nio.file.attribute.FileTime fileTime = Files.getLastModifiedTime(entry);
+                                LocalDateTime modifiedAt = LocalDateTime.ofInstant(
+                                        fileTime.toInstant(), ZoneId.systemDefault());
+                                
+                                String fileName = entry.getFileName().toString();
+                                String fileType = determineMimeTypeFromFileName(fileName);
+                                
+                                // Give full permissions to folder owner (professor)
+                                boolean hasFullAccess = isOwnFolder && currentUser.getRole() == Role.ROLE_PROFESSOR;
+                                
+                                UploadedFileDTO orphanedFile = UploadedFileDTO.builder()
+                                        .id(null) // No DB ID
+                                        .originalFilename(fileName)
+                                        .storedFilename(fileName)
+                                        .fileUrl(relativePath)
+                                        .fileSize(fileSize)
+                                        .fileType(fileType)
+                                        .createdAt(modifiedAt)
+                                        .updatedAt(modifiedAt)
+                                        .uploaderName(hasFullAccess ? currentUser.getFirstName() + " " + currentUser.getLastName() : null)
+                                        .uploaderId(hasFullAccess ? currentUser.getId() : null)
+                                        .notes("File added directly to filesystem")
+                                        .orphaned(true) // Mark as orphaned
+                                        .canDelete(hasFullAccess)
+                                        .canReplace(hasFullAccess)
+                                        .build();
+                                
+                                fileDTOs.add(orphanedFile);
+                                log.debug("Found orphaned file: {}", relativePath);
+                            } catch (IOException e) {
+                                log.warn("Error reading file attributes: {}", entry, e);
+                            }
+                        }
+                    }
+                });
+            } catch (IOException e) {
+                log.warn("Error scanning physical folder for files: {}", customFolderPath, e);
+            }
+        }
+        
         node.setFiles(fileDTOs);
         
         return node;
@@ -995,7 +1174,20 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         List<DocumentSubmission> submissions = documentSubmissionRepository
                 .findByCourseAssignmentId(assignment.getId());
 
-        return subfolders.stream()
+        // Filter out custom folders that don't exist on disk anymore
+        // and clean up their database records
+        List<Folder> validSubfolders = subfolders.stream()
+                .filter(subfolder -> {
+                    // Always keep non-custom folders (system folders)
+                    if (subfolder.getType() != FolderType.CUSTOM) {
+                        return true;
+                    }
+                    // For custom folders, check if they exist on disk
+                    return folderExistsOnDisk(subfolder);
+                })
+                .collect(Collectors.toList());
+
+        return validSubfolders.stream()
                 .map(subfolder -> {
                     // Check if this is a custom folder (created by professor)
                     boolean isCustomFolder = subfolder.getType() == FolderType.CUSTOM;
@@ -1092,20 +1284,22 @@ public class FileExplorerServiceImpl implements FileExplorerService {
     }
 
     /**
-     * Format document type for display
+     * Format document type for display.
+     * IMPORTANT: These must match the standard subfolder names created by FolderServiceImpl.
+     * Standard folders: "Syllabus", "Exams", "Course Notes", "Assignments"
      */
     private String formatDocumentType(DocumentTypeEnum type) {
         switch (type) {
             case SYLLABUS:
                 return "Syllabus";
             case EXAM:
-                return "Exam";
+                return "Exams";
             case ASSIGNMENT:
-                return "Assignment";
+                return "Assignments";
             case PROJECT_DOCS:
                 return "Project Documents";
             case LECTURE_NOTES:
-                return "Lecture Notes";
+                return "Course Notes";
             case OTHER:
                 return "Other";
             default:
@@ -1496,8 +1690,11 @@ public class FileExplorerServiceImpl implements FileExplorerService {
                 .fileSize(file.getFileSize())
                 .fileType(file.getFileType())
                 .uploadedAt(file.getCreatedAt())
+                .createdAt(file.getCreatedAt())
+                .updatedAt(file.getUpdatedAt())
                 .notes(file.getNotes())
-                .fileUrl(file.getFileUrl());
+                .fileUrl(file.getFileUrl())
+                .orphaned(false); // Files in DB are not orphaned
 
         // Add uploader info if available
         if (file.getUploader() != null) {
@@ -1750,6 +1947,274 @@ public class FileExplorerServiceImpl implements FileExplorerService {
             log.error("Failed to create physical folder at path: {}", folderPath, e);
             throw new RuntimeException("Failed to create folder on filesystem: " + e.getMessage(), e);
         }
+    }
+    
+    /**
+     * Delete a folder and all its contents (files and subfolders).
+     * This method also deletes all physical files and folders from the uploads directory.
+     * 
+     * @param request the folder deletion request
+     * @param currentUser the authenticated user
+     * @return response containing deletion statistics
+     */
+    @Override
+    @Transactional
+    public DeleteFolderResponse deleteFolder(DeleteFolderRequest request, User currentUser) {
+        log.info("Deleting folder at path '{}' for user {}", 
+                request.getFolderPath(), currentUser.getEmail());
+        
+        // 1. Validate user role - only professors can delete folders
+        if (currentUser.getRole() != Role.ROLE_PROFESSOR) {
+            log.warn("User {} with role {} attempted to delete folder - access denied", 
+                    currentUser.getEmail(), currentUser.getRole());
+            throw new UnauthorizedOperationException("Only professors can delete folders");
+        }
+        
+        // 2. Normalize path - remove leading/trailing slashes
+        String rawPath = request.getFolderPath();
+        if (rawPath == null || rawPath.isEmpty()) {
+            throw new EntityNotFoundException("Folder path cannot be empty");
+        }
+        final String folderPath = rawPath.replaceAll("^/+|/+$", "");
+        
+        // 3. Check write permission for the path
+        if (!canWrite("/" + folderPath, currentUser)) {
+            log.warn("User {} does not have write permission for path: {}", 
+                    currentUser.getEmail(), folderPath);
+            throw new UnauthorizedOperationException(
+                "You do not have permission to delete this folder");
+        }
+        
+        // 4. Find the folder in the database
+        // Handle ID-based path format (custom-{id})
+        Folder folder = null;
+        
+        // Parse the path to check if it's an ID-based custom folder
+        PathInfo pathInfo = parsePath("/" + folderPath);
+        log.debug("Parsed path - Type: {}, CustomFolderId: {}, Path: {}", 
+                pathInfo.getType(), pathInfo.getCustomFolderId(), folderPath);
+        
+        if (pathInfo.getType() == NodeType.CUSTOM && pathInfo.getCustomFolderId() != null) {
+            // ID-based lookup
+            log.debug("Looking up folder by ID: {}", pathInfo.getCustomFolderId());
+            folder = folderRepository.findById(pathInfo.getCustomFolderId())
+                    .orElseThrow(() -> new EntityNotFoundException("Folder not found with ID: " + pathInfo.getCustomFolderId()));
+        } else {
+            // Name-based lookup (legacy)
+            log.debug("Looking up folder by path: {}", folderPath);
+            folder = folderRepository.findByPath(folderPath)
+                    .orElseThrow(() -> new EntityNotFoundException("Folder not found: " + folderPath));
+        }
+        
+        // 5. Verify the professor owns this folder
+        if (!folder.getOwner().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedOperationException(
+                "You can only delete folders in your own directory");
+        }
+        
+        // 6. Validate that this is a CUSTOM folder (not a system folder like COURSE, PROFESSOR_ROOT, etc.)
+        if (folder.getType() != FolderType.CUSTOM) {
+            log.warn("Attempted to delete non-custom folder: {} of type {}", folderPath, folder.getType());
+            throw new UnauthorizedOperationException(
+                "Only custom folders can be deleted. System folders (Year, Semester, Professor, Course, Document Type) cannot be deleted.");
+        }
+        
+        // 7. Count files and subfolders before deletion
+        int filesDeleted = countFilesInFolder(folder);
+        int subfoldersDeleted = countSubfoldersInFolder(folder);
+        
+        String folderName = folder.getName();
+        String actualFolderPath = folder.getPath(); // Use the actual path from database
+        
+        log.info("Deleting folder '{}' with {} files and {} subfolders at path: {}", 
+                folderName, filesDeleted, subfoldersDeleted, actualFolderPath);
+        
+        // 8. Delete all files and subfolders from database first (to avoid FK constraint violations)
+        deleteFolderContentsRecursively(folder);
+        
+        // 9. Delete physical folder and all its contents from filesystem
+        deletePhysicalFolder(actualFolderPath);
+        
+        // 10. Delete folder from database (now safe since all children are deleted)
+        folderRepository.delete(folder);
+        
+        log.info("Folder '{}' deleted successfully from database and filesystem", folderName);
+        
+        // 11. Return success response
+        return DeleteFolderResponse.success("/" + folderPath, folderName, filesDeleted, subfoldersDeleted);
+    }
+    
+    /**
+     * Count the number of files in a folder and its subfolders.
+     */
+    private int countFilesInFolder(Folder folder) {
+        int count = (int) uploadedFileRepository.countByFolderId(folder.getId());
+        
+        // Add files from subfolders
+        List<Folder> subfolders = folderRepository.findByParentId(folder.getId());
+        for (Folder subfolder : subfolders) {
+            count += countFilesInFolder(subfolder);
+        }
+        
+        return count;
+    }
+    
+    /**
+     * Count the number of subfolders in a folder (recursively).
+     */
+    private int countSubfoldersInFolder(Folder folder) {
+        List<Folder> subfolders = folderRepository.findByParentId(folder.getId());
+        int count = subfolders.size();
+        
+        // Add subfolders from nested folders
+        for (Folder subfolder : subfolders) {
+            count += countSubfoldersInFolder(subfolder);
+        }
+        
+        return count;
+    }
+    
+    /**
+     * Recursively delete all files and subfolders from a folder before deleting the folder itself.
+     * This prevents foreign key constraint violations.
+     * 
+     * @param folder the folder to delete contents from
+     */
+    private void deleteFolderContentsRecursively(Folder folder) {
+        // 1. Get all subfolders (children)
+        List<Folder> subfolders = folderRepository.findByParentId(folder.getId());
+        
+        // 2. Recursively delete each subfolder (children first)
+        for (Folder subfolder : subfolders) {
+            deleteFolderContentsRecursively(subfolder);
+            // Delete the subfolder after its contents are deleted
+            folderRepository.delete(subfolder);
+            log.debug("Deleted subfolder: {} (ID: {})", subfolder.getPath(), subfolder.getId());
+        }
+        
+        // 3. Delete all files in this folder
+        List<UploadedFile> files = uploadedFileRepository.findByFolderId(folder.getId());
+        if (!files.isEmpty()) {
+            uploadedFileRepository.deleteAll(files);
+            log.debug("Deleted {} files from folder: {} (ID: {})", files.size(), folder.getPath(), folder.getId());
+        }
+    }
+    
+    /**
+     * Delete physical folder and all its contents from the filesystem.
+     * 
+     * @param folderPath the logical folder path
+     * @throws RuntimeException if folder deletion fails
+     */
+    private void deletePhysicalFolder(String folderPath) {
+        try {
+            // Construct physical path: uploads/{folderPath}
+            Path physicalPath = Paths.get(uploadBasePath, folderPath);
+            
+            if (!Files.exists(physicalPath)) {
+                log.warn("Physical folder does not exist at path: {}", physicalPath.toAbsolutePath());
+                return;
+            }
+            
+            // Delete directory and all its contents recursively
+            deleteDirectoryRecursively(physicalPath);
+            
+            log.info("Physical folder deleted at: {}", physicalPath.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("Failed to delete physical folder at path: {}", folderPath, e);
+            throw new RuntimeException("Failed to delete folder from filesystem: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Recursively delete a directory and all its contents.
+     * 
+     * @param directory the directory to delete
+     * @throws IOException if deletion fails
+     */
+    private void deleteDirectoryRecursively(Path directory) throws IOException {
+        if (Files.isDirectory(directory)) {
+            // Delete all files and subdirectories first
+            try (var stream = Files.list(directory)) {
+                for (Path path : stream.collect(Collectors.toList())) {
+                    deleteDirectoryRecursively(path);
+                }
+            }
+        }
+        
+        // Delete the file or empty directory
+        Files.delete(directory);
+    }
+
+    /**
+     * Check if a folder exists on the physical filesystem.
+     * For custom folders that have been deleted from disk, this method also
+     * triggers cleanup of the database record asynchronously.
+     * 
+     * @param folder the folder entity to check
+     * @return true if the folder exists on disk, false otherwise
+     */
+    @org.springframework.transaction.annotation.Transactional
+    private boolean folderExistsOnDisk(Folder folder) {
+        if (folder == null || folder.getPath() == null || folder.getPath().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            Path physicalPath = safePathResolver.resolve(folder.getPath());
+            boolean exists = Files.exists(physicalPath) && Files.isDirectory(physicalPath);
+            
+            if (!exists && folder.getType() == FolderType.CUSTOM) {
+                // Custom folder no longer exists on disk - clean up the database record
+                log.info("Custom folder no longer exists on disk, removing DB record: {} (ID: {})", 
+                        folder.getPath(), folder.getId());
+                
+                // Delete associated files from database first
+                List<UploadedFile> files = uploadedFileRepository.findByFolderId(folder.getId());
+                if (!files.isEmpty()) {
+                    log.info("Removing {} orphaned file records from custom folder {}", 
+                            files.size(), folder.getId());
+                    uploadedFileRepository.deleteAll(files);
+                }
+                
+                // Delete the folder record
+                folderRepository.delete(folder);
+                log.info("Removed orphaned custom folder record: {}", folder.getId());
+            }
+            
+            return exists;
+        } catch (Exception e) {
+            log.warn("Error checking folder existence on disk: {} - {}", folder.getPath(), e.getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Determine MIME type from file name extension.
+     */
+    private String determineMimeTypeFromFileName(String fileName) {
+        int lastDot = fileName.lastIndexOf('.');
+        if (lastDot > 0 && lastDot < fileName.length() - 1) {
+            String extension = fileName.substring(lastDot + 1).toLowerCase();
+            switch (extension) {
+                case "pdf": return "application/pdf";
+                case "doc": return "application/msword";
+                case "docx": return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+                case "xls": return "application/vnd.ms-excel";
+                case "xlsx": return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                case "ppt": return "application/vnd.ms-powerpoint";
+                case "pptx": return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+                case "txt": return "text/plain";
+                case "jpg":
+                case "jpeg": return "image/jpeg";
+                case "png": return "image/png";
+                case "gif": return "image/gif";
+                case "zip": return "application/zip";
+                case "rar": return "application/x-rar-compressed";
+                default: return "application/octet-stream";
+            }
+        }
+        return "application/octet-stream";
     }
 
     /**

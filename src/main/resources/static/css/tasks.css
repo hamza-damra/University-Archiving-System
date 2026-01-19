@@ -2,6 +2,9 @@
 .task-card {
     /* Base transitions that are nice to keep in CSS */
     transition: all 0.3s ease;
+    /* Fix for border clipping in the corners */
+    transform: translateZ(0);
+    background-clip: padding-box;
 }
 
 /* Custom scrollbar for description if needed */

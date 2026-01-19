@@ -1170,11 +1170,15 @@ export class FileExplorer {
             folders.forEach(folder => {
                 // Generate role-specific labels
                 const roleLabels = this.generateRoleSpecificLabels(folder);
+                
+                // Check if this is a CUSTOM folder that can be deleted
+                const isCustomFolder = folder.type === 'CUSTOM';
+                const canDelete = isCustomFolder && folder.canWrite;
 
                 html += `
                     <div class="folder-card flex items-center justify-between p-5 rounded-lg border cursor-pointer transition-all group"
-                         onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')">
-                        <div class="flex items-center space-x-4 flex-1">
+                         ${!canDelete ? `onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')"` : ''}>
+                        <div class="flex items-center space-x-4 flex-1" ${canDelete ? `onclick="window.fileExplorerInstance.handleNodeClick('${this.escapeHtml(folder.path)}')"` : ''}>
                             <svg class="folder-icon w-8 h-8 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
                             </svg>
@@ -1188,9 +1192,21 @@ export class FileExplorer {
                                 ` : ''}
                             </div>
                         </div>
-                        <svg class="folder-arrow w-6 h-6 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                        </svg>
+                        <div class="flex items-center space-x-2">
+                            ${canDelete ? `
+                                <button 
+                                    onclick="event.stopPropagation(); window.fileExplorerInstance.handleDeleteFolder('${this.escapeHtml(folder.path)}', '${this.escapeHtml(folder.name)}')"
+                                    class="delete-folder-btn p-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                                    title="Delete folder">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            ` : ''}
+                            <svg class="folder-arrow w-6 h-6 group-hover:translate-x-1 transition-all flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </div>
                     </div>
                 `;
             });
@@ -1347,6 +1363,17 @@ export class FileExplorer {
                                 </svg>
                             </button>
                         ` : ''}
+                        ${canDownload && !fileId && file.fileUrl ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleOrphanedFileDownload('${this.escapeHtml(file.fileUrl)}', '${this.escapeHtml(fileName)}')"
+                                class="download-button text-white bg-blue-600 hover:bg-blue-700 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
+                                title="Download file"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
                         ${file.canReplace && fileId ? `
                             <button 
                                 onclick="window.fileExplorerInstance.handleFileReplace(${fileId}, '${this.escapeHtml(fileName)}')"
@@ -1369,7 +1396,18 @@ export class FileExplorer {
                                 </svg>
                             </button>
                         ` : ''}
-                        ${!fileId ? `
+                        ${file.canDelete && !fileId && file.fileUrl ? `
+                            <button 
+                                onclick="window.fileExplorerInstance.handleOrphanedFileDelete('${this.escapeHtml(file.fileUrl)}', '${this.escapeHtml(fileName)}')"
+                                class="text-white bg-red-500 hover:bg-red-600 p-1.5 rounded shadow-sm hover:shadow-md transition-all"
+                                title="Delete file"
+                            >
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                </svg>
+                            </button>
+                        ` : ''}
+                        ${!fileId && !file.canDelete && !file.canReplace ? `
                             <span class="text-gray-400 dark:text-gray-500 text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded">No access</span>
                         ` : ''}
                     </div>
@@ -1634,6 +1672,86 @@ export class FileExplorer {
             } else {
                 showToast(error.message || 'Failed to delete file', 'error');
             }
+        }
+    }
+
+    /**
+     * Handle download of orphaned file (file without DB record)
+     * Downloads the file directly using its path
+     * 
+     * @param {string} fileUrl - The relative path of the file
+     * @param {string} fileName - The name of the file
+     */
+    async handleOrphanedFileDownload(fileUrl, fileName) {
+        try {
+            showToast('Downloading file...', 'info');
+            
+            // Use the orphaned file download endpoint
+            const response = await fetch(`/api/file-explorer/orphaned-file/download?path=${encodeURIComponent(fileUrl)}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to download file');
+            }
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = fileName;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            
+            showToast('File downloaded successfully', 'success');
+        } catch (error) {
+            console.error('Error downloading orphaned file:', error);
+            showToast('Failed to download file', 'error');
+        }
+    }
+
+    /**
+     * Handle deletion of orphaned file (file without DB record)
+     * Deletes the file directly from filesystem using its path
+     * 
+     * @param {string} fileUrl - The relative path of the file
+     * @param {string} fileName - The name of the file
+     */
+    async handleOrphanedFileDelete(fileUrl, fileName) {
+        // Show confirmation modal
+        const confirmed = await this.showDeleteConfirmationModal(fileName);
+        if (!confirmed) return;
+
+        try {
+            showToast('Deleting file...', 'info');
+            
+            const response = await fetch(`/api/file-explorer/orphaned-file?path=${encodeURIComponent(fileUrl)}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.message || 'Failed to delete file');
+            }
+
+            // Refresh the current node to update file list
+            if (this.currentNode && this.currentNode.path) {
+                await this.loadNode(this.currentNode.path);
+            }
+
+            showToast('File deleted successfully', 'success');
+        } catch (error) {
+            console.error('Error deleting orphaned file:', error);
+            showToast(error.message || 'Failed to delete file', 'error');
         }
     }
 
@@ -2657,11 +2775,12 @@ export class FileExplorer {
 
         const documentType = node.metadata?.documentType || '';
         const formattedType = this.formatDocumentTypeName(documentType);
+        const folderId = node.entityId || node.id || (node.metadata && node.metadata.folderId) || '';
 
         return `
             <div class="mb-4">
                 <button 
-                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}')"
+                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}', '${folderId}')"
                     class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -2714,6 +2833,7 @@ export class FileExplorer {
     renderWritableEmptyState(node) {
         const documentType = node.metadata?.documentType || 'files';
         const formattedType = this.formatDocumentTypeName(documentType);
+        const folderId = node.entityId || node.id || (node.metadata && node.metadata.folderId) || '';
 
         return `
             <div class="text-center py-12 upload-drop-zone" id="uploadDropZone">
@@ -2725,7 +2845,7 @@ export class FileExplorer {
                 <h3 class="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No ${formattedType} uploaded yet</h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-6">Upload your first ${formattedType.toLowerCase()} to get started</p>
                 <button 
-                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}')"
+                    onclick="window.fileExplorerInstance.handleUploadClick('${this.escapeHtml(node.path)}', '${documentType}', '${folderId}')"
                     class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow-md transition-all">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
@@ -2744,10 +2864,10 @@ export class FileExplorer {
      * @param {string} path - The folder path to upload to
      * @param {string} documentType - The document type
      */
-    handleUploadClick(path, documentType) {
+    handleUploadClick(path, documentType, folderId) {
         // Dispatch custom event that prof.js will listen to
         const event = new CustomEvent('fileExplorerUpload', {
-            detail: { path, documentType }
+            detail: { path, documentType, folderId }
         });
         window.dispatchEvent(event);
     }
@@ -2801,7 +2921,7 @@ export class FileExplorer {
             const files = dt.files;
 
             if (files.length > 0) {
-                this.handleFileDrop(node.path, node.metadata?.documentType, files);
+                this.handleFileDrop(node.path, node.metadata?.documentType, files, node.entityId || node.id || node.metadata?.folderId);
             }
         }, false);
     }
@@ -2814,10 +2934,10 @@ export class FileExplorer {
      * @param {string} documentType - The document type
      * @param {FileList} files - The dropped files
      */
-    handleFileDrop(path, documentType, files) {
+    handleFileDrop(path, documentType, files, folderId) {
         // Trigger same upload event as button click, but with files
         const event = new CustomEvent('fileExplorerUpload', {
-            detail: { path, documentType, files }
+            detail: { path, documentType, files, folderId }
         });
         window.dispatchEvent(event);
     }
@@ -3115,6 +3235,164 @@ export class FileExplorer {
             modal.remove();
         }
         this.newFolderParentPath = null;
+    }
+    
+    /**
+     * Handle delete folder button click
+     * Shows confirmation dialog before deleting
+     * 
+     * @param {string} folderPath - The full path of the folder to delete
+     * @param {string} folderName - The name of the folder for display in confirmation
+     */
+    async handleDeleteFolder(folderPath, folderName) {
+        // Show confirmation dialog
+        const confirmed = await this.showDeleteFolderConfirmation(folderName);
+        
+        if (!confirmed) {
+            return;
+        }
+        
+        try {
+            // Show loading toast
+            showToast('Deleting folder...', 'info');
+            
+            // Call API to delete folder
+            const response = await fileExplorer.deleteFolder(folderPath);
+            
+            // Show success message with deletion statistics
+            // Note: apiRequest already extracts the 'data' property, so response is the DeleteFolderResponse object
+            const filesDeleted = response?.filesDeleted ?? 0;
+            const subfoldersDeleted = response?.subfoldersDeleted ?? 0;
+            const message = `Folder "${folderName}" deleted successfully. ` +
+                          `Removed ${filesDeleted} file(s) and ${subfoldersDeleted} subfolder(s).`;
+            showToast(message, 'success');
+            
+            // Refresh the parent node to reflect the deletion
+            // Extract parent path by removing the last segment
+            const pathParts = folderPath.split('/').filter(p => p);
+            pathParts.pop(); // Remove the deleted folder name
+            const parentPath = '/' + pathParts.join('/');
+            
+            await this.loadNode(parentPath);
+            
+        } catch (error) {
+            console.error('Failed to delete folder:', error);
+            
+            const errorMessage = error.message || 'Failed to delete folder';
+            
+            if (error.status === 403) {
+                showToast('You do not have permission to delete this folder', 'error');
+            } else if (error.status === 404) {
+                showToast('Folder not found', 'error');
+            } else if (error.status === 409) {
+                // Conflict error - usually means foreign key constraint violation
+                const message = errorMessage.includes('Referenced record') 
+                    ? 'Cannot delete folder: It is still referenced by other records. Please try again.'
+                    : errorMessage;
+                showToast(message, 'error');
+            } else {
+                showToast(errorMessage, 'error');
+            }
+        }
+    }
+    
+    /**
+     * Show delete folder confirmation dialog
+     * 
+     * @param {string} folderName - The name of the folder to delete
+     * @returns {Promise<boolean>} True if user confirmed deletion
+     */
+    async showDeleteFolderConfirmation(folderName) {
+        return new Promise((resolve) => {
+            const modalId = 'deleteFolderConfirmModal';
+            
+            // Remove any existing modal
+            const existingModal = document.getElementById(modalId);
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // Create modal HTML
+            const modalHtml = `
+                <div id="${modalId}" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
+                        <!-- Header -->
+                        <div class="bg-red-50 dark:bg-red-900/20 px-6 py-4 border-b border-red-100 dark:border-red-800">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="w-10 h-10 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                                        <svg class="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                    </div>
+                                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Delete Folder</h3>
+                                </div>
+                                <button onclick="document.getElementById('${modalId}').remove(); window.deleteFolderResolve?.(false)" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Body -->
+                        <div class="px-6 py-5">
+                            <div class="space-y-4">
+                                <p class="text-gray-700 dark:text-gray-300">
+                                    Are you sure you want to delete the folder <span class="font-semibold">"${this.escapeHtml(folderName)}"</span>?
+                                </p>
+                                
+                                <div class="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4">
+                                    <div class="flex items-start space-x-3">
+                                        <svg class="w-5 h-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-yellow-800 dark:text-yellow-300 mb-1">Warning</p>
+                                            <p class="text-sm text-yellow-700 dark:text-yellow-400">
+                                                This action cannot be undone. All files and subfolders inside this folder will be permanently deleted from the server.
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Footer -->
+                        <div class="bg-gray-50 dark:bg-gray-900 px-6 py-4 flex justify-end space-x-3">
+                            <button 
+                                onclick="document.getElementById('${modalId}').remove(); window.deleteFolderResolve?.(false)" 
+                                class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                                Cancel
+                            </button>
+                            <button 
+                                onclick="document.getElementById('${modalId}').remove(); window.deleteFolderResolve?.(true)" 
+                                class="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors shadow-sm">
+                                Delete Folder
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            
+            // Store resolve function globally so buttons can access it
+            window.deleteFolderResolve = resolve;
+            
+            // Clean up on modal close
+            const modal = document.getElementById(modalId);
+            if (modal) {
+                modal.addEventListener('click', (e) => {
+                    if (e.target.id === modalId) {
+                        modal.remove();
+                        delete window.deleteFolderResolve;
+                        resolve(false);
+                    }
+                });
+            }
+        });
     }
 
     /**

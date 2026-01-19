@@ -417,7 +417,12 @@ public class GlobalExceptionHandler {
             message = "Duplicate entry - record already exists";
             errorCode = "DUPLICATE_ENTRY";
         } else if (ex.getMessage().contains("foreign key constraint")) {
-            message = "Referenced record does not exist";
+            // More descriptive message for foreign key violations
+            if (ex.getMessage().toLowerCase().contains("delete") || ex.getMessage().toLowerCase().contains("cannot delete")) {
+                message = "Cannot delete: This record is still referenced by other records. Please delete dependent records first.";
+            } else {
+                message = "Referenced record does not exist or cannot be deleted due to foreign key constraints";
+            }
             errorCode = "FOREIGN_KEY_VIOLATION";
         }
         

@@ -86,15 +86,25 @@ public class FolderFileUploadServiceImpl implements FolderFileUploadService {
             log.error("Validation failed: No files provided");
             throw new IllegalArgumentException("No files provided");
         }
-        log.info("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Files provided: {}", files.length);
+        log.info("Files provided: {}", files.length);
 
         // 2. Resolve folder ID from path if needed
         final Long resolvedFolderId;
         if (folderId == null && folderPath != null) {
-            log.info("Folder ID not provided, creating/retrieving from path: {}", folderPath);
-            Folder folderFromPath = folderService.getOrCreateFolderByPath(folderPath, uploaderId);
-            resolvedFolderId = folderFromPath.getId();
-            log.info("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Folder resolved with ID: {}", resolvedFolderId);
+            log.info("Folder ID not provided, resolving from path: {}", folderPath);
+            
+            // Check if path contains custom-{id} format (e.g., "2024-2025/first/Prof/CS101/custom-3")
+            Long customFolderId = extractCustomFolderIdFromPath(folderPath);
+            if (customFolderId != null) {
+                // Path contains custom folder ID - use it directly
+                log.info("Detected custom folder ID in path: {}", customFolderId);
+                resolvedFolderId = customFolderId;
+            } else {
+                // Standard path - use getOrCreateFolderByPath
+                Folder folderFromPath = folderService.getOrCreateFolderByPath(folderPath, uploaderId);
+                resolvedFolderId = folderFromPath.getId();
+            }
+            log.info("Folder resolved with ID: {}", resolvedFolderId);
         } else if (folderId != null) {
             resolvedFolderId = folderId;
         } else {
@@ -174,7 +184,7 @@ public class FolderFileUploadServiceImpl implements FolderFileUploadService {
             }
         }
 
-        log.info("ÃƒÆ’Ã†â€™Ãƒâ€ Ã¢â‚¬â„¢ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€¦Ã¢â‚¬Å“ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ Upload complete: {} files uploaded to folder {}", uploadedFiles.size(), folderId);
+        log.info("Upload complete: {} files uploaded to folder {}", uploadedFiles.size(), folderId);
         
         // Trigger notification for professor uploads
         if (uploader.getRole() == Role.ROLE_PROFESSOR && !uploadedFiles.isEmpty()) {
@@ -356,5 +366,47 @@ public class FolderFileUploadServiceImpl implements FolderFileUploadService {
     private String getFilenameWithoutExtension(String filename) {
         int lastDot = filename.lastIndexOf('.');
         return lastDot > 0 ? filename.substring(0, lastDot) : filename;
+    }
+
+    /**
+     * Extract custom folder ID from a path that may contain "custom-{id}" format.
+     * 
+     * Path format: /yearCode/semesterType/professorId/courseCode/custom-{id}
+     * Example: 2024-2025/first/Prof Name/CS101/custom-3 -> returns 3
+     * 
+     * @param folderPath the folder path to parse
+     * @return the custom folder ID if found, null otherwise
+     */
+    private Long extractCustomFolderIdFromPath(String folderPath) {
+        if (folderPath == null || folderPath.isEmpty()) {
+            return null;
+        }
+        
+        // Normalize path - remove leading/trailing slashes
+        String normalizedPath = folderPath.replaceAll("^/+|/+$", "");
+        
+        // Split path into parts
+        String[] parts = normalizedPath.split("/");
+
+        // Look for a segment like "custom-{id}" (case-insensitive)
+        for (String part : parts) {
+            if (part == null) {
+                continue;
+            }
+            String lower = part.toLowerCase();
+            if (lower.startsWith("custom-")) {
+                try {
+                    String idStr = part.substring(7); // Remove "custom-" prefix
+                    Long folderId = Long.parseLong(idStr);
+                    log.debug("Extracted custom folder ID {} from path: {}", folderId, folderPath);
+                    return folderId;
+                } catch (NumberFormatException e) {
+                    log.warn("Invalid custom folder ID format in path: {}", folderPath);
+                    return null;
+                }
+            }
+        }
+
+        return null;
     }
 }

@@ -76,4 +76,20 @@ public class UploadedFileDTO {
      * Whether the current user can replace this file
      */
     private Boolean canReplace;
+    
+    /**
+     * Timestamp when the file was created
+     */
+    private LocalDateTime createdAt;
+    
+    /**
+     * Timestamp when the file was last updated
+     */
+    private LocalDateTime updatedAt;
+    
+    /**
+     * Whether this file exists only on filesystem without a database record
+     * (e.g., added directly by admin)
+     */
+    private Boolean orphaned;
 }

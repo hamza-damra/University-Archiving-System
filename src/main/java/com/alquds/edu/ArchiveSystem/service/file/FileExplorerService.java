@@ -5,6 +5,8 @@ import com.alquds.edu.ArchiveSystem.entity.user.User;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.BreadcrumbItem;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderRequest;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.CreateFolderResponse;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.DeleteFolderRequest;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.DeleteFolderResponse;
 import com.alquds.edu.ArchiveSystem.dto.fileexplorer.FileExplorerNode;
 
 import java.util.List;
@@ -101,4 +103,17 @@ public interface FileExplorerService {
      * @throws com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException if user lacks permission
      */
     CreateFolderResponse createFolder(CreateFolderRequest request, User currentUser);
+    
+    /**
+     * Delete a folder and all its contents (files and subfolders).
+     * Only professors can delete folders within their own namespace.
+     * This operation also deletes all physical files and folders from the uploads directory.
+     *
+     * @param request the folder deletion request containing the folder path
+     * @param currentUser the authenticated user (must be a professor)
+     * @return response containing details about the deletion (number of files/folders deleted)
+     * @throws com.alquds.edu.ArchiveSystem.exception.core.EntityNotFoundException if folder does not exist
+     * @throws com.alquds.edu.ArchiveSystem.exception.auth.UnauthorizedOperationException if user lacks permission
+     */
+    DeleteFolderResponse deleteFolder(DeleteFolderRequest request, User currentUser);
 }

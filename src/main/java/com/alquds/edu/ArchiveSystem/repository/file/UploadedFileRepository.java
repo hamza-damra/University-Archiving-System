@@ -106,4 +106,30 @@ public interface UploadedFileRepository extends JpaRepository<UploadedFile, Long
      */
     @Query("SELECT COALESCE(SUM(f.fileSize), 0) FROM UploadedFile f WHERE f.uploader.id = :uploaderId")
     Long sumFileSizeByUploaderId(@Param("uploaderId") Long uploaderId);
+    
+    /**
+     * Find a file by its full file URL path.
+     * Used for filesystem synchronization to match physical files with DB records.
+     * 
+     * @param fileUrl the full file URL/path
+     * @return optional uploaded file if found
+     */
+    Optional<UploadedFile> findByFileUrl(String fileUrl);
+    
+    /**
+     * Find a file by its stored filename (across all folders).
+     * Used as fallback when file URL doesn't match.
+     * 
+     * @param storedFilename the stored filename
+     * @return optional uploaded file if found
+     */
+    Optional<UploadedFile> findByStoredFilename(String storedFilename);
+    
+    /**
+     * Find files by stored filename (may return multiple if same name in different folders).
+     * 
+     * @param storedFilename the stored filename
+     * @return list of uploaded files with matching stored filename
+     */
+    List<UploadedFile> findAllByStoredFilename(String storedFilename);
 }

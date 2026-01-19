@@ -10,6 +10,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * DTO for creating a new task.
@@ -38,5 +40,12 @@ public class TaskCreateRequest {
     
     private LocalDate deadline;
     
-    private Long fileReferenceId; // Optional file link
+    private Long fileReferenceId; // Optional file link (legacy)
+    
+    /**
+     * List of file IDs to attach as evidence.
+     * Files must be owned by or accessible to the professor.
+     */
+    @Builder.Default
+    private List<Long> evidenceFileIds = new ArrayList<>();
 }

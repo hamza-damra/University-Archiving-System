@@ -19,6 +19,11 @@ let selectedDate = null;
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 
+// Evidence file state
+let filePickerModal = null;
+let availableFiles = [];
+let selectedEvidenceFiles = []; // Array of file objects with id, name, etc.
+
 /**
  * Open the task editor modal
  * @param {number|null} taskId - Task ID for editing, null for creating
@@ -48,15 +53,29 @@ export async function openTaskEditor(taskId = null, semesterId = null, onSave = 
         return;
     }
 
-    // If editing, load the task
+    // If editing, load the task and its evidence
     if (taskId) {
         try {
             currentTask = await professor.getTask(taskId);
+            // Load existing evidence files
+            if (currentTask.evidenceFiles && currentTask.evidenceFiles.length > 0) {
+                selectedEvidenceFiles = currentTask.evidenceFiles.map(e => ({
+                    id: e.fileId,
+                    name: e.fileName,
+                    size: e.fileSize,
+                    type: e.fileType,
+                    evidenceId: e.id
+                }));
+            } else {
+                selectedEvidenceFiles = [];
+            }
         } catch (error) {
             console.error('Error loading task:', error);
             showToast('Failed to load task', 'error');
             return;
         }
+    } else {
+        selectedEvidenceFiles = [];
     }
 
     renderModal();
@@ -77,6 +96,12 @@ export function closeTaskEditor() {
         datePickerModal = null;
     }
     
+    // Close file picker if open
+    if (filePickerModal) {
+        filePickerModal.remove();
+        filePickerModal = null;
+    }
+    
     if (modalElement) {
         modalElement.style.opacity = '0';
         setTimeout(() => {
@@ -87,6 +112,8 @@ export function closeTaskEditor() {
     currentTask = null;
     weightSummary = null;
     selectedDate = null;
+    selectedEvidenceFiles = [];
+    availableFiles = [];
 }
 
 /**
@@ -333,6 +360,34 @@ function renderModal() {
                         </div>
                     </div>
                     ` : ''}
+                    
+                    <!-- Evidence Files Section -->
+                    <div class="pt-4 border-t border-gray-100 dark:border-gray-800">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="block text-sm font-semibold leading-6 text-gray-900 dark:text-gray-200">
+                                Evidence Files
+                                <span class="font-normal text-gray-500 dark:text-gray-400">(Optional)</span>
+                            </label>
+                            <button 
+                                type="button"
+                                id="attachFilesBtn"
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-colors"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                </svg>
+                                Attach Files
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                            Attach files from your File Explorer as evidence of task completion. HOD can review these files.
+                        </p>
+                        
+                        <!-- Selected Files List -->
+                        <div id="selectedFilesContainer" class="space-y-2">
+                            ${renderSelectedFiles()}
+                        </div>
+                    </div>
                     
                     <!-- Global Error Message -->
                     <div id="formError" class="hidden rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
@@ -700,6 +755,12 @@ function setupEventListeners() {
             handleSave();
         });
     }
+    
+    // Attach files button
+    const attachFilesBtn = document.getElementById('attachFilesBtn');
+    if (attachFilesBtn) {
+        attachFilesBtn.addEventListener('click', openFilePicker);
+    }
 }
 
 /**
@@ -774,6 +835,338 @@ function hideWeightSummary() {
         container.classList.add('hidden');
     }
     weightSummary = null;
+}
+
+// ==================== Evidence File Management ====================
+
+/**
+ * Render the selected evidence files list
+ */
+function renderSelectedFiles() {
+    if (!selectedEvidenceFiles || selectedEvidenceFiles.length === 0) {
+        return `
+            <div class="flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border-2 border-dashed border-gray-200 dark:border-gray-700">
+                <div class="text-center">
+                    <svg class="mx-auto h-8 w-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">No files attached</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    return selectedEvidenceFiles.map((file, index) => `
+        <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 group">
+            <div class="flex-shrink-0">
+                ${getFileIcon(file.type)}
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-gray-900 dark:text-white truncate" title="${escapeHtml(file.name)}">
+                    ${escapeHtml(file.name)}
+                </p>
+                <p class="text-xs text-gray-500 dark:text-gray-400">
+                    ${formatFileSize(file.size)}
+                </p>
+            </div>
+            <button 
+                type="button"
+                onclick="removeEvidenceFile(${index})"
+                class="flex-shrink-0 p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors opacity-0 group-hover:opacity-100"
+                title="Remove file"
+            >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `).join('');
+}
+
+/**
+ * Update the selected files display
+ */
+function updateSelectedFilesDisplay() {
+    const container = document.getElementById('selectedFilesContainer');
+    if (container) {
+        container.innerHTML = renderSelectedFiles();
+    }
+}
+
+/**
+ * Remove an evidence file from selection
+ */
+window.removeEvidenceFile = function(index) {
+    selectedEvidenceFiles.splice(index, 1);
+    updateSelectedFilesDisplay();
+};
+
+/**
+ * Open the file picker modal
+ */
+async function openFilePicker() {
+    try {
+        // Load available files
+        availableFiles = await professor.getAvailableFilesForEvidence(currentSemesterId);
+        
+        if (!availableFiles || availableFiles.length === 0) {
+            showToast('No files available. Please upload files in the File Explorer first.', 'warning');
+            return;
+        }
+        
+        renderFilePicker();
+    } catch (error) {
+        console.error('Error loading available files:', error);
+        showToast('Failed to load available files', 'error');
+    }
+}
+
+/**
+ * Render the file picker modal
+ */
+function renderFilePicker() {
+    // Get IDs of already selected files
+    const selectedIds = new Set(selectedEvidenceFiles.map(f => f.id));
+    
+    filePickerModal = document.createElement('div');
+    filePickerModal.className = 'fixed inset-0 z-[12000] flex items-center justify-center p-4';
+    filePickerModal.innerHTML = `
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" data-close-filepicker></div>
+        
+        <!-- Modal -->
+        <div class="relative w-full max-w-xl bg-white dark:bg-[#1E1F20] rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden animate-scale-in max-h-[80vh] flex flex-col">
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                        </svg>
+                        Select Evidence Files
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                        Choose files to attach as evidence
+                    </p>
+                </div>
+                <button data-close-filepicker class="p-2 text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <!-- File List -->
+            <div class="overflow-y-auto flex-1 p-4">
+                <div class="space-y-2" id="filePickerList">
+                    ${availableFiles.map(file => {
+                        const isSelected = selectedIds.has(file.id);
+                        return `
+                            <label class="flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
+                                isSelected 
+                                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700' 
+                                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700'
+                            }">
+                                <input 
+                                    type="checkbox" 
+                                    class="file-checkbox w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 dark:border-gray-600 dark:focus:ring-blue-600 dark:ring-offset-gray-800"
+                                    data-file-id="${file.id}"
+                                    data-file-name="${escapeHtml(file.originalFilename)}"
+                                    data-file-size="${file.fileSize || 0}"
+                                    data-file-type="${file.fileType || ''}"
+                                    ${isSelected ? 'checked' : ''}
+                                />
+                                <div class="flex-shrink-0">
+                                    ${getFileIcon(file.fileType)}
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        ${escapeHtml(file.originalFilename)}
+                                    </p>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        ${formatFileSize(file.fileSize)} • ${formatUploadDate(file.uploadedAt)}
+                                    </p>
+                                </div>
+                            </label>
+                        `;
+                    }).join('')}
+                </div>
+                
+                ${availableFiles.length === 0 ? `
+                    <div class="text-center py-8">
+                        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">No files available</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">Upload files in the File Explorer first</p>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 dark:bg-[#252628] border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                <span id="selectedCount" class="text-sm text-gray-600 dark:text-gray-400">
+                    ${selectedIds.size} file(s) selected
+                </span>
+                <div class="flex gap-2">
+                    <button 
+                        type="button"
+                        data-close-filepicker
+                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="button"
+                        id="confirmFileSelection"
+                        class="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                    >
+                        Attach Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(filePickerModal);
+    setupFilePickerEvents();
+}
+
+/**
+ * Setup file picker event listeners
+ */
+function setupFilePickerEvents() {
+    // Close buttons
+    filePickerModal.querySelectorAll('[data-close-filepicker]').forEach(el => {
+        el.addEventListener('click', closeFilePicker);
+    });
+    
+    // Checkbox change - update count
+    const checkboxes = filePickerModal.querySelectorAll('.file-checkbox');
+    checkboxes.forEach(cb => {
+        cb.addEventListener('change', updateSelectedCount);
+    });
+    
+    // Confirm selection
+    const confirmBtn = filePickerModal.querySelector('#confirmFileSelection');
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', confirmFileSelection);
+    }
+    
+    // Close on Escape
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeFilePicker();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+/**
+ * Update the selected count display in file picker
+ */
+function updateSelectedCount() {
+    const checkboxes = filePickerModal.querySelectorAll('.file-checkbox:checked');
+    const countEl = filePickerModal.querySelector('#selectedCount');
+    if (countEl) {
+        countEl.textContent = `${checkboxes.length} file(s) selected`;
+    }
+}
+
+/**
+ * Confirm file selection and update the main form
+ */
+function confirmFileSelection() {
+    const checkboxes = filePickerModal.querySelectorAll('.file-checkbox:checked');
+    
+    selectedEvidenceFiles = Array.from(checkboxes).map(cb => ({
+        id: parseInt(cb.dataset.fileId),
+        name: cb.dataset.fileName,
+        size: parseInt(cb.dataset.fileSize) || 0,
+        type: cb.dataset.fileType || ''
+    }));
+    
+    updateSelectedFilesDisplay();
+    closeFilePicker();
+}
+
+/**
+ * Close the file picker modal
+ */
+function closeFilePicker() {
+    if (filePickerModal) {
+        filePickerModal.style.opacity = '0';
+        setTimeout(() => {
+            if (filePickerModal) {
+                filePickerModal.remove();
+                filePickerModal = null;
+            }
+        }, 150);
+    }
+}
+
+/**
+ * Get file icon based on type
+ */
+function getFileIcon(fileType) {
+    const type = fileType?.toLowerCase() || '';
+    
+    if (type.includes('pdf')) {
+        return `<div class="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('image') || type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
+        return `<div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('word') || type.includes('doc')) {
+        return `<div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('excel') || type.includes('spreadsheet') || type.includes('xls')) {
+        return `<div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    
+    // Default file icon
+    return `<div class="w-10 h-10 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+    </div>`;
+}
+
+/**
+ * Format file size for display
+ */
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/**
+ * Format upload date for display
+ */
+function formatUploadDate(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 /**
@@ -937,6 +1330,9 @@ async function handleSave() {
         const progressInput = document.getElementById('taskProgress');
         const deadlineInput = document.getElementById('taskDeadline');
 
+        // Get evidence file IDs
+        const evidenceFileIds = selectedEvidenceFiles.map(f => f.id);
+
         if (currentTask) {
             // Update existing task
             const updateData = {
@@ -945,6 +1341,7 @@ async function handleSave() {
                 weightPercentage: parseInt(weightInput.value),
                 progressPercentage: progressInput ? parseInt(progressInput.value) : undefined,
                 deadline: deadlineInput.value || null,
+                evidenceFileIds: evidenceFileIds,
             };
 
             await professor.updateTask(currentTask.id, updateData);
@@ -958,6 +1355,7 @@ async function handleSave() {
                 courseId: parseInt(courseSelect.value),
                 semesterId: currentSemesterId,
                 deadline: deadlineInput.value || null,
+                evidenceFileIds: evidenceFileIds,
             };
 
             await professor.createTask(createData);

@@ -268,6 +268,20 @@ function formatStatus(status) {
 function renderActions(task) {
     let actions = '';
     
+    // Evidence files button (shows count if available)
+    if (task.evidenceCount > 0) {
+        actions += `
+            <button onclick="viewTaskEvidence(${task.id}, '${escapeHtml(task.title)}')" 
+                    class="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-emerald-700 bg-emerald-50 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors"
+                    title="View Evidence Files">
+                <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                </svg>
+                Evidence (${task.evidenceCount})
+            </button>
+        `;
+    }
+    
     if (task.fileReferenceId) {
         actions += `
             <button onclick="viewTaskFile(${task.fileReferenceId})" 
@@ -367,6 +381,222 @@ window.viewTaskFile = async function(fileId) {
         showToast('Failed to view file', 'error');
     }
 };
+
+/**
+ * View task evidence files
+ */
+window.viewTaskEvidence = async function(taskId, taskTitle) {
+    try {
+        const evidence = await hod.getTaskEvidence(taskId);
+        
+        if (!evidence || evidence.length === 0) {
+            showToast('No evidence files found', 'info');
+            return;
+        }
+        
+        showEvidenceModal(taskTitle, evidence);
+    } catch (error) {
+        console.error('Error loading evidence:', error);
+        showToast('Failed to load evidence files', 'error');
+    }
+};
+
+/**
+ * Show evidence files modal
+ */
+function showEvidenceModal(taskTitle, evidenceFiles) {
+    // Remove existing modal if any
+    const existingModal = document.getElementById('evidence-modal');
+    if (existingModal) existingModal.remove();
+    
+    const modalHtml = `
+        <div id="evidence-modal" class="fixed inset-0 z-[100] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity backdrop-blur-sm" aria-hidden="true" onclick="document.getElementById('evidence-modal').remove()"></div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                <div class="inline-block align-bottom bg-white rounded-xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-xl sm:w-full animate-[fadeIn_0.2s_ease-out]">
+                    <!-- Header -->
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                                    <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                    </svg>
+                                    Evidence Files
+                                </h3>
+                                <p class="text-sm text-gray-500 mt-1">Task: ${escapeHtml(taskTitle)}</p>
+                            </div>
+                            <button onclick="document.getElementById('evidence-modal').remove()" class="p-2 text-gray-400 hover:text-gray-500 rounded-lg hover:bg-gray-100 transition-colors">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- File List -->
+                    <div class="px-6 py-4 max-h-96 overflow-y-auto">
+                        <div class="space-y-3">
+                            ${evidenceFiles.map(file => `
+                                <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors">
+                                    <div class="flex-shrink-0">
+                                        ${getFileIcon(file.fileType)}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900 truncate" title="${escapeHtml(file.fileName)}">
+                                            ${escapeHtml(file.fileName)}
+                                        </p>
+                                        <p class="text-xs text-gray-500">
+                                            ${formatFileSize(file.fileSize)} ${file.attachedAt ? '• Attached ' + formatDateTime(file.attachedAt) : ''}
+                                        </p>
+                                        ${!file.fileExists ? '<p class="text-xs text-amber-600 mt-0.5">File may have been moved or deleted</p>' : ''}
+                                    </div>
+                                    <div class="flex-shrink-0 flex gap-2">
+                                        ${file.fileExists && file.fileId ? `
+                                            <button onclick="downloadEvidenceFile(${file.fileId})" 
+                                                    class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Download">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                                </svg>
+                                            </button>
+                                            <button onclick="previewEvidenceFile(${file.fileId})" 
+                                                    class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                                                    title="Preview">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                                </svg>
+                                            </button>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end">
+                        <button onclick="document.getElementById('evidence-modal').remove()" 
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+}
+
+/**
+ * Download evidence file
+ */
+window.downloadEvidenceFile = async function(fileId) {
+    try {
+        const response = await hod.downloadFile(fileId);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } else {
+            showToast('Failed to download file', 'error');
+        }
+    } catch (error) {
+        console.error('Error downloading file:', error);
+        showToast('Failed to download file', 'error');
+    }
+};
+
+/**
+ * Preview evidence file
+ */
+window.previewEvidenceFile = async function(fileId) {
+    try {
+        const response = await hod.downloadFile(fileId);
+        if (response.ok) {
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        } else {
+            showToast('Failed to preview file', 'error');
+        }
+    } catch (error) {
+        console.error('Error previewing file:', error);
+        showToast('Failed to preview file', 'error');
+    }
+};
+
+/**
+ * Get file icon based on type
+ */
+function getFileIcon(fileType) {
+    const type = (fileType || '').toLowerCase();
+    
+    if (type.includes('pdf')) {
+        return `<div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('image') || type.includes('png') || type.includes('jpg') || type.includes('jpeg')) {
+        return `<div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('word') || type.includes('doc')) {
+        return `<div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    if (type.includes('excel') || type.includes('spreadsheet') || type.includes('xls')) {
+        return `<div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+            <svg class="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd"/>
+            </svg>
+        </div>`;
+    }
+    
+    // Default file icon
+    return `<div class="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+        <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+        </svg>
+    </div>`;
+}
+
+/**
+ * Format file size
+ */
+function formatFileSize(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+/**
+ * Format date time
+ */
+function formatDateTime(dateStr) {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 /**
  * Escape HTML to prevent XSS

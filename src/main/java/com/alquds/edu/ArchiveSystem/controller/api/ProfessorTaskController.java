@@ -2,6 +2,7 @@ package com.alquds.edu.ArchiveSystem.controller.api;
 
 import com.alquds.edu.ArchiveSystem.dto.common.ApiResponse;
 import com.alquds.edu.ArchiveSystem.dto.task.*;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.UploadedFileDTO;
 import com.alquds.edu.ArchiveSystem.service.auth.AuthService;
 import com.alquds.edu.ArchiveSystem.service.task.TaskService;
 import jakarta.validation.Valid;
@@ -58,7 +59,7 @@ public class ProfessorTaskController {
     }
     
     /**
-     * Delete a task (only if status is PENDING).
+     * Delete a task owned by the professor.
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> deleteTask(@PathVariable Long id) {
@@ -121,5 +122,66 @@ public class ProfessorTaskController {
                 currentUser.getId(), courseId, semesterId);
         
         return ResponseEntity.ok(ApiResponse.success("Weight summary retrieved successfully", summary));
+    }
+    
+    // ==================== Evidence Management ====================
+    
+    /**
+     * Get evidence files for a task.
+     */
+    @GetMapping("/{id}/evidence")
+    public ResponseEntity<ApiResponse<List<TaskEvidenceDTO>>> getTaskEvidence(@PathVariable Long id) {
+        log.info("Professor retrieving evidence for task: {}", id);
+        
+        var currentUser = authService.getCurrentUser();
+        List<TaskEvidenceDTO> evidence = taskService.getTaskEvidence(id, currentUser.getId());
+        
+        return ResponseEntity.ok(ApiResponse.success("Evidence retrieved successfully", evidence));
+    }
+    
+    /**
+     * Add evidence files to a task.
+     */
+    @PostMapping("/{id}/evidence")
+    public ResponseEntity<ApiResponse<List<TaskEvidenceDTO>>> addEvidence(
+            @PathVariable Long id,
+            @RequestBody List<Long> fileIds) {
+        log.info("Professor adding {} evidence files to task: {}", fileIds.size(), id);
+        
+        var currentUser = authService.getCurrentUser();
+        List<TaskEvidenceDTO> evidence = taskService.addEvidence(id, fileIds, currentUser.getId());
+        
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Evidence added successfully", evidence));
+    }
+    
+    /**
+     * Remove a specific evidence file from a task.
+     */
+    @DeleteMapping("/{taskId}/evidence/{evidenceId}")
+    public ResponseEntity<ApiResponse<String>> removeEvidence(
+            @PathVariable Long taskId,
+            @PathVariable Long evidenceId) {
+        log.info("Professor removing evidence {} from task {}", evidenceId, taskId);
+        
+        var currentUser = authService.getCurrentUser();
+        taskService.removeEvidence(taskId, evidenceId, currentUser.getId());
+        
+        return ResponseEntity.ok(ApiResponse.success("Evidence removed successfully", "OK"));
+    }
+    
+    /**
+     * Get files available for the professor to attach as evidence.
+     */
+    @GetMapping("/available-files")
+    public ResponseEntity<ApiResponse<List<UploadedFileDTO>>> getAvailableFilesForEvidence(
+            @RequestParam(required = false) Long semesterId) {
+        log.info("Professor retrieving available files for evidence attachment");
+        
+        var currentUser = authService.getCurrentUser();
+        List<UploadedFileDTO> files = taskService.getAvailableFilesForEvidence(
+                currentUser.getId(), semesterId);
+        
+        return ResponseEntity.ok(ApiResponse.success("Available files retrieved successfully", files));
     }
 }

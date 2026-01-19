@@ -1,11 +1,13 @@
 package com.alquds.edu.ArchiveSystem.service.task;
 
 import com.alquds.edu.ArchiveSystem.dto.task.*;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.UploadedFileDTO;
 import com.alquds.edu.ArchiveSystem.entity.academic.Course;
 import com.alquds.edu.ArchiveSystem.entity.academic.Semester;
 import com.alquds.edu.ArchiveSystem.entity.file.UploadedFile;
 import com.alquds.edu.ArchiveSystem.entity.task.Task;
 import com.alquds.edu.ArchiveSystem.entity.task.TaskAuditLog;
+import com.alquds.edu.ArchiveSystem.entity.task.TaskEvidence;
 import com.alquds.edu.ArchiveSystem.entity.task.TaskStatus;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 import com.alquds.edu.ArchiveSystem.exception.core.BusinessException;
@@ -16,6 +18,7 @@ import com.alquds.edu.ArchiveSystem.repository.academic.CourseRepository;
 import com.alquds.edu.ArchiveSystem.repository.academic.SemesterRepository;
 import com.alquds.edu.ArchiveSystem.repository.file.UploadedFileRepository;
 import com.alquds.edu.ArchiveSystem.repository.task.TaskAuditLogRepository;
+import com.alquds.edu.ArchiveSystem.repository.task.TaskEvidenceRepository;
 import com.alquds.edu.ArchiveSystem.repository.task.TaskRepository;
 import com.alquds.edu.ArchiveSystem.repository.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -41,6 +44,7 @@ public class TaskServiceImpl implements TaskService {
     
     private final TaskRepository taskRepository;
     private final TaskAuditLogRepository taskAuditLogRepository;
+    private final TaskEvidenceRepository taskEvidenceRepository;
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
     private final SemesterRepository semesterRepository;
@@ -88,11 +92,16 @@ public class TaskServiceImpl implements TaskService {
         
         task = taskRepository.save(task);
         
+        // Add evidence files if provided
+        if (request.getEvidenceFileIds() != null && !request.getEvidenceFileIds().isEmpty()) {
+            addEvidenceToTask(task, request.getEvidenceFileIds(), professor);
+        }
+        
         // Log status change
         logStatusChange(task, null, TaskStatus.PENDING, professor, "Task created");
         
         log.info("Task created successfully with ID: {}", task.getId());
-        return mapToDTO(task);
+        return mapToDTOWithEvidence(task);
     }
     
     @Override
@@ -151,6 +160,11 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         
+        // Update evidence files if provided (null means no change, empty list clears all)
+        if (request.getEvidenceFileIds() != null) {
+            updateTaskEvidence(task, request.getEvidenceFileIds(), task.getProfessor());
+        }
+        
         task = taskRepository.save(task);
         
         // Log status change if status changed
@@ -159,7 +173,7 @@ public class TaskServiceImpl implements TaskService {
         }
         
         log.info("Task {} updated successfully", taskId);
-        return mapToDTO(task);
+        return mapToDTOWithEvidence(task);
     }
     
     @Override
@@ -174,13 +188,15 @@ public class TaskServiceImpl implements TaskService {
             throw new UnauthorizedOperationException("You can only delete your own tasks");
         }
         
-        // Only PENDING tasks can be deleted
-        if (task.getStatus() != TaskStatus.PENDING) {
-            throw new BusinessException("INVALID_STATUS", "Only PENDING tasks can be deleted");
-        }
+        // Delete related audit logs first (to avoid FK constraint issues)
+        taskAuditLogRepository.deleteByTaskId(taskId);
         
+        // Delete evidence files
+        taskEvidenceRepository.deleteByTaskId(taskId);
+        
+        // Delete the task
         taskRepository.delete(task);
-        log.info("Task {} deleted successfully", taskId);
+        log.info("Task {} deleted successfully (status was: {})", taskId, task.getStatus());
     }
     
     @Override
@@ -203,7 +219,7 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         
-        return mapToDTO(task);
+        return mapToDTOWithEvidence(task);
     }
     
     @Override
@@ -300,7 +316,7 @@ public class TaskServiceImpl implements TaskService {
             throw new UnauthorizedOperationException("You do not have access to this task");
         }
         
-        return mapToDTO(task);
+        return mapToDTOWithEvidence(task);
     }
     
     @Override
@@ -556,6 +572,222 @@ public class TaskServiceImpl implements TaskService {
             }
         }
         
+        // Add evidence count for list views
+        long evidenceCount = taskEvidenceRepository.countByTaskId(task.getId());
+        builder.evidenceCount((int) evidenceCount);
+        
         return builder.build();
+    }
+    
+    // ==================== Evidence Management ====================
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<TaskEvidenceDTO> getTaskEvidence(Long taskId, Long userId) {
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
+        
+        // Validate access - professor owns task or HOD in same department
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with ID: " + userId));
+        
+        boolean isOwner = task.getProfessor().getId().equals(userId);
+        boolean isHodInDepartment = user.getDepartment() != null && 
+                task.getProfessor().getDepartment() != null &&
+                user.getDepartment().getId().equals(task.getProfessor().getDepartment().getId());
+        
+        if (!isOwner && !isHodInDepartment) {
+            throw new UnauthorizedOperationException("You do not have access to this task's evidence");
+        }
+        
+        List<TaskEvidence> evidenceList = taskEvidenceRepository.findByTaskIdWithFile(taskId);
+        return evidenceList.stream()
+                .map(this::mapToEvidenceDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<TaskEvidenceDTO> addEvidence(Long taskId, List<Long> fileIds, Long professorId) {
+        log.info("Adding {} evidence files to task {}", fileIds.size(), taskId);
+        
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
+        
+        // Validate professor owns the task
+        if (!task.getProfessor().getId().equals(professorId)) {
+            throw new UnauthorizedOperationException("You can only add evidence to your own tasks");
+        }
+        
+        User professor = task.getProfessor();
+        addEvidenceToTask(task, fileIds, professor);
+        
+        // Return updated evidence list
+        List<TaskEvidence> evidenceList = taskEvidenceRepository.findByTaskIdWithFile(taskId);
+        return evidenceList.stream()
+                .map(this::mapToEvidenceDTO)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public void removeEvidence(Long taskId, Long evidenceId, Long professorId) {
+        log.info("Removing evidence {} from task {}", evidenceId, taskId);
+        
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new EntityNotFoundException("Task not found with ID: " + taskId));
+        
+        // Validate professor owns the task
+        if (!task.getProfessor().getId().equals(professorId)) {
+            throw new UnauthorizedOperationException("You can only remove evidence from your own tasks");
+        }
+        
+        int deleted = taskEvidenceRepository.deleteByIdAndTaskId(evidenceId, taskId);
+        if (deleted == 0) {
+            throw new EntityNotFoundException("Evidence not found with ID: " + evidenceId + " for task: " + taskId);
+        }
+        
+        log.info("Evidence {} removed from task {}", evidenceId, taskId);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<UploadedFileDTO> getAvailableFilesForEvidence(Long professorId, Long semesterId) {
+        log.debug("Getting available files for professor {} in semester {}", professorId, semesterId);
+        
+        // Get files uploaded by the professor
+        List<UploadedFile> files = uploadedFileRepository.findByUploaderId(professorId);
+        
+        return files.stream()
+                .map(file -> UploadedFileDTO.builder()
+                        .id(file.getId())
+                        .originalFilename(file.getOriginalFilename())
+                        .storedFilename(file.getStoredFilename())
+                        .fileSize(file.getFileSize())
+                        .fileType(file.getFileType())
+                        .fileUrl(file.getFileUrl())
+                        .uploadedAt(file.getCreatedAt())
+                        .notes(file.getNotes())
+                        .uploaderId(file.getUploader() != null ? file.getUploader().getId() : null)
+                        .uploaderName(file.getUploader() != null ? 
+                                file.getUploader().getFirstName() + " " + file.getUploader().getLastName() : null)
+                        .canDelete(true)
+                        .canReplace(true)
+                        .createdAt(file.getCreatedAt())
+                        .updatedAt(file.getUpdatedAt())
+                        .build())
+                .collect(Collectors.toList());
+    }
+    
+    // ==================== Evidence Helper Methods ====================
+    
+    /**
+     * Add evidence files to a task.
+     */
+    private void addEvidenceToTask(Task task, List<Long> fileIds, User professor) {
+        int startOrder = taskEvidenceRepository.findMaxDisplayOrderByTaskId(task.getId()) + 1;
+        
+        for (int i = 0; i < fileIds.size(); i++) {
+            Long fileId = fileIds.get(i);
+            
+            // Check if file already attached
+            if (taskEvidenceRepository.existsByTaskIdAndFileId(task.getId(), fileId)) {
+                log.debug("File {} already attached to task {}, skipping", fileId, task.getId());
+                continue;
+            }
+            
+            UploadedFile file = uploadedFileRepository.findById(fileId)
+                    .orElseThrow(() -> new EntityNotFoundException("File not found with ID: " + fileId));
+            
+            // Validate professor has access to this file
+            if (file.getUploader() == null || !file.getUploader().getId().equals(professor.getId())) {
+                log.warn("Professor {} attempted to attach file {} they don't own", professor.getId(), fileId);
+                throw new UnauthorizedOperationException("You can only attach files you have uploaded");
+            }
+            
+            TaskEvidence evidence = TaskEvidence.builder()
+                    .task(task)
+                    .file(file)
+                    .displayOrder(startOrder + i)
+                    .originalFilenameSnapshot(file.getOriginalFilename())
+                    .fileUrlSnapshot(file.getFileUrl())
+                    .build();
+            
+            taskEvidenceRepository.save(evidence);
+            log.debug("Attached file {} to task {} at order {}", fileId, task.getId(), startOrder + i);
+        }
+    }
+    
+    /**
+     * Update evidence files for a task (replace all).
+     */
+    private void updateTaskEvidence(Task task, List<Long> fileIds, User professor) {
+        // Delete existing evidence
+        taskEvidenceRepository.deleteByTaskId(task.getId());
+        
+        // Add new evidence if any
+        if (fileIds != null && !fileIds.isEmpty()) {
+            addEvidenceToTask(task, fileIds, professor);
+        }
+    }
+    
+    /**
+     * Map TaskEvidence entity to TaskEvidenceDTO.
+     */
+    private TaskEvidenceDTO mapToEvidenceDTO(TaskEvidence evidence) {
+        UploadedFile file = evidence.getFile();
+        
+        TaskEvidenceDTO.TaskEvidenceDTOBuilder builder = TaskEvidenceDTO.builder()
+                .id(evidence.getId())
+                .displayOrder(evidence.getDisplayOrder())
+                .note(evidence.getNote())
+                .originalFilenameSnapshot(evidence.getOriginalFilenameSnapshot())
+                .fileUrlSnapshot(evidence.getFileUrlSnapshot())
+                .attachedAt(evidence.getAttachedAt());
+        
+        if (file != null) {
+            builder.fileId(file.getId())
+                    .fileName(file.getOriginalFilename())
+                    .fileUrl(file.getFileUrl())
+                    .fileSize(file.getFileSize())
+                    .fileType(file.getFileType())
+                    .fileUploadedAt(file.getCreatedAt())
+                    .fileExists(true);
+            
+            // Check if file was moved
+            boolean fileMoved = evidence.getFileUrlSnapshot() != null && 
+                    !evidence.getFileUrlSnapshot().equals(file.getFileUrl());
+            builder.fileMoved(fileMoved);
+            
+            // Add uploader info
+            if (file.getUploader() != null) {
+                builder.uploaderId(file.getUploader().getId())
+                        .uploaderName(file.getUploader().getFirstName() + " " + file.getUploader().getLastName());
+            }
+        } else {
+            // File no longer exists - use snapshot data
+            builder.fileName(evidence.getOriginalFilenameSnapshot())
+                    .fileUrl(evidence.getFileUrlSnapshot())
+                    .fileExists(false)
+                    .fileMoved(false);
+        }
+        
+        return builder.build();
+    }
+    
+    /**
+     * Map Task entity to TaskDTO with evidence files included.
+     */
+    private TaskDTO mapToDTOWithEvidence(Task task) {
+        TaskDTO dto = mapToDTO(task);
+        
+        // Fetch and map evidence files
+        List<TaskEvidence> evidenceList = taskEvidenceRepository.findByTaskIdWithFile(task.getId());
+        List<TaskEvidenceDTO> evidenceDTOs = evidenceList.stream()
+                .map(this::mapToEvidenceDTO)
+                .collect(Collectors.toList());
+        
+        dto.setEvidenceFiles(evidenceDTOs);
+        dto.setEvidenceCount(evidenceDTOs.size());
+        
+        return dto;
     }
 }

@@ -1,6 +1,7 @@
 package com.alquds.edu.ArchiveSystem.service.task;
 
 import com.alquds.edu.ArchiveSystem.dto.task.*;
+import com.alquds.edu.ArchiveSystem.dto.fileexplorer.UploadedFileDTO;
 import com.alquds.edu.ArchiveSystem.entity.user.User;
 
 import java.util.List;
@@ -23,7 +24,8 @@ public interface TaskService {
     TaskDTO updateTask(Long taskId, TaskUpdateRequest request, Long professorId);
     
     /**
-     * Delete a task (only if status is PENDING).
+     * Delete a task owned by the professor.
+     * Also deletes associated audit logs and evidence.
      */
     void deleteTask(Long taskId, Long professorId);
     
@@ -48,7 +50,7 @@ public interface TaskService {
     List<TaskDTO> getTasksForDepartment(Long departmentId, TaskFilterRequest filters);
     
     /**
-     * Get a task by ID for HOD review.
+     * Get a task by ID for HOD review (includes evidence files).
      */
     TaskDTO getTaskByIdForHod(Long taskId, Long departmentId);
     
@@ -76,4 +78,30 @@ public interface TaskService {
      * Check and update overdue tasks (called by scheduled job).
      */
     int checkAndUpdateOverdueTasks();
+    
+    // ==================== Evidence Management ====================
+    
+    /**
+     * Get evidence files for a task.
+     * Professor can view own tasks; HOD can view department tasks.
+     */
+    List<TaskEvidenceDTO> getTaskEvidence(Long taskId, Long userId);
+    
+    /**
+     * Add evidence files to a task.
+     * Only the task owner (professor) can add evidence.
+     */
+    List<TaskEvidenceDTO> addEvidence(Long taskId, List<Long> fileIds, Long professorId);
+    
+    /**
+     * Remove a specific evidence file from a task.
+     * Only the task owner (professor) can remove evidence.
+     */
+    void removeEvidence(Long taskId, Long evidenceId, Long professorId);
+    
+    /**
+     * Get files available for the professor to attach as evidence.
+     * Returns files the professor owns or has access to.
+     */
+    List<UploadedFileDTO> getAvailableFilesForEvidence(Long professorId, Long semesterId);
 }

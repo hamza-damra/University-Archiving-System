@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * DTO representing a task with all details for API responses.
@@ -26,10 +28,15 @@ public class TaskDTO {
     private TaskStatus status;
     private LocalDate deadline;
     
-    // File reference
+    // File reference (legacy single file)
     private Long fileReferenceId;
     private String fileReferenceName;
     private String fileReferenceUrl;
+    
+    // Evidence files (multiple attachments)
+    @Builder.Default
+    private List<TaskEvidenceDTO> evidenceFiles = new ArrayList<>();
+    private Integer evidenceCount;
     
     // Professor information
     private Long professorId;

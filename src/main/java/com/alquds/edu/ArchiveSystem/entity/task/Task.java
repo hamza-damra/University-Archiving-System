@@ -19,6 +19,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Entity representing an academic task with weighted distribution and progress tracking.
@@ -99,6 +101,15 @@ public class Task implements Serializable {
     @JsonIgnoreProperties({"courseAssignments", "academicYear"})
     private Semester semester;
     
+    /**
+     * Evidence files attached to this task by the professor.
+     * These files serve as proof of task completion for HOD review.
+     */
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    @JsonIgnoreProperties({"task"})
+    private List<TaskEvidence> evidenceFiles = new ArrayList<>();
+    
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -123,10 +134,11 @@ public class Task implements Serializable {
     }
     
     /**
-     * Check if task can be deleted (only PENDING tasks can be deleted).
+     * Check if task can be deleted by the professor.
+     * All tasks owned by the professor can be deleted regardless of status.
      */
     @Transient
     public boolean canBeDeleted() {
-        return status == TaskStatus.PENDING;
+        return true;
     }
 }

@@ -769,6 +769,11 @@ export const hod = {
             method: 'GET',
         });
     },
+
+    // Task Evidence (for review)
+    getTaskEvidence: (taskId) => apiRequest(`/hod/tasks/${taskId}/evidence`, {
+        method: 'GET',
+    }),
 };
 
 // Professor endpoints
@@ -906,6 +911,27 @@ export const professor = {
         apiRequest(`/professor/tasks/weight-summary?courseId=${courseId}&semesterId=${semesterId}`, {
             method: 'GET',
         }),
+
+    // Task Evidence
+    getTaskEvidence: (taskId) => apiRequest(`/professor/tasks/${taskId}/evidence`, {
+        method: 'GET',
+    }),
+
+    addTaskEvidence: (taskId, fileIds) => apiRequest(`/professor/tasks/${taskId}/evidence`, {
+        method: 'POST',
+        body: JSON.stringify(fileIds),
+    }),
+
+    removeTaskEvidence: (taskId, evidenceId) => apiRequest(`/professor/tasks/${taskId}/evidence/${evidenceId}`, {
+        method: 'DELETE',
+    }),
+
+    getAvailableFilesForEvidence: (semesterId = null) => {
+        const params = semesterId ? `?semesterId=${semesterId}` : '';
+        return apiRequest(`/professor/tasks/available-files${params}`, {
+            method: 'GET',
+        });
+    },
 };
 
 // Export multi-file functions for easy import

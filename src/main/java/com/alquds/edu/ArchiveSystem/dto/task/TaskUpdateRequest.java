@@ -8,6 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * DTO for updating an existing task.
@@ -33,5 +34,13 @@ public class TaskUpdateRequest {
     
     private LocalDate deadline;
     
-    private Long fileReferenceId; // File link (null to remove link)
+    private Long fileReferenceId; // File link (null to remove link, 0 to clear)
+    
+    /**
+     * List of file IDs to attach as evidence.
+     * If provided, replaces all existing evidence files.
+     * Empty list removes all evidence.
+     * Null means no change to existing evidence.
+     */
+    private List<Long> evidenceFileIds;
 }

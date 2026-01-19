@@ -166,4 +166,22 @@ public class HodTaskController {
         
         return ResponseEntity.ok(ApiResponse.success("Tasks retrieved successfully", tasks));
     }
+    
+    /**
+     * Get evidence files for a task (for HOD review).
+     */
+    @GetMapping("/{id}/evidence")
+    public ResponseEntity<ApiResponse<List<TaskEvidenceDTO>>> getTaskEvidence(@PathVariable Long id) {
+        log.info("HOD retrieving evidence for task: {}", id);
+        
+        var currentUser = authService.getCurrentUser();
+        if (currentUser.getDepartment() == null) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("HOD must be assigned to a department"));
+        }
+        
+        List<TaskEvidenceDTO> evidence = taskService.getTaskEvidence(id, currentUser.getId());
+        
+        return ResponseEntity.ok(ApiResponse.success("Evidence retrieved successfully", evidence));
+    }
 }

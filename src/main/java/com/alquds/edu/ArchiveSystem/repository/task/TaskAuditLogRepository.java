@@ -2,6 +2,7 @@ package com.alquds.edu.ArchiveSystem.repository.task;
 
 import com.alquds.edu.ArchiveSystem.entity.task.TaskAuditLog;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -19,4 +20,11 @@ public interface TaskAuditLogRepository extends JpaRepository<TaskAuditLog, Long
            "WHERE tal.task.id = :taskId " +
            "ORDER BY tal.createdAt DESC")
     List<TaskAuditLog> findByTaskId(@Param("taskId") Long taskId);
+    
+    /**
+     * Delete all audit log entries for a task.
+     */
+    @Modifying
+    @Query("DELETE FROM TaskAuditLog tal WHERE tal.task.id = :taskId")
+    void deleteByTaskId(@Param("taskId") Long taskId);
 }

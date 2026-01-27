@@ -969,10 +969,13 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         node.getMetadata().put("isOwnFolder", isOwnFolder);
         node.getMetadata().put("isCustomFolder", true);
         
-        // Get files in this custom folder from database
+        // Get files in this custom folder from database and filter out those that don't exist on disk
         List<UploadedFile> dbFiles = uploadedFileRepository.findByFolderIdWithUploader(customFolder.getId());
         final User finalUser = currentUser;
-        List<UploadedFileDTO> fileDTOs = dbFiles.stream()
+        List<UploadedFile> existingFiles = dbFiles.stream()
+                .filter(f -> fileExistsOnDisk(f))
+                .collect(Collectors.toList());
+        List<UploadedFileDTO> fileDTOs = existingFiles.stream()
                 .map(f -> convertToUploadedFileDTO(f, finalUser))
                 .collect(Collectors.toList());
         
@@ -980,7 +983,7 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         String customFolderPath = customFolder.getPath();
         Path physicalCustomFolderPath = Paths.get(uploadBasePath, customFolderPath);
         
-        Set<String> dbFilePaths = dbFiles.stream()
+        Set<String> dbFilePaths = existingFiles.stream()
                 .map(UploadedFile::getFileUrl)
                 .filter(url -> url != null)
                 .collect(Collectors.toSet());
@@ -1647,14 +1650,17 @@ public class FileExplorerServiceImpl implements FileExplorerService {
 
             Folder documentTypeFolder = documentTypeFolderOpt.get();
 
-            // Query files from this folder with uploader data
+            // Query files from this folder with uploader data and filter out those that don't exist on disk
             List<UploadedFile> files = uploadedFileRepository.findByFolderIdWithUploader(documentTypeFolder.getId());
+            List<UploadedFile> existingFiles = files.stream()
+                    .filter(f -> fileExistsOnDisk(f))
+                    .collect(Collectors.toList());
 
             final String fallbackUploaderName = professor.getFirstName() + " " + professor.getLastName();
             final User finalCurrentUser = currentUser;
 
             // Convert to DTOs ensuring uploader name is always populated
-            return files.stream()
+            return existingFiles.stream()
                     .map(file -> {
                         UploadedFileDTO dto = convertToUploadedFileDTO(file, finalCurrentUser);
                         if (dto.getUploaderName() == null) {
@@ -2144,6 +2150,38 @@ public class FileExplorerServiceImpl implements FileExplorerService {
         
         // Delete the file or empty directory
         Files.delete(directory);
+    }
+
+    /**
+     * Check if a file exists on the physical filesystem.
+     * For files that have been deleted from disk, this method also
+     * triggers cleanup of the database record.
+     * 
+     * @param file the uploaded file entity to check
+     * @return true if the file exists on disk, false otherwise
+     */
+    @org.springframework.transaction.annotation.Transactional
+    private boolean fileExistsOnDisk(UploadedFile file) {
+        if (file == null || file.getFileUrl() == null || file.getFileUrl().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            Path physicalPath = safePathResolver.resolve(file.getFileUrl());
+            boolean exists = Files.exists(physicalPath) && Files.isRegularFile(physicalPath);
+            
+            if (!exists) {
+                log.info("File no longer exists on disk, removing DB record: {} (ID: {})", 
+                        file.getFileUrl(), file.getId());
+                uploadedFileRepository.delete(file);
+                log.info("Removed orphaned file record: {}", file.getId());
+            }
+            
+            return exists;
+        } catch (Exception e) {
+            log.warn("Error checking file existence on disk: {} - {}", file.getFileUrl(), e.getMessage());
+            return false;
+        }
     }
 
     /**

@@ -707,16 +707,16 @@ function createCourseCard(course) {
     const documentTypes = Object.entries(course.documentStatuses || {});
 
     return `
-        <div class="border border-gray-200 rounded-lg p-6 mb-4">
+        <div class="border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 rounded-lg p-6 mb-4">
             <div class="flex justify-between items-start mb-4">
                 <div>
-                    <h3 class="text-lg font-semibold text-gray-900">${course.courseCode} - ${course.courseName}</h3>
-                    <p class="text-sm text-gray-600">${course.departmentName} • ${course.courseLevel || 'N/A'}</p>
+                    <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100">${course.courseCode} - ${course.courseName}</h3>
+                    <p class="text-sm text-gray-600 dark:text-gray-400">${course.departmentName} • ${course.courseLevel || 'N/A'}</p>
                 </div>
             </div>
 
             ${documentTypes.length === 0 ? `
-                <p class="text-sm text-gray-500 italic">No required documents for this course</p>
+                <p class="text-sm text-gray-500 dark:text-gray-400 italic">No required documents for this course</p>
             ` : `
                 <div class="space-y-3">
                     ${documentTypes.map(([docType, status]) => createDocumentTypeRow(course, docType, status)).join('')}
@@ -734,19 +734,19 @@ function createDocumentTypeRow(course, docType, status) {
 
     let statusBadge = '';
     let statusClass = '';
-    let rowBorderClass = 'border-gray-200';
-    let rowBgClass = 'bg-gray-50';
+    let rowBorderClass = 'border-gray-200 dark:border-gray-600';
+    let rowBgClass = 'bg-gray-50 dark:bg-gray-700';
 
     if (isSubmitted) {
         statusClass = status.isLateSubmission ? 'badge-warning' : 'badge-success';
         statusBadge = status.isLateSubmission ? 'Submitted (Late)' : 'Submitted';
-        rowBgClass = status.isLateSubmission ? 'bg-yellow-50' : 'bg-green-50';
-        rowBorderClass = status.isLateSubmission ? 'border-yellow-200' : 'border-green-200';
+        rowBgClass = status.isLateSubmission ? 'bg-yellow-50 dark:bg-yellow-900/30' : 'bg-green-50 dark:bg-green-900/30';
+        rowBorderClass = status.isLateSubmission ? 'border-yellow-200 dark:border-yellow-700' : 'border-green-200 dark:border-green-700';
     } else if (isStatusOverdue) {
         statusClass = 'badge-danger';
         statusBadge = 'Overdue';
-        rowBgClass = 'bg-red-50';
-        rowBorderClass = 'border-red-300';
+        rowBgClass = 'bg-red-50 dark:bg-red-900/30';
+        rowBorderClass = 'border-red-300 dark:border-red-700';
     } else {
         statusClass = 'badge-gray';
         statusBadge = 'Not Uploaded';
@@ -765,13 +765,13 @@ function createDocumentTypeRow(course, docType, status) {
         const hoursUntilDeadline = (deadline - now) / (1000 * 60 * 60);
 
         if (hoursUntilDeadline <= 24) {
-            urgencyIndicator = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800 ml-2 animate-pulse"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>Due in ${Math.round(hoursUntilDeadline)} hours!</span>';
-            rowBgClass = 'bg-red-50';
-            rowBorderClass = 'border-red-300';
+            urgencyIndicator = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-200 ml-2 animate-pulse"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>Due in ${Math.round(hoursUntilDeadline)} hours!</span>';
+            rowBgClass = 'bg-red-50 dark:bg-red-900/30';
+            rowBorderClass = 'border-red-300 dark:border-red-700';
         } else if (hoursUntilDeadline <= 72) {
-            urgencyIndicator = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800 ml-2"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>Due soon</span>';
-            rowBgClass = 'bg-orange-50';
-            rowBorderClass = 'border-orange-200';
+            urgencyIndicator = '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 ml-2"><svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>Due soon</span>';
+            rowBgClass = 'bg-orange-50 dark:bg-orange-900/30';
+            rowBorderClass = 'border-orange-200 dark:border-orange-700';
         }
     }
 
@@ -779,29 +779,29 @@ function createDocumentTypeRow(course, docType, status) {
         <div class="flex items-center justify-between p-4 ${rowBgClass} rounded-lg border ${rowBorderClass} transition-all">
             <div class="flex-1">
                 <div class="flex items-center gap-3 mb-2 flex-wrap">
-                    <h4 class="font-medium text-gray-900">${formatDocumentType(docType)}</h4>
+                    <h4 class="font-medium text-gray-900 dark:text-gray-100">${formatDocumentType(docType)}</h4>
                     <span class="badge ${statusClass}">${statusBadge}</span>
                     ${urgencyIndicator}
                 </div>
                 
-                <div class="flex flex-wrap gap-4 text-sm text-gray-600">
+                <div class="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
                     ${deadline ? `
                         <div class="flex items-center">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                             </svg>
-                            <span class="${isPastDue ? 'text-red-600 font-medium' : ''}">${formatDate(deadline)}</span>
+                            <span class="${isPastDue ? 'text-red-600 dark:text-red-400 font-medium' : ''}">${formatDate(deadline)}</span>
                         </div>
-                        <div class="flex items-center ${isPastDue ? 'text-red-600' : 'text-blue-600'}">
+                        <div class="flex items-center ${isPastDue ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                             </svg>
                             ${timeUntil}
                         </div>
-                    ` : '<span class="text-gray-500">No deadline</span>'}
+                    ` : '<span class="text-gray-500 dark:text-gray-400">No deadline</span>'}
                     
                     ${isSubmitted ? `
-                        <div class="flex items-center text-green-600">
+                        <div class="flex items-center text-green-600 dark:text-green-400">
                             <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                             </svg>
@@ -811,7 +811,7 @@ function createDocumentTypeRow(course, docType, status) {
                 </div>
                 
                 ${status.maxFileCount || status.maxTotalSizeMb ? `
-                    <div class="mt-2 text-xs text-gray-500">
+                    <div class="mt-2 text-xs text-gray-500 dark:text-gray-400">
                         Max: ${status.maxFileCount || 'unlimited'} files, ${status.maxTotalSizeMb || 'unlimited'} MB total
                     </div>
                 ` : ''}
@@ -819,14 +819,14 @@ function createDocumentTypeRow(course, docType, status) {
             
             <div class="flex gap-2 ml-4">
                 <button 
-                    class="px-4 py-2 ${isSubmitted ? 'bg-gray-600' : 'bg-blue-600'} text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm font-medium"
+                    class="px-4 py-2 ${isSubmitted ? 'bg-gray-600 dark:bg-gray-500' : 'bg-blue-600 dark:bg-blue-500'} text-white rounded-md hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm font-medium"
                     onclick="window.openUploadModal(${course.courseAssignmentId}, '${docType}', ${status.submissionId || 'null'}, ${isSubmitted}, ${JSON.stringify(status).replace(/"/g, '&quot;')})"
                 >
                     ${isSubmitted ? 'Replace Files' : 'Upload Files'}
                 </button>
                 ${isSubmitted && status.fileCount > 0 ? `
                     <button 
-                        class="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 transition text-sm"
+                        class="px-3 py-2 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-md hover:bg-gray-200 dark:hover:bg-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-400 transition text-sm"
                         onclick="window.viewSubmissionFiles(${status.submissionId})"
                         title="View files"
                     >
